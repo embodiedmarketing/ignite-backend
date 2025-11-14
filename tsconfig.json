@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types", "./node_modules"],
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "@backend/*": ["./src/*"],
+      "@backend/config/*": ["./src/config/*"],
+      "@backend/models/*": ["./src/models/*"],
+      "@backend/controllers/*": ["./src/controllers/*"],
+      "@backend/routes/*": ["./src/routes/*"],
+      "@backend/services/*": ["./src/services/*"],
+      "@backend/middlewares/*": ["./src/middlewares/*"],
+      "@backend/utils/*": ["./src/utils/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "../node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
