@@ -18,6 +18,3 @@ router.delete("/:id", deleteInterviewTranscript);
 router.post("/reset-stuck", resetStuckTranscripts);
 
 export default router;
-
-
-

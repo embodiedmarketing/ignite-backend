@@ -34,7 +34,7 @@ export async function createApp() {
 
   const allowedOrigins =
     env.NODE_ENV === "development"
-      ? ["http://localhost:5173", "http://192.168.1.179:5173"]
+      ? ["http://localhost:5173"]
       : [process.env.FRONTEND_URL!];
 
   app.use(

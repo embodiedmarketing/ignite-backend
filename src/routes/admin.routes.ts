@@ -66,6 +66,3 @@ router.put("/checklist-definitions/:id", isAdmin, updateChecklistDefinition);
 router.delete("/checklist-definitions/:id", isAdmin, deleteChecklistDefinition);
 
 export default router;
-
-
-

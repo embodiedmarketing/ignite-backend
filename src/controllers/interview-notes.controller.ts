@@ -28,13 +28,7 @@ export async function getInterviewNotes(req: Request, res: Response) {
  */
 export async function upsertInterviewNote(req: Request, res: Response) {
   try {
-    const {
-      userId,
-      noteKey,
-      content,
-      source = "manual",
-      sessionId,
-    } = req.body;
+    const { userId, noteKey, content, source = "manual", sessionId } = req.body;
 
     if (!userId || !noteKey || content === undefined) {
       return res
@@ -156,12 +150,10 @@ export async function restoreInterviewNote(req: Request, res: Response) {
 
     // Don't allow restoring empty or null content
     if (!content || typeof content !== "string" || content.trim() === "") {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Cannot restore empty content. Please select a version with actual content.",
-        });
+      return res.status(400).json({
+        error:
+          "Cannot restore empty content. Please select a version with actual content.",
+      });
     }
 
     // Update current note
@@ -245,6 +237,3 @@ export async function bulkSaveInterviewNotes(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to bulk save interview notes" });
   }
 }
-
-
-

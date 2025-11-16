@@ -31,6 +31,3 @@ router.post("/funnel-copy", generateFunnelCopy);
 router.post("/video-scripts", isAuthenticated, generateVideoScripts);
 
 export default router;
-
-
-

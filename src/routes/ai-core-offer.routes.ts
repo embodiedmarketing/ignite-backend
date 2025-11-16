@@ -27,6 +27,3 @@ router.post("/rewrite-section", isAuthenticated, rewriteCoreOfferSection);
 router.post("/tripwire-templates", isAuthenticated, generateTripwireTemplates);
 
 export default router;
-
-
-

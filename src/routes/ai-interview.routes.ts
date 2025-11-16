@@ -29,6 +29,3 @@ router.post(
 router.post("/transfer-response", isAuthenticated, transferInterviewResponse);
 
 export default router;
-
-
-

@@ -14,6 +14,3 @@ router.put("/:id", updateCustomerExperiencePlan);
 router.delete("/:id", deleteCustomerExperiencePlan);
 
 export default router;
-
-
-

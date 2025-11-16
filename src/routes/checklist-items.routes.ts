@@ -10,6 +10,3 @@ router.get("/:userId/:sectionKey", getChecklistItems);
 router.post("/", upsertChecklistItem);
 
 export default router;
-
-
-

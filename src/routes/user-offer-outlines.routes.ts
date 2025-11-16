@@ -18,6 +18,3 @@ router.post("/:outlineId/activate/:userId", setActiveUserOfferOutline);
 router.delete("/:id", deleteUserOfferOutline);
 
 export default router;
-
-
-
