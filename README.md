@@ -61,3 +61,7 @@ NODE_ENV=development
 ## Dependencies
 
 All backend dependencies are listed in `backend/package.json`. The backend is fully independent and does not rely on the root `package.json`.
+
+
+
+

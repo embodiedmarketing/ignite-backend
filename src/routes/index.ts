@@ -65,6 +65,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/core-offer", aiCoreOfferRoutes); // Core offer routes: /api/core-offer/coach/:questionKey, etc.
   app.use("/api/ai-feedback", aiFeedbackRoutes); // AI feedback routes: /api/ai-feedback/analyze-response, etc.
   app.use("/api/ai-coaching", aiCoachingRoutes); // AI coaching routes: /api/ai-coaching/interactive-coaching, etc.
+  
+  // Direct route mappings to match server/routes.ts exactly
+  app.post("/api/real-time-feedback", async (req, res) => {
+    const { getRealTimeFeedbackRoute } = await import("../controllers/ai-coaching.controller");
+    return getRealTimeFeedbackRoute(req, res);
+  });
+  
+  app.post("/api/upload-transcript", async (req, res) => {
+    const { upload } = await import("../middlewares/upload.middleware");
+    const { uploadTranscript } = await import("../controllers/ai-interview.controller");
+    return upload.single("transcript")(req, res, () => uploadTranscript(req, res));
+  });
+  
   app.use("/api/user-offers", userOffersRoutes);
   app.use("/api/user-offer-outlines", userOfferOutlinesRoutes);
   app.use("/api/section-completions", sectionCompletionsRoutes);

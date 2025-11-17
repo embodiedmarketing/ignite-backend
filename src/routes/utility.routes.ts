@@ -47,13 +47,10 @@ router.post("/ontraport-webhook", ontraportWebhook);
 router.post("/smart-placement", smartPlacement);
 router.post("/synthesize-avatar", synthesizeAvatar);
 router.post("/generate-customer-locations", generateCustomerLocationsRoute);
+router.post("/ai/customer-locations", generateCustomerLocationsRoute);
 
 // Migration routes
-router.get(
-  "/migration/check-existing/:userId",
-  isAuthenticated,
-  checkExistingData
-);
+router.get("/migration/check-existing/:userId", isAuthenticated, checkExistingData);
 router.post("/migration/migrate", isAuthenticated, migrateLocalStorage);
 router.post("/migrate-localStorage", isAuthenticated, migrateLocalStorageAlt);
 router.get("/check-database-data/:userId", isAuthenticated, checkDatabaseData);
@@ -139,3 +136,7 @@ router.get(
 );
 
 export default router;
+
+
+
+

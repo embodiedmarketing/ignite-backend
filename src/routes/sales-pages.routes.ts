@@ -10,3 +10,7 @@ router.get("/user/:userId", getSalesPagesByUser);
 router.post("/", createSalesPage);
 
 export default router;
+
+
+
+

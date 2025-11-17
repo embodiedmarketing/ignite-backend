@@ -55,15 +55,23 @@ export async function adminLogin(req: Request, res: Response) {
 
     req.session!.userId = user.id;
 
-    res.json({
-      message: "Admin login successful",
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isAdmin: true,
-      },
+    // Explicitly save session before sending response
+    req.session!.save((err) => {
+      if (err) {
+        console.error("[ADMIN_LOGIN] Session save error:", err);
+        return res.status(500).json({ message: "Failed to save session" });
+      }
+
+      res.json({
+        message: "Admin login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isAdmin: true,
+        },
+      });
     });
   } catch (error) {
     console.error("Admin login error:", error);
