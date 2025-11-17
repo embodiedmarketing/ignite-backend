@@ -60,7 +60,7 @@ async function startServer() {
 
   // Backend API server - serves only API endpoints
   // Frontend should be served separately or via a reverse proxy
-  console.log(`[Backend] Running in ${env.NODE_ENV} mode`);
+  console.log(`[Backend] Running in ${env.NODE_ENV} mode1`);
   console.log(
     `[Backend] API endpoints available at http://localhost:${env.PORT}/api`
   );
