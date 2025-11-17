@@ -15,6 +15,10 @@ export function getSession() {
     tableName: "sessions",
   });
 
+  // In production (HTTPS), cookies must be secure
+  // For cross-domain cookies (Vercel frontend + Heroku backend), we need sameSite: "none"
+  const isProduction = env.NODE_ENV === "production";
+
   return session({
     secret: env.SESSION_SECRET,
     store: sessionStore,
@@ -23,10 +27,10 @@ export function getSession() {
     name: "connect.sid",
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: isProduction, // Must be true for HTTPS in production
       maxAge: sessionTtl,
-      sameSite: "lax",
-      domain: undefined, // Don't set domain to allow cookies across subdomains
+      sameSite: isProduction ? "none" : "lax", // "none" required for cross-domain cookies (Vercel + Heroku)
+      domain: undefined, // Don't set domain to allow cookies across different domains
       path: "/",
     },
   });

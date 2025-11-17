@@ -21,17 +21,6 @@ export async function createApp() {
   // Trust proxy for session cookies
   app.set("trust proxy", 1);
 
-  // CORS configuration
-  // app.use(
-  //   cors({
-  //     origin:
-  //       env.NODE_ENV === "development"
-  //         ? "http://localhost:5173"
-  //         : process.env.FRONTEND_URL || "*",
-  //     credentials: true,
-  //   })
-  // );
-
   const allowedOrigins =
     env.NODE_ENV === "development"
       ? ["http://localhost:5173"]
