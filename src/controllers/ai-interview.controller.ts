@@ -4,6 +4,8 @@ import { db } from "../config/db";
 import { sql } from "drizzle-orm";
 import { getUserId } from "../middlewares/auth.middleware";
 import { isAuthenticated } from "../middlewares/auth.middleware";
+import { parseVTT } from "../utils/vtt-parser";
+import mammoth from "mammoth";
 
 /**
  * Parse interview transcript
@@ -307,5 +309,107 @@ export async function transferInterviewResponse(req: Request, res: Response) {
   } catch (error) {
     console.error("Transfer save error:", error);
     res.status(500).json({ message: "Failed to save transfer" });
+  }
+}
+
+/**
+ * Upload and extract transcript from file
+ */
+export async function uploadTranscript(req: Request, res: Response) {
+  const { executeAtomicUpload } = await import("../utils/upload-state-manager");
+  const userId = (req.session as any)?.userId || 0;
+
+  const result = await executeAtomicUpload(
+    userId,
+    "transcript_upload",
+    async (operationId: string) => {
+      if (!req.file) {
+        throw new Error("No file uploaded");
+      }
+
+      console.log(
+        `[ATOMIC UPLOAD] Processing transcript upload operation ${operationId}`
+      );
+
+      let transcriptText = "";
+      const fileName = req.file.originalname?.toLowerCase() || "";
+
+      if (req.file.mimetype === "text/plain" || fileName.endsWith(".txt")) {
+        transcriptText = req.file.buffer.toString("utf-8");
+      } else if (
+        req.file.mimetype === "text/vtt" ||
+        fileName.endsWith(".vtt")
+      ) {
+        // Parse VTT files (case-insensitive extension, with MIME type support)
+        const vttContent = req.file.buffer.toString("utf-8");
+        transcriptText = parseVTT(vttContent);
+        console.log(
+          `[VTT PARSER] Extracted ${transcriptText.length} characters from VTT file`
+        );
+      } else if (
+        req.file.mimetype ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        fileName.endsWith(".docx")
+      ) {
+        const result = await mammoth.extractRawText({
+          buffer: req.file.buffer,
+        });
+        transcriptText = result.value;
+      } else if (
+        req.file.mimetype === "application/pdf" ||
+        fileName.endsWith(".pdf")
+      ) {
+        // Dynamic import for pdf-parse (needs to be installed: npm install pdf-parse)
+        // Note: pdf-parse may need to be added to package.json if not already present
+        try {
+          // pdf-parse is a CommonJS module with complex export structure
+          const pdfParseModule: any = await import("pdf-parse");
+          // Handle different export formats
+          const pdfParseFn = pdfParseModule.default || pdfParseModule;
+          const pdfData = await pdfParseFn(req.file.buffer);
+          transcriptText = pdfData.text;
+        } catch (pdfError) {
+          throw new Error(
+            "PDF parsing is not available. Please install pdf-parse: npm install pdf-parse"
+          );
+        }
+      } else {
+        throw new Error(
+          "Unsupported file type. Please upload .txt, .docx, .pdf, or .vtt files."
+        );
+      }
+
+      // Validate extracted text
+      if (!transcriptText.trim()) {
+        throw new Error(
+          "The uploaded file appears to be empty or contains no readable text."
+        );
+      }
+
+      if (transcriptText.length > 50000) {
+        console.warn(
+          `[ATOMIC UPLOAD] Large transcript detected: ${transcriptText.length} characters`
+        );
+      }
+
+      return { transcriptText };
+    },
+    {
+      fileName: req.file?.originalname,
+      fileSize: req.file?.size,
+      mimetype: req.file?.mimetype,
+    }
+  );
+
+  if (result.success) {
+    res.json(result.data);
+  } else {
+    const statusCode =
+      result.error?.includes("Unsupported file type") ||
+      result.error?.includes("No file uploaded") ||
+      result.error?.includes("empty")
+        ? 400
+        : 500;
+    res.status(statusCode).json({ error: result.error });
   }
 }

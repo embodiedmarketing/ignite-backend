@@ -5,8 +5,10 @@ import {
   synthesizeInterviewsToStrategy,
   intelligentInterviewProcessing,
   transferInterviewResponse,
+  uploadTranscript,
 } from "../controllers/ai-interview.controller";
 import { isAuthenticated } from "../middlewares/auth.middleware";
+import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -27,5 +29,14 @@ router.post(
   intelligentInterviewProcessing
 );
 router.post("/transfer-response", isAuthenticated, transferInterviewResponse);
+router.post(
+  "/upload-transcript",
+  upload.single("transcript"),
+  uploadTranscript
+);
 
 export default router;
+
+
+
+

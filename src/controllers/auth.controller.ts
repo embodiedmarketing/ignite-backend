@@ -46,11 +46,19 @@ export async function signup(req: Request, res: Response) {
     // Automatically log in the new user
     req.session.userId = user.id;
 
-    // Return user without password
-    const { passwordHash: _, ...userWithoutPassword } = user;
-    res.status(201).json({
-      message: "User created successfully",
-      user: userWithoutPassword,
+    // Explicitly save session before sending response
+    req.session.save((err) => {
+      if (err) {
+        console.error("[SIGNUP] Session save error:", err);
+        return res.status(500).json({ message: "Failed to save session" });
+      }
+
+      // Return user without password
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.status(201).json({
+        message: "User created successfully",
+        user: userWithoutPassword,
+      });
     });
   } catch (error) {
     console.error("[SIGNUP] Error:", error);
@@ -105,9 +113,18 @@ export async function login(req: Request, res: Response) {
     // Create session
     req.session.userId = user.id;
 
-    // Return user without password
-    const { passwordHash, ...userWithoutPassword } = user;
-    res.json({ message: "Login successful", user: userWithoutPassword });
+    // Explicitly save session before sending response
+    // This is important for cross-domain cookies (Vercel + Heroku)
+    req.session.save((err) => {
+      if (err) {
+        console.error("[LOGIN] Session save error:", err);
+        return res.status(500).json({ message: "Failed to save session" });
+      }
+
+      // Return user without password
+      const { passwordHash, ...userWithoutPassword } = user;
+      res.json({ message: "Login successful", user: userWithoutPassword });
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Failed to login" });

@@ -12,3 +12,7 @@ router.get("/alerts", getHealthAlerts);
 router.post("/track", trackUserActivity);
 
 export default router;
+
+
+
+
