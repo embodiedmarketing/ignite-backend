@@ -9,16 +9,14 @@ import { getUserId } from "../middlewares/auth.middleware";
 export async function generateMessagingStrategy(req: Request, res: Response) {
   try {
     const { workbookResponses, interviewNotes } = req.body;
-    const userId = (req.user as any)?.id || 0;
+    const userId = req.session?.userId || 0;
 
     if (!workbookResponses || Object.keys(workbookResponses).length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Workbook responses are required" });
+      return res.status(400).json({ error: "Workbook responses are required" });
     }
 
     const { generateMessagingStrategy } = await import(
-      "../../../server/ai-messaging-strategy"
+      "../services/ai-messaging-strategy"
     );
 
     const strategy = await generateMessagingStrategy(
@@ -60,8 +58,7 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
  */
 export async function generateOfferOutline(req: Request, res: Response) {
   try {
-    const { offerResponses, messagingStrategy, userId, offerNumber } =
-      req.body;
+    const { offerResponses, messagingStrategy, userId, offerNumber } = req.body;
 
     console.log("=== OFFER OUTLINE GENERATION ===");
     console.log(
@@ -75,7 +72,7 @@ export async function generateOfferOutline(req: Request, res: Response) {
     }
 
     const { generateOfferOutline } = await import(
-      "../../../server/ai-offer-outline"
+      "../services/ai-offer-outline"
     );
 
     const outline = await generateOfferOutline(
@@ -130,7 +127,7 @@ export async function generateSalesPage(req: Request, res: Response) {
     console.log("🎯 Generating sales page for user:", userId);
 
     const { generateSalesPage } = await import(
-      "../../../server/ai-sales-page-generator-fixed"
+      "../services/ai-sales-page-generator"
     );
 
     const salesPageData = {
@@ -167,7 +164,7 @@ export async function coachSalesSection(req: Request, res: Response) {
     }
 
     const { coachSalesPageSection } = await import(
-      "../../../server/ai-sales-page-coach"
+      "../services/ai-sales-page-coach"
     );
 
     // Get context from user's data
@@ -228,7 +225,7 @@ export async function improveSalesSection(req: Request, res: Response) {
     }
 
     const { improveSalesPageSection } = await import(
-      "../../../server/ai-sales-page-coach"
+      "../services/ai-sales-page-coach"
     );
 
     // Get context similar to coachSalesSection
@@ -267,25 +264,27 @@ export async function improveSalesSection(req: Request, res: Response) {
  */
 export async function generateCustomerExperience(req: Request, res: Response) {
   try {
-    const { userId, messagingStrategy, offerOutline, customerExperienceInputs } =
-      req.body;
+    const {
+      userId,
+      messagingStrategy,
+      offerOutline,
+      customerExperienceInputs,
+    } = req.body;
 
     const { generateComprehensiveCustomerExperience } = await import(
-      "../../../server/ai-customer-experience-generator"
+      "../services/ai-customer-experience-generator"
     );
 
     const result = await generateComprehensiveCustomerExperience({
       messagingStrategy,
       offerOutline,
-      customerExperienceInputs,
+      experienceQuestions: customerExperienceInputs,
     });
 
     res.json(result);
   } catch (error) {
     console.error("Error generating customer experience:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to generate customer experience" });
+    res.status(500).json({ error: "Failed to generate customer experience" });
   }
 }
 
@@ -297,7 +296,7 @@ export async function formatComprehensivePlan(req: Request, res: Response) {
     const { planContent } = req.body;
 
     const { formatComprehensivePlan } = await import(
-      "../../../server/ai-customer-experience-generator"
+      "../services/ai-customer-experience-generator"
     );
 
     const formatted = await formatComprehensivePlan(planContent);
@@ -323,7 +322,7 @@ export async function generateTopicIdeas(req: Request, res: Response) {
     }
 
     const { generateTopicIdeas } = await import(
-      "../../../server/ai-topic-idea-generator"
+      "../services/ai-topic-idea-generator"
     );
 
     const result = await generateTopicIdeas(
@@ -373,7 +372,7 @@ export async function generateContentStrategy(req: Request, res: Response) {
     }
 
     const { generateContentStrategy } = await import(
-      "../../../server/ai-content-strategy"
+      "../services/ai-content-strategy"
     );
 
     const result = await generateContentStrategy(
@@ -382,23 +381,70 @@ export async function generateContentStrategy(req: Request, res: Response) {
       userId || 0
     );
 
-    // Save preferences to database
-    try {
-      const existingPreferences =
-        await storage.getContentStrategyResponse(userId);
-      if (existingPreferences) {
-        await storage.updateContentStrategyResponse(
-          existingPreferences.id,
-          preferences
+    console.log("✅ Content strategy generated successfully");
+    console.log("Response structure:", {
+      pillarsCount: result.contentPillars?.length || 0,
+      completeness: result.completeness,
+      missingInfoCount: result.missingInformation?.length || 0,
+      recommendationsCount: result.recommendations?.length || 0,
+    });
+
+    // Save preferences and generated strategy to database
+    if (userId) {
+      try {
+        // Save or update content preferences
+        const existingPreferences = await storage.getContentStrategyResponse(
+          userId
         );
-      } else {
-        await storage.createContentStrategyResponse({
-          userId,
-          ...preferences,
-        });
+        if (existingPreferences) {
+          await storage.updateContentStrategyResponse(existingPreferences.id, {
+            platforms: preferences.platforms,
+            contentTypes: preferences.contentTypes,
+            postingFrequency: preferences.postingFrequency,
+            desiredFeelings: preferences.desiredFeelings,
+            avoidFeelings: preferences.avoidFeelings,
+            brandAdjectives: preferences.brandAdjectives,
+            coreThemes: preferences.coreThemes,
+            problemsMyths: preferences.problemsMyths,
+            valuesBeliefs: preferences.valuesBeliefs,
+            contrarianTakes: preferences.contrarianTakes,
+            actionableTips: preferences.actionableTips,
+            commonObjections: preferences.commonObjections,
+            beliefShifts: preferences.beliefShifts,
+            authenticTruths: preferences.authenticTruths,
+            keyMessage: preferences.keyMessage,
+            authenticVoice: preferences.authenticVoice,
+          });
+        } else {
+          await storage.createContentStrategyResponse({
+            userId,
+            platforms: preferences.platforms,
+            contentTypes: preferences.contentTypes,
+            postingFrequency: preferences.postingFrequency,
+            desiredFeelings: preferences.desiredFeelings,
+            avoidFeelings: preferences.avoidFeelings,
+            brandAdjectives: preferences.brandAdjectives,
+            coreThemes: preferences.coreThemes,
+            problemsMyths: preferences.problemsMyths,
+            valuesBeliefs: preferences.valuesBeliefs,
+            contrarianTakes: preferences.contrarianTakes,
+            actionableTips: preferences.actionableTips,
+            commonObjections: preferences.commonObjections,
+            beliefShifts: preferences.beliefShifts,
+            authenticTruths: preferences.authenticTruths,
+            keyMessage: preferences.keyMessage,
+            authenticVoice: preferences.authenticVoice,
+          });
+        }
+
+        // Note: Content strategies and ideas are generated on-demand
+        // Preferences are persisted above for regeneration context
+
+        console.log("💾 Content strategy preferences saved to database");
+      } catch (saveError) {
+        console.error("Error saving content strategy to database:", saveError);
+        // Don't fail the request if saving fails
       }
-    } catch (saveError) {
-      console.error("Error saving content strategy:", saveError);
     }
 
     res.json(result);
@@ -431,7 +477,7 @@ export async function generateContentIdeas(req: Request, res: Response) {
     }
 
     const { generateContentIdeas } = await import(
-      "../../../server/ai-content-strategy"
+      "../services/ai-content-strategy"
     );
 
     const ideas = await generateContentIdeas(
@@ -472,7 +518,7 @@ export async function generateFunnelCopy(req: Request, res: Response) {
     console.log("[FUNNEL COPY] Generating funnel copy for user:", userId);
 
     const { generateFunnelCopy } = await import(
-      "../../../server/ai-funnel-copy-generator"
+      "../services/ai-funnel-copy-generator"
     );
 
     const funnelCopy = await generateFunnelCopy({
@@ -512,29 +558,24 @@ export async function generateVideoScripts(req: Request, res: Response) {
     }
 
     if (!landingPageUrl && !manualContent) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Please provide either a landing page URL or manual content",
-        });
+      return res.status(400).json({
+        message: "Please provide either a landing page URL or manual content",
+      });
     }
 
     if (landingPageUrl) {
       try {
         new URL(landingPageUrl);
       } catch {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Invalid URL format. Please provide a valid URL starting with https://",
-          });
+        return res.status(400).json({
+          message:
+            "Invalid URL format. Please provide a valid URL starting with https://",
+        });
       }
     }
 
     const { generateVideoScripts } = await import(
-      "../../../server/ai-video-script-generator"
+      "../services/ai-video-script-generator"
     );
 
     const scripts = await generateVideoScripts({

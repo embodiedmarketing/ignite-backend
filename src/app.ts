@@ -8,17 +8,12 @@ import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 import { registerRoutes } from "./routes";
 import { env } from "./config/env";
 
-// Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Create and configure Express application
- */
 export async function createApp() {
   const app = express();
 
-  // Trust proxy for session cookies
   app.set("trust proxy", 1);
 
   const allowedOrigins =
@@ -36,6 +31,15 @@ export async function createApp() {
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // allow all methods
       allowedHeaders: ["Content-Type", "Authorization"], // adjust for your headers
+    })
+  );
+
+  app.options(
+    "*",
+    cors({
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })
   );
 

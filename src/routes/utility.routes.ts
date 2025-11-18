@@ -27,6 +27,10 @@ import {
   getVideoScriptGeneratorState,
   saveVideoScriptGeneratorState,
   saveLaunchRegistrationFunnelData,
+  getLaunchRegistrationFunnelData,
+  generateLaunchRegistrationFunnelCopy,
+  generateLaunchSalesPageCopy,
+  generateLaunchEmailSequence,
   getLaunchEmails,
   updateLaunchEmail,
   saveFunnelTrackerData,
@@ -50,7 +54,11 @@ router.post("/generate-customer-locations", generateCustomerLocationsRoute);
 router.post("/ai/customer-locations", generateCustomerLocationsRoute);
 
 // Migration routes
-router.get("/migration/check-existing/:userId", isAuthenticated, checkExistingData);
+router.get(
+  "/migration/check-existing/:userId",
+  isAuthenticated,
+  checkExistingData
+);
 router.post("/migration/migrate", isAuthenticated, migrateLocalStorage);
 router.post("/migrate-localStorage", isAuthenticated, migrateLocalStorageAlt);
 router.get("/check-database-data/:userId", isAuthenticated, checkDatabaseData);
@@ -102,8 +110,32 @@ router.post(
   isAuthenticated,
   saveLaunchRegistrationFunnelData
 );
+router.get(
+  "/launch-registration-funnel-data",
+  isAuthenticated,
+  getLaunchRegistrationFunnelData
+);
+
+// Launch registration funnel copy generation
+router.post(
+  "/launch-registration-funnel/generate-copy",
+  isAuthenticated,
+  generateLaunchRegistrationFunnelCopy
+);
+
+// Launch sales page copy generation
+router.post(
+  "/launch-sales-page/generate-copy",
+  isAuthenticated,
+  generateLaunchSalesPageCopy
+);
 
 // Launch emails routes
+router.post(
+  "/launch-emails/generate-sequence",
+  isAuthenticated,
+  generateLaunchEmailSequence
+);
 router.get("/launch-emails/:userId", isAuthenticated, getLaunchEmails);
 router.put("/launch-emails/:emailId", isAuthenticated, updateLaunchEmail);
 
@@ -136,7 +168,3 @@ router.get(
 );
 
 export default router;
-
-
-
-

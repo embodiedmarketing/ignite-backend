@@ -27,11 +27,15 @@ router.post("/format-comprehensive-plan", formatComprehensivePlan);
 router.post("/topic-ideas", generateTopicIdeas);
 router.post("/content-strategy", isAuthenticated, generateContentStrategy);
 router.post("/content-ideas", isAuthenticated, generateContentIdeas);
+// Root level routes to match server/routes.ts exactly
+router.post(
+  "/generate-content-strategy",
+  isAuthenticated,
+  generateContentStrategy
+);
+router.post("/generate-content-ideas", isAuthenticated, generateContentIdeas);
+router.post("/generate-funnel-copy", generateFunnelCopy);
 router.post("/funnel-copy", generateFunnelCopy);
-router.post("/video-scripts", isAuthenticated, generateVideoScripts);
+router.post("/generate-video-scripts", isAuthenticated, generateVideoScripts);
 
 export default router;
-
-
-
-

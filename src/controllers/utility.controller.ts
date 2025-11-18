@@ -14,6 +14,10 @@ import {
 } from "../utils/database-migration";
 import { insertStrategyInterviewLinkSchema } from "../models";
 import { insertSalesPageDraftSchema } from "../models";
+import { z } from "zod";
+import OpenAI from "openai";
+import DOMPurify from "isomorphic-dompurify";
+import { nanoid } from "nanoid";
 
 /**
  * Ontraport webhook endpoint
@@ -761,6 +765,29 @@ export async function saveLaunchRegistrationFunnelData(
 }
 
 /**
+ * Get launch registration funnel data
+ */
+export async function getLaunchRegistrationFunnelData(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const data = await storage.getLaunchRegistrationFunnelData(userId);
+    res.json(data || null);
+  } catch (error) {
+    console.error("Error fetching launch registration funnel data:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch launch registration funnel data" });
+  }
+}
+
+/**
  * Get launch emails for user
  */
 export async function getLaunchEmails(req: Request, res: Response) {
@@ -953,6 +980,619 @@ export async function getImplementationCheckboxes(req: Request, res: Response) {
     res
       .status(500)
       .json({ message: "Failed to fetch implementation checkboxes" });
+  }
+}
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// In-memory lock to prevent duplicate email generation requests
+const emailGenerationLocks = new Set<number>();
+
+/**
+ * Generate Launch Registration Funnel Copy
+ */
+export async function generateLaunchRegistrationFunnelCopy(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { messagingStrategy, launchData } = req.body;
+
+    if (!messagingStrategy || !launchData) {
+      return res.status(400).json({ message: "Missing required data" });
+    }
+
+    // Build the AI prompt based on the provided template
+    const prompt = `You are an expert conversion copywriter specializing in high-converting webinar and challenge funnels.
+
+Your task is to write two pages of copy — an Opt-In Page and a Thank You Page — for a live launch experience.
+
+MESSAGING STRATEGY:
+${JSON.stringify(messagingStrategy, null, 2)}
+
+ABOUT THE LIVE LAUNCH:
+1. Date/Time: ${launchData.launchDateTime || "Not specified"}
+2. Type: ${launchData.experienceType || "Not specified"}
+3. Main Transformation: ${launchData.transformationResult || "Not specified"}
+4. Top 3 Outcomes: ${launchData.topThreeOutcomes || "Not specified"}
+5. Problem It Solves: ${launchData.specificProblem || "Not specified"}
+6. Why It's Urgent: ${launchData.urgentProblem || "Not specified"}
+7. Unique Angle: ${launchData.uniqueExperience || "Not specified"}
+8. Show-Up Bonus Outcome: ${launchData.showUpBonus || "Not specified"}
+9. Next Step (Thank You Page Action): ${
+      launchData.thankYouAction || "Not specified"
+    }
+10. Pain Points/Frustrations: ${launchData.painPoints || "Not specified"}
+11. Quick Win: ${launchData.quickWin || "Not specified"}
+12. Objections: ${launchData.objections || "Not specified"}
+13. Proof or Testimonials: ${launchData.socialProofResults || "Not specified"}
+
+STYLE RULES:
+- Use the ICA's language from the messaging strategy
+- Keep paragraphs under 3 lines
+- Focus on benefits > features
+- Maintain authenticity + energy in tone
+
+CRITICAL FORMATTING REQUIREMENTS:
+You MUST follow this EXACT formatting structure. Use HTML for proper formatting.
+
+1. OPT-IN PAGE COPY - Use this exact structure:
+
+<strong>OPT-IN PAGE COPY</strong>
+
+<strong>Headline:</strong>
+[Write a compelling, outcome-driven headline]
+
+<strong>Subheadline:</strong>
+[Write one line that amplifies the benefit]
+
+<strong>Event Details:</strong>
+📅 [Date] | 🕐 [Time with timezone] | 📺 [Type of event - e.g., Free Live Webinar]
+
+<strong>Here's What You'll Learn:</strong>
+✓ [Benefit 1]
+✓ [Benefit 2]
+✓ [Benefit 3]
+✓ [Benefit 4]
+
+<strong>Why This Is Different:</strong>
+[Write 2-3 sentences explaining the unique angle and why this matters]
+
+<strong>CTA:</strong>
+👆 [Action-based call-to-action button text]
+
+<strong>About the Host:</strong>
+[Write 2-3 sentences about the host and their credibility]
+
+
+2. THANK YOU PAGE COPY - Use this exact structure:
+
+<strong>THANK YOU PAGE COPY</strong>
+
+<strong>Headline:</strong>
+[Write an enthusiastic confirmation headline]
+
+<strong>Body:</strong>
+[Write body text that confirms their registration. Make sure to include the date/time like: <strong>[Date] at [Time with timezone]</strong>]
+[Second line about checking inbox for confirmation]
+
+<strong>🎁 Show Up Live & Get This Bonus:</strong>
+[Describe the show-up bonus and its value]
+
+<strong>Next Step:</strong>
+👉 [Clear next action they should take]
+
+Please generate compelling, emotionally resonant copy that converts. IMPORTANT: Follow the exact HTML formatting structure shown above.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert conversion copywriter who writes emotionally engaging, benefit-driven copy for webinar and challenge funnels. Your copy is clear, concise, and follows proven conversion frameworks.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 3000,
+    });
+
+    const generatedContent = completion.choices[0].message.content || "";
+
+    // Parse the response to separate Opt-In and Thank You page copy
+    // Use positive lookahead to split without consuming the heading
+    const sections = generatedContent.split(
+      /(?=<strong>THANK YOU PAGE COPY<\/strong>)/i
+    );
+
+    let optInPage = sections[0].trim();
+    let thankYouPage = sections[1]?.trim() || "";
+
+    // Remove numbering prefixes but keep the headings
+    optInPage = optInPage.replace(/^1\.\s*/i, "").trim();
+    thankYouPage = thankYouPage.replace(/^2\.\s*/i, "").trim();
+
+    // Save to IGNITE Docs
+    try {
+      const formattedMarkdown = `# Launch Registration Funnel Copy
+
+**Generated:** ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+**Launch Date/Time:** ${launchData.launchDateTime || "Not specified"}
+**Experience Type:** ${launchData.experienceType || "Not specified"}
+
+---
+
+## OPT-IN PAGE COPY
+
+${optInPage}
+
+---
+
+## THANK YOU PAGE COPY
+
+${thankYouPage}`;
+
+      await storage.createIgniteDocument({
+        userId,
+        docType: "launch_registration_funnel",
+        title: "Launch Registration Funnel Copy",
+        contentMarkdown: formattedMarkdown,
+        sourcePayload: {
+          launchDateTime: launchData.launchDateTime,
+          experienceType: launchData.experienceType,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+      console.log("[LAUNCH FUNNEL] Copy saved to IGNITE Documents");
+    } catch (saveError) {
+      console.error(
+        "[LAUNCH FUNNEL] Error saving to IGNITE Documents:",
+        saveError
+      );
+      // Don't fail the request if saving to IGNITE Docs fails
+    }
+
+    res.json({
+      optInPage,
+      thankYouPage,
+    });
+  } catch (error) {
+    console.error("Error generating registration funnel copy:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to generate copy. Please try again." });
+  }
+}
+
+/**
+ * Generate Launch Sales Page Copy
+ */
+export async function generateLaunchSalesPageCopy(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate request body
+    const salesPageInputSchema = z.object({
+      salesPageAction: z.string().min(1, "Desired action is required"),
+      salesPageUrgency: z.string().optional(),
+    });
+
+    const validationResult = salesPageInputSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        message: "Invalid request data",
+        errors: validationResult.error.errors,
+      });
+    }
+
+    const { salesPageAction, salesPageUrgency } = validationResult.data;
+
+    // Fetch user's messaging strategy
+    const messagingStrategy = await storage.getActiveMessagingStrategy(userId);
+    if (!messagingStrategy) {
+      return res
+        .status(400)
+        .json({ message: "Please complete your messaging strategy first" });
+    }
+
+    // Fetch user's core offer outline (most recent one, regardless of active status)
+    const allOutlines = await storage.getUserOfferOutlinesByUser(userId);
+    const coreOfferOutline = allOutlines.length > 0 ? allOutlines[0] : null;
+    if (!coreOfferOutline) {
+      return res
+        .status(400)
+        .json({ message: "Please create your core offer outline first" });
+    }
+
+    console.log("[SALES PAGE] Generating sales page copy for user:", userId);
+    console.log(
+      "[SALES PAGE] Using messaging strategy ID:",
+      messagingStrategy.id
+    );
+    console.log(
+      "[SALES PAGE] Using core offer outline ID:",
+      coreOfferOutline.id
+    );
+
+    // Build the comprehensive AI prompt based on the sales page structure
+    const prompt = `You are an expert conversion copywriter specializing in long-form, narrative-driven sales pages.
+
+Your task is to write a comprehensive sales page that emotionally guides readers from awareness → belief → decision → action.
+
+MESSAGING STRATEGY:
+${messagingStrategy.content || ""}
+
+CORE OFFER OUTLINE:
+${coreOfferOutline.content || ""}
+
+LIVE LAUNCH SPECIFIC MESSAGING:
+- Desired Action: ${salesPageAction || "Not specified"}
+- Urgency/Scarcity Elements: ${salesPageUrgency || "Not specified"}
+
+STRUCTURE & WRITING RULES:
+
+SECTION 1: CURRENT DESIRES + STRUGGLES
+Purpose: Build instant resonance. Make readers feel seen before you ever mention the offer.
+
+- Headline – Desired Outcome: Make it emotionally specific and outcome-driven. Avoid vague promises.
+- Expand on Their Desired Outcome: Use emotional imagery and sensory language. Speak to what life feels like when their goal becomes real.
+- Current Feelings / Problem: Mirror the reader's internal dialogue. Call out both surface frustrations and deeper emotional costs. Keep tone empathetic, not pitying.
+- Why the Problem Is Worse Than Expected: Contrast what they thought would happen vs. what actually happens. Add urgency through consequence storytelling.
+- Bridge: Transition with hope, energy, and authority. Keep this short — one to two lines that introduce the solution naturally.
+
+SECTION 2: THE SOLUTION (YOUR OFFER)
+Purpose: Position the offer as the natural bridge between pain and possibility.
+
+- Introduce the Offer: Use format "Introducing {offer_name} — the proven system to {core_promise} without {main_pain_point}."
+- Core Pillars / Learnings: List 3–5 pillars, each written as: What they'll learn/do, Why it matters, What changes as a result. Use "so that…" phrasing. Connect to their emotional journey.
+
+SECTION 3: AUTHORITY
+Purpose: Build trust through credibility + relatability.
+
+- Testimonials: Use storytelling testimonials (before → after → feeling). Prioritize transformation over metrics. Include at least one that mirrors the reader's current struggle.
+- About the Creator: Share your "why" through a moment of personal truth or past failure. Include emotional resonance before listing credentials. Keep it human, not résumé-style.
+
+SECTION 4: OFFER SPECIFICS
+Purpose: Move the reader from belief to action.
+
+- What's Included: Turn features into outcomes. Use bullet sections for readability.
+- Bonuses: Only include bonuses that feel essential or urgency-driven. Tie each to a key objection.
+- Pricing & CTA: Position the price as an investment not an expense. Add multiple CTAs using ${
+      salesPageAction || "the desired action"
+    } language. Insert urgency details: ${
+      salesPageUrgency || "urgency elements"
+    }.
+- Guarantee: Reinforce trust and remove risk. Keep tone confident and integrity-driven.
+
+SECTION 5: BREAKTHROUGH RESISTANCE
+Purpose: Reframe objections, reignite belief, and close with inspiration.
+
+- Address Objections: Name them directly using the reader's inner voice. Respond with calm authority, not hype.
+- Big Breakthrough Visualization: Use sensory, present-tense storytelling. Focus on emotional payoff.
+- Review of Everything They Get: Bullet all inclusions + bonuses with value if appropriate.
+- FAQ: Write 4–6 questions that handle practical concerns. Use friendly tone.
+- Decision Note / Final CTA: Close like a personal letter. Use "two paths" framing. Bring it back to the reader's identity. End with emotional certainty and direct CTA.
+
+STYLE + VOICE DIRECTIVES:
+- Lead with empathy, close with certainty
+- Show vs. tell using vivid examples and micro-stories
+- Simplify the path - clarity converts
+- Momentum matters - use rhythm, white space, and punchy transitions
+- Emotional layering: Start with pain, shift to hope, end with empowerment
+- Every CTA should feel like an invitation, not pressure
+- Consistency of tone throughout
+
+CRITICAL FORMATTING:
+Return copy using HTML formatting with the following structure:
+
+<strong>SECTION 1: CURRENT DESIRES + STRUGGLES</strong>
+
+<strong>Headline:</strong>
+[Write compelling headline]
+
+[Continue with rest of section 1 content...]
+
+<strong>SECTION 2: THE SOLUTION</strong>
+
+[Section 2 content with HTML formatting...]
+
+<strong>SECTION 3: AUTHORITY</strong>
+
+[Section 3 content...]
+
+<strong>SECTION 4: OFFER SPECIFICS</strong>
+
+[Section 4 content...]
+
+<strong>SECTION 5: BREAKTHROUGH RESISTANCE</strong>
+
+[Section 5 content...]
+
+Include CTA prompts after every major section. Use <strong> tags for headings and subheadings. Use line breaks appropriately for readability.
+
+Generate a compelling, emotionally resonant sales page that converts. Follow the exact structure and formatting shown above.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert conversion copywriter who writes long-form, narrative-driven sales pages that emotionally guide readers from awareness to action. Your copy is emotionally resonant, benefit-driven, and follows proven conversion frameworks.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 4000,
+    });
+
+    const salesPageCopy = completion.choices[0].message.content || "";
+
+    console.log("[SALES PAGE] Sales page copy generated successfully");
+    console.log("[SALES PAGE] Copy length:", salesPageCopy.length);
+
+    // Sanitize HTML output to prevent XSS attacks
+    const sanitizedSalesPageCopy = DOMPurify.sanitize(salesPageCopy, {
+      ALLOWED_TAGS: [
+        "strong",
+        "b",
+        "em",
+        "i",
+        "u",
+        "p",
+        "br",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "span",
+        "div",
+        "a",
+      ],
+      ALLOWED_ATTR: ["class", "href", "target", "rel"],
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):)/i, // Only allow http, https, and mailto protocols
+      KEEP_CONTENT: true,
+    });
+
+    console.log("[SALES PAGE] Copy sanitized for XSS protection");
+
+    res.json({
+      salesPageCopy: sanitizedSalesPageCopy,
+    });
+  } catch (error) {
+    console.error("Error generating sales page copy:", error);
+    res.status(500).json({
+      message: "Failed to generate sales page copy. Please try again.",
+    });
+  }
+}
+
+/**
+ * Generate Launch Email Sequence
+ */
+export async function generateLaunchEmailSequence(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Check if generation is already in progress for this user
+    if (emailGenerationLocks.has(userId)) {
+      console.log(
+        `[LAUNCH EMAILS] Generation already in progress for user ${userId}, rejecting duplicate request`
+      );
+      return res.status(429).json({
+        message:
+          "Email generation is already in progress. Please wait for the current generation to complete.",
+      });
+    }
+
+    // Acquire lock
+    emailGenerationLocks.add(userId);
+    console.log(`[LAUNCH EMAILS] Lock acquired for user ${userId}`);
+
+    try {
+      // Validate request body
+      const launchEmailInputSchema = z.object({
+        inviteHooks: z.string().min(1, "Invite hooks are required"),
+        inviteFOMO: z.string().optional(),
+        confirmationDetails: z.string().optional(),
+        preEventActions: z.string().optional(),
+        nurtureContent: z.string().optional(),
+        liveAttendanceValue: z.string().optional(),
+        mythsBeliefs: z.string().optional(),
+        salesStories: z.string().optional(),
+        finalPush: z.string().optional(),
+      });
+
+      const validationResult = launchEmailInputSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid request data",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const formInputs = validationResult.data;
+      console.log(
+        `[LAUNCH EMAILS] Step 1: Form inputs validated for user ${userId}`
+      );
+
+      // Fetch user's messaging strategy
+      console.log(
+        `[LAUNCH EMAILS] Step 2: Fetching messaging strategy for user ${userId}`
+      );
+      const messagingStrategy = await storage.getActiveMessagingStrategy(
+        userId
+      );
+      if (!messagingStrategy) {
+        return res
+          .status(400)
+          .json({
+            message: "Please complete your messaging strategy first",
+          });
+      }
+      console.log(
+        `[LAUNCH EMAILS] Step 2: Found messaging strategy ID ${messagingStrategy.id}`
+      );
+
+      // Fetch user's core offer outline (optional - most recent one if available)
+      console.log(
+        `[LAUNCH EMAILS] Step 3: Fetching core offer outlines for user ${userId}`
+      );
+      const allOutlines = await storage.getUserOfferOutlinesByUser(userId);
+      const coreOfferOutline =
+        allOutlines.length > 0 ? allOutlines[0] : null;
+      console.log(
+        `[LAUNCH EMAILS] Step 3: Found ${
+          allOutlines.length
+        } outlines, using: ${coreOfferOutline?.id || "none"}`
+      );
+
+      // Fetch launch registration funnel data for live launch details and sales page urgency
+      console.log(
+        `[LAUNCH EMAILS] Step 4: Fetching launch funnel data for user ${userId}`
+      );
+      const launchData = await storage.getLaunchRegistrationFunnelData(userId);
+      const liveLaunchDetails = {
+        type: launchData?.experienceType || "live launch experience",
+        topic: launchData?.transformationResult || "",
+        transformation: launchData?.transformationResult || "",
+        dateTime: launchData?.launchDateTime || "",
+      };
+      const salesPageUrgency = launchData?.salesPageUrgency || "";
+      const showUpBonus = launchData?.showUpBonus || "";
+      console.log(
+        `[LAUNCH EMAILS] Step 4: Launch data fetched, experience type: ${liveLaunchDetails.type}`
+      );
+
+      console.log(
+        "[LAUNCH EMAILS] Step 5: Starting AI email generation for user:",
+        userId
+      );
+      console.log(
+        "[LAUNCH EMAILS] Using messaging strategy ID:",
+        messagingStrategy.id
+      );
+      console.log(
+        "[LAUNCH EMAILS] Using core offer outline ID:",
+        coreOfferOutline?.id || "none"
+      );
+
+      // Import and call the email generator
+      const { generateLaunchEmailSequence } = await import(
+        "../services/ai-launch-email-generator"
+      );
+
+      console.log(
+        "[LAUNCH EMAILS] Step 6: Calling generateLaunchEmailSequence..."
+      );
+      const result = await generateLaunchEmailSequence({
+        inviteHooks: formInputs.inviteHooks,
+        inviteFOMO: formInputs.inviteFOMO || "",
+        confirmationDetails: formInputs.confirmationDetails || "",
+        preEventActions: formInputs.preEventActions || "",
+        nurtureContent: formInputs.nurtureContent || "",
+        liveAttendanceValue: formInputs.liveAttendanceValue || "",
+        mythsBeliefs: formInputs.mythsBeliefs || "",
+        salesStories: formInputs.salesStories || "",
+        finalPush: formInputs.finalPush || "",
+        messagingStrategy,
+        liveLaunchDetails,
+        coreOfferOutline,
+        salesPageUrgency,
+        showUpBonus,
+      });
+      console.log(
+        `[LAUNCH EMAILS] Step 6: AI generation completed, got ${result.emails.length} emails`
+      );
+
+      // Delete existing emails for this user before saving new ones
+      console.log(
+        `[LAUNCH EMAILS] Step 7: Deleting existing emails for user ${userId}`
+      );
+      await storage.deleteLaunchEmailSequencesByUserId(userId);
+
+      // Generate unique sequence ID to link all emails together
+      const sequenceId = nanoid();
+      console.log(
+        `[LAUNCH EMAILS] Step 8: Generated sequence ID: ${sequenceId}`
+      );
+
+      // Save all emails to database
+      const savedEmails = [];
+      console.log(
+        `[LAUNCH EMAILS] Step 9: Saving ${result.emails.length} emails to database...`
+      );
+      for (const email of result.emails) {
+        const saved = await storage.createLaunchEmailSequence({
+          userId,
+          sequenceId,
+          emailType: email.emailType,
+          emailNumber: email.emailNumber,
+          subject: email.subject,
+          body: email.body,
+          metadata: formInputs,
+        });
+        savedEmails.push(saved);
+        console.log(
+          `[LAUNCH EMAILS] Step 9: Saved email ${savedEmails.length}/${result.emails.length} (${email.emailType} #${email.emailNumber})`
+        );
+      }
+
+      console.log(
+        `[LAUNCH EMAILS] Step 10: Successfully saved ${savedEmails.length} emails to database with sequence ID: ${sequenceId}`
+      );
+
+      res.json({
+        emails: savedEmails,
+        totalEmails: savedEmails.length,
+      });
+    } finally {
+      // Always release lock
+      emailGenerationLocks.delete(userId);
+      console.log(`[LAUNCH EMAILS] Lock released for user ${userId}`);
+    }
+  } catch (error: any) {
+    console.error("Error generating launch email sequence:", error);
+    console.error("Error details:", {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
+    res.status(500).json({
+      message: "Failed to generate email sequence. Please try again.",
+    });
   }
 }
 

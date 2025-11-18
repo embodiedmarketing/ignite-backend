@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import { getUserId } from "../middlewares/auth.middleware";
+import { z } from "zod";
 
 /**
  * Get content strategy preferences for authenticated user
@@ -146,6 +147,64 @@ export async function getActiveContentStrategyByUserId(req: Request, res: Respon
     res
       .status(500)
       .json({ error: "Failed to fetch active content strategy" });
+  }
+}
+
+/**
+ * Save generated content strategy
+ */
+export async function saveGeneratedContentStrategy(req: Request, res: Response) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate request body
+    const saveStrategySchema = z.object({
+      contentPillars: z.any(),
+      contentIdeas: z.array(z.any()).max(100),
+      postingCadence: z.string().optional().nullable(),
+      recommendations: z.any().optional().nullable(),
+      sourceData: z.any().optional().nullable(),
+    });
+
+    const validated = saveStrategySchema.parse(req.body);
+
+    // First, deactivate any existing strategies for this user
+    const existingStrategies =
+      await storage.getGeneratedContentStrategiesByUser(userId);
+    for (const strategy of existingStrategies) {
+      if (strategy.isActive) {
+        await storage.updateGeneratedContentStrategy(strategy.id, {
+          isActive: false,
+        });
+      }
+    }
+
+    // Create new strategy
+    const newStrategy = await storage.createGeneratedContentStrategy({
+      userId,
+      contentPillars: validated.contentPillars,
+      contentIdeas: validated.contentIdeas,
+      postingCadence: validated.postingCadence,
+      recommendations: validated.recommendations,
+      sourceData: validated.sourceData,
+      isActive: true,
+      version: 1,
+    });
+
+    res.json({ success: true, strategy: newStrategy });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res
+        .status(400)
+        .json({ error: "Invalid request data", details: error.errors });
+    }
+    console.error("Error saving generated content strategy:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to save generated content strategy" });
   }
 }
 

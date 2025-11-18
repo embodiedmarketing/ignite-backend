@@ -30,6 +30,7 @@
     "isomorphic-dompurify": "^2.30.0",
     "mammoth": "^1.9.1",
     "multer": "^2.0.1",
+    "nanoid": "^5.1.6",
     "nodemailer": "^7.0.6",
     "openai": "^5.8.2",
     "ssrf-req-filter": "^1.1.1",

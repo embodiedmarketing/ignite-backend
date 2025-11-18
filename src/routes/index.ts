@@ -1,5 +1,4 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
 import authRoutes from "./auth.routes";
 import userRoutes from "./user.routes";
 import healthRoutes from "./health.routes";
@@ -39,9 +38,7 @@ import userMonitoringRoutes from "./user-monitoring.routes";
 /**
  * Register all routes with the Express app
  */
-export async function registerRoutes(app: Express): Promise<Server> {
-  const server = createServer(app);
-
+export async function registerRoutes(app: Express): Promise<void> {
   // Register new modular routes
   app.use("/api/health", healthRoutes);
   app.use("/api/auth", authRoutes);
@@ -64,41 +61,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/interview", aiInterviewRoutes); // AI interview routes: /api/interview/parse-transcript, etc.
   app.use("/api/core-offer", aiCoreOfferRoutes); // Core offer routes: /api/core-offer/coach/:questionKey, etc.
   app.use("/api/ai-feedback", aiFeedbackRoutes); // AI feedback routes: /api/ai-feedback/analyze-response, etc.
-  app.use("/api/ai-coaching", aiCoachingRoutes); // AI coaching routes: /api/ai-coaching/interactive-coaching, etc.
-
-  // Direct route mappings to match server/routes.ts exactly
-  app.post("/api/real-time-feedback", async (req, res) => {
-    const { getRealTimeFeedbackRoute } = await import(
-      "../controllers/ai-coaching.controller"
-    );
-    return getRealTimeFeedbackRoute(req, res);
-  });
-
-  app.post("/api", async (req, res) => {
-    const { upload } = await import("../middlewares/upload.middleware");
-    const { uploadTranscript } = await import(
-      "../controllers/ai-interview.controller"
-    );
-    return upload.single("transcript")(req, res, () =>
-      uploadTranscript(req, res)
-    );
-  });
-
+  app.use("/api/ai-coaching", aiCoachingRoutes);
   app.use("/api/user-offers", userOffersRoutes);
   app.use("/api/user-offer-outlines", userOfferOutlinesRoutes);
   app.use("/api/section-completions", sectionCompletionsRoutes);
   app.use("/api/checklist-items", checklistItemsRoutes);
   app.use("/api/ai-generation", aiGenerationRoutes); // AI generation routes: /api/ai-generation/messaging-strategy, etc.
+  app.use("/api/content-strategy", contentStrategyRoutes); // Content strategy preferences - MUST come before root /api routes
   app.use("/api/sales-pages", salesPagesRoutes);
   app.use("/api/customer-experience-plans", customerExperienceRoutes);
   app.use("/api/interview-transcripts", interviewTranscriptsRoutes);
   app.use("/api/interview-notes", interviewNotesRoutes);
   app.use("/api/admin", adminRoutes);
+  app.use("/api", aiGenerationRoutes); // Root level routes: /api/generate-content-strategy, /api/generate-content-ideas
   app.use("/api", utilityRoutes); // Utility routes: /api/ontraport-webhook, /api/migration/*, etc.
-  app.use("/api/content-strategy", contentStrategyRoutes); // Content strategy preferences
   app.use("/api/user-monitoring", userMonitoringRoutes); // User monitoring routes
 
   // All routes have been extracted from server/routes.ts
-  // Return the server instance
-  return server;
 }

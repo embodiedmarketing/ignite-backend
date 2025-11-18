@@ -12,5 +12,6 @@ router.post("/interactive-coaching", getInteractiveCoachingRoute);
 router.post("/intelligent-prefill", getIntelligentPrefill);
 router.post("/expand-response-with-coaching", expandResponseWithCoaching);
 router.post("/real-time-feedback", getRealTimeFeedbackRoute);
+router.post("/real-time-feedback", getRealTimeFeedbackRoute);
 
 export default router;

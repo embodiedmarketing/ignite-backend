@@ -26,7 +26,32 @@ export async function getMessagingStrategiesByUser(
 }
 
 /**
- * Get active messaging strategy for a user
+ * Get active messaging strategy for a user (session-based)
+ */
+export async function getActiveMessagingStrategySession(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const strategy = await storage.getActiveMessagingStrategy(userId);
+    if (!strategy) {
+      return res.json(null);
+    }
+
+    res.json(strategy);
+  } catch (error) {
+    console.error("Error fetching active messaging strategy:", error);
+    res.status(500).json({ message: "Failed to fetch messaging strategy" });
+  }
+}
+
+/**
+ * Get active messaging strategy for a user (by userId param)
  */
 export async function getActiveMessagingStrategy(req: Request, res: Response) {
   try {
@@ -45,6 +70,29 @@ export async function getActiveMessagingStrategy(req: Request, res: Response) {
   } catch (error) {
     console.error("Error fetching active messaging strategy:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function getActiveUserMessagingStrategy(
+  req: Request,
+  res: Response
+) {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const strategy = await storage.getActiveMessagingStrategy(userId);
+
+    if (!strategy) {
+      return res.json(null);
+    }
+
+    res.json(strategy);
+  } catch (error) {
+    console.error("Error fetching active messaging strategy:", error);
+    res.status(500).json({ message: "Failed to fetch messaging strategy" });
   }
 }
 
@@ -74,9 +122,7 @@ export async function updateMessagingStrategy(req: Request, res: Response) {
 
     const strategy = await storage.updateMessagingStrategy(id, req.body);
     if (!strategy) {
-      return res
-        .status(404)
-        .json({ message: "Messaging strategy not found" });
+      return res.status(404).json({ message: "Messaging strategy not found" });
     }
     res.json(strategy);
   } catch (error) {
@@ -130,4 +176,3 @@ export async function setActiveMessagingStrategy(req: Request, res: Response) {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-

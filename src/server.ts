@@ -66,7 +66,7 @@ async function startServer() {
   );
 
   // Start server
-  const port = parseInt(process.env.PORT || "5000");
+  const port = parseInt(env.PORT.toString()) || 5000;
   const listenOptions: {
     port: number;
     host: string;
