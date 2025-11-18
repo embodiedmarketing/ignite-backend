@@ -443,6 +443,7 @@ export interface IStorage {
     updates: Partial<SalesPageDraft>
   ): Promise<SalesPageDraft | undefined>;
   deleteSalesPageDraft(id: number): Promise<boolean>;
+  deleteSalesPageDraftsByUser(userId: number): Promise<boolean>;
   setActiveSalesPageDraft(userId: number, draftId: number): Promise<boolean>;
 
   // Content Strategy
@@ -520,6 +521,9 @@ export interface IStorage {
   getLiveLaunchOptimizationSuggestions(
     liveLaunchId: number
   ): Promise<LiveLaunchOptimizationSuggestion[]>;
+  createLiveLaunchOptimizationSuggestion(
+    data: InsertLiveLaunchOptimizationSuggestion
+  ): Promise<LiveLaunchOptimizationSuggestion>;
   saveLiveLaunchOptimizationSuggestions(
     liveLaunchId: number,
     userId: number,
@@ -2075,6 +2079,13 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  async deleteSalesPageDraftsByUser(userId: number): Promise<boolean> {
+    const result = await db
+      .delete(salesPageDrafts)
+      .where(eq(salesPageDrafts.userId, userId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async setActiveSalesPageDraft(
     userId: number,
     draftId: number
@@ -2524,6 +2535,16 @@ export class DatabaseStorage implements IStorage {
       .from(liveLaunchOptimizationSuggestions)
       .where(eq(liveLaunchOptimizationSuggestions.liveLaunchId, liveLaunchId))
       .orderBy(desc(liveLaunchOptimizationSuggestions.createdAt));
+  }
+
+  async createLiveLaunchOptimizationSuggestion(
+    data: InsertLiveLaunchOptimizationSuggestion
+  ): Promise<LiveLaunchOptimizationSuggestion> {
+    const [suggestion] = await db
+      .insert(liveLaunchOptimizationSuggestions)
+      .values(data)
+      .returning();
+    return suggestion;
   }
 
   async saveLiveLaunchOptimizationSuggestions(

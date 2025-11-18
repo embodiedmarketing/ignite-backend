@@ -62,11 +62,9 @@ export async function smartPlacement(req: Request, res: Response) {
     const { customerAnswer, currentResponses } = req.body;
 
     if (!customerAnswer || !currentResponses) {
-      return res
-        .status(400)
-        .json({
-          error: "Customer answer and current responses are required",
-        });
+      return res.status(400).json({
+        error: "Customer answer and current responses are required",
+      });
     }
 
     // For now, return a simple placement structure
@@ -95,9 +93,7 @@ export async function synthesizeAvatar(req: Request, res: Response) {
     const { interviewNotes } = req.body;
 
     if (!interviewNotes) {
-      return res
-        .status(400)
-        .json({ message: "Interview notes are required" });
+      return res.status(400).json({ message: "Interview notes are required" });
     }
 
     const avatarData = await synthesizeCustomerAvatar(interviewNotes);
@@ -174,12 +170,8 @@ export async function checkExistingData(req: Request, res: Response) {
  */
 export async function migrateLocalStorage(req: Request, res: Response) {
   try {
-    const {
-      userId,
-      workbookResponses,
-      messagingStrategy,
-      completedSections,
-    } = req.body;
+    const { userId, workbookResponses, messagingStrategy, completedSections } =
+      req.body;
 
     if (!userId || userId !== req.session?.userId) {
       return res.status(400).json({ error: "Invalid user ID" });
@@ -210,7 +202,10 @@ export async function migrateLocalStorage(req: Request, res: Response) {
  */
 export async function migrateLocalStorageAlt(req: Request, res: Response) {
   try {
-    const userId = (req.user as any)?.claims?.sub;
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const { localStorageData } = req.body;
 
     if (!localStorageData) {
@@ -571,10 +566,7 @@ export async function setActiveSalesPageDraft(req: Request, res: Response) {
 /**
  * Delete all sales page drafts for user
  */
-export async function deleteSalesPageDraftsByUser(
-  req: Request,
-  res: Response
-) {
+export async function deleteSalesPageDraftsByUser(req: Request, res: Response) {
   try {
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) {
@@ -636,7 +628,7 @@ export async function generateEmailSequence(req: Request, res: Response) {
     }
 
     const { generateEmailSequence } = await import(
-      "../../../server/ai-email-sequence-generator"
+      "../services/ai-email-sequence-generator"
     );
 
     const emailSequence = await generateEmailSequence({
@@ -931,7 +923,10 @@ export async function getOptimizationSuggestions(req: Request, res: Response) {
 /**
  * Save implementation checkboxes
  */
-export async function saveImplementationCheckboxes(req: Request, res: Response) {
+export async function saveImplementationCheckboxes(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = req.session?.userId;
     if (!userId) {
@@ -1179,10 +1174,7 @@ ${thankYouPage}`;
 /**
  * Generate Launch Sales Page Copy
  */
-export async function generateLaunchSalesPageCopy(
-  req: Request,
-  res: Response
-) {
+export async function generateLaunchSalesPageCopy(req: Request, res: Response) {
   try {
     const userId = getUserId(req);
     if (!userId) {
@@ -1396,10 +1388,7 @@ Generate a compelling, emotionally resonant sales page that converts. Follow the
 /**
  * Generate Launch Email Sequence
  */
-export async function generateLaunchEmailSequence(
-  req: Request,
-  res: Response
-) {
+export async function generateLaunchEmailSequence(req: Request, res: Response) {
   try {
     const userId = req.session?.userId;
     if (!userId) {
@@ -1456,11 +1445,9 @@ export async function generateLaunchEmailSequence(
         userId
       );
       if (!messagingStrategy) {
-        return res
-          .status(400)
-          .json({
-            message: "Please complete your messaging strategy first",
-          });
+        return res.status(400).json({
+          message: "Please complete your messaging strategy first",
+        });
       }
       console.log(
         `[LAUNCH EMAILS] Step 2: Found messaging strategy ID ${messagingStrategy.id}`
@@ -1471,12 +1458,11 @@ export async function generateLaunchEmailSequence(
         `[LAUNCH EMAILS] Step 3: Fetching core offer outlines for user ${userId}`
       );
       const allOutlines = await storage.getUserOfferOutlinesByUser(userId);
-      const coreOfferOutline =
-        allOutlines.length > 0 ? allOutlines[0] : null;
+      const coreOfferOutline = allOutlines.length > 0 ? allOutlines[0] : null;
       console.log(
-        `[LAUNCH EMAILS] Step 3: Found ${
-          allOutlines.length
-        } outlines, using: ${coreOfferOutline?.id || "none"}`
+        `[LAUNCH EMAILS] Step 3: Found ${allOutlines.length} outlines, using: ${
+          coreOfferOutline?.id || "none"
+        }`
       );
 
       // Fetch launch registration funnel data for live launch details and sales page urgency
@@ -1595,4 +1581,3 @@ export async function generateLaunchEmailSequence(
     });
   }
 }
-

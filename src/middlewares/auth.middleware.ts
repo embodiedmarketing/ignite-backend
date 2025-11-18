@@ -8,6 +8,18 @@ declare module "express-session" {
   }
 }
 
+// Extend Express Request type to include optional user property for OAuth
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        [key: string]: any;
+      };
+    }
+  }
+}
+
 /**
  * Authentication middleware - checks if user is authenticated
  */

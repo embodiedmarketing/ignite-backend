@@ -7,7 +7,10 @@ import { z } from "zod";
 /**
  * Get content strategy preferences for authenticated user
  */
-export async function getContentStrategyPreferences(req: Request, res: Response) {
+export async function getContentStrategyPreferences(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = getUserId(req);
     if (!userId) {
@@ -24,7 +27,10 @@ export async function getContentStrategyPreferences(req: Request, res: Response)
 /**
  * Get content strategy preferences by userId (legacy route)
  */
-export async function getContentStrategyPreferencesByUserId(req: Request, res: Response) {
+export async function getContentStrategyPreferencesByUserId(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = parseInt(req.params.userId);
     const preferences = await storage.getContentStrategyResponse(userId);
@@ -38,7 +44,10 @@ export async function getContentStrategyPreferencesByUserId(req: Request, res: R
 /**
  * Save content strategy preferences (auto-save endpoint)
  */
-export async function saveContentStrategyPreferences(req: Request, res: Response) {
+export async function saveContentStrategyPreferences(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = req.session?.userId;
     if (!userId) {
@@ -47,7 +56,9 @@ export async function saveContentStrategyPreferences(req: Request, res: Response
 
     const data = req.body;
 
-    const existingPreferences = await storage.getContentStrategyResponse(userId);
+    const existingPreferences = await storage.getContentStrategyResponse(
+      userId
+    );
 
     if (existingPreferences) {
       await storage.updateContentStrategyResponse(existingPreferences.id, {
@@ -102,10 +113,15 @@ export async function saveContentStrategyPreferences(req: Request, res: Response
 /**
  * Get generated content strategies for user
  */
-export async function getGeneratedContentStrategies(req: Request, res: Response) {
+export async function getGeneratedContentStrategies(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = parseInt(req.params.userId);
-    const strategies = await storage.getGeneratedContentStrategiesByUser(userId);
+    const strategies = await storage.getGeneratedContentStrategiesByUser(
+      userId
+    );
     res.json(strategies);
   } catch (error) {
     console.error("Error fetching generated content strategies:", error);
@@ -128,32 +144,34 @@ export async function getActiveContentStrategy(req: Request, res: Response) {
     res.json(strategy);
   } catch (error) {
     console.error("Error fetching active content strategy:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch active content strategy" });
+    res.status(500).json({ error: "Failed to fetch active content strategy" });
   }
 }
 
 /**
  * Get active content strategy by userId (legacy route)
  */
-export async function getActiveContentStrategyByUserId(req: Request, res: Response) {
+export async function getActiveContentStrategyByUserId(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = parseInt(req.params.userId);
     const strategy = await storage.getActiveGeneratedContentStrategy(userId);
     res.json(strategy);
   } catch (error) {
     console.error("Error fetching active content strategy:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch active content strategy" });
+    res.status(500).json({ error: "Failed to fetch active content strategy" });
   }
 }
 
 /**
  * Save generated content strategy
  */
-export async function saveGeneratedContentStrategy(req: Request, res: Response) {
+export async function saveGeneratedContentStrategy(
+  req: Request,
+  res: Response
+) {
   try {
     const userId = req.session?.userId;
     if (!userId) {
@@ -207,4 +225,3 @@ export async function saveGeneratedContentStrategy(req: Request, res: Response) 
       .json({ error: "Failed to save generated content strategy" });
   }
 }
-

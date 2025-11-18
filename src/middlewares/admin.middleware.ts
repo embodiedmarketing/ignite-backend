@@ -11,7 +11,7 @@ export const isAdmin = async (
   next: NextFunction
 ) => {
   // Support both authentication methods: req.user (OAuth) or req.session.userId (traditional)
-  const userId = (req.user as any)?.id || req.session?.userId;
+  const userId = req.user?.id || req.session?.userId;
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -26,4 +26,3 @@ export const isAdmin = async (
 
   next();
 };
-
