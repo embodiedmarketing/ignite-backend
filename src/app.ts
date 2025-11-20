@@ -15,6 +15,8 @@ export async function createApp() {
   const app = express();
 
   app.set("trust proxy", 1);
+  console.log("env.NODE_ENV", env.NODE_ENV);
+  console.log("env.FRONTEND_URL", env.FRONTEND_URL);
 
   const allowedOrigins =
     env.NODE_ENV === "development"
