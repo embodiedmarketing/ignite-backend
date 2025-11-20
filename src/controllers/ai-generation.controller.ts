@@ -8,8 +8,67 @@ import { getUserId } from "../middlewares/auth.middleware";
  */
 export async function generateMessagingStrategy(req: Request, res: Response) {
   try {
-    const { workbookResponses, interviewNotes } = req.body;
+    const { workbookResponses: requestWorkbookResponses, interviewNotes } =
+      req.body;
     const userId = req.session?.userId || 0;
+
+    // Fetch the latest workbook responses from database to ensure we have interview insights
+    // This is critical because interview insights are saved directly to the database
+    let workbookResponses: Record<string, string> = {};
+
+    if (userId) {
+      try {
+        console.log(
+          `[MESSAGING STRATEGY] Fetching latest workbook responses for user ${userId}`
+        );
+        const dbWorkbookResponses = await storage.getWorkbookResponsesByStep(
+          userId,
+          1,
+          1
+        );
+
+        // Convert database responses to key-value format
+        for (const response of dbWorkbookResponses) {
+          if (response.responseText?.trim()) {
+            workbookResponses[response.questionKey] = response.responseText;
+          }
+        }
+
+        console.log(
+          `[MESSAGING STRATEGY] Fetched ${
+            Object.keys(workbookResponses).length
+          } workbook responses from database`
+        );
+        console.log(
+          `[MESSAGING STRATEGY] Response keys:`,
+          Object.keys(workbookResponses)
+        );
+
+        // Merge with request body responses (request takes precedence for any conflicts)
+        if (
+          requestWorkbookResponses &&
+          Object.keys(requestWorkbookResponses).length > 0
+        ) {
+          workbookResponses = {
+            ...workbookResponses,
+            ...requestWorkbookResponses,
+          };
+          console.log(
+            `[MESSAGING STRATEGY] Merged with request body responses. Total keys:`,
+            Object.keys(workbookResponses).length
+          );
+        }
+      } catch (dbError) {
+        console.error(
+          "[MESSAGING STRATEGY] Error fetching workbook responses from database:",
+          dbError
+        );
+        // Fall back to request body if database fetch fails
+        workbookResponses = requestWorkbookResponses || {};
+      }
+    } else {
+      workbookResponses = requestWorkbookResponses || {};
+    }
 
     if (!workbookResponses || Object.keys(workbookResponses).length === 0) {
       return res.status(400).json({ error: "Workbook responses are required" });
@@ -17,6 +76,31 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
 
     const { generateMessagingStrategy } = await import(
       "../services/ai-messaging-strategy"
+    );
+
+    console.log(
+      `[MESSAGING STRATEGY] Generating strategy with ${
+        Object.keys(workbookResponses).length
+      } responses`
+    );
+    console.log(
+      `[MESSAGING STRATEGY] Interview-enhanced fields found:`,
+      Object.keys(workbookResponses).filter((key) =>
+        [
+          "frustrations",
+          "nighttime_worries",
+          "secret_fears",
+          "magic_solution",
+          "demographics",
+          "failed_solutions",
+          "blockers",
+          "info_sources",
+          "decision_making",
+          "investment_criteria",
+          "success_measures",
+          "referral_outcomes",
+        ].some((field) => key.toLowerCase().includes(field))
+      )
     );
 
     const strategy = await generateMessagingStrategy(

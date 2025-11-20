@@ -181,4 +181,3 @@ export async function deleteWorkbookResponse(req: Request, res: Response) {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-

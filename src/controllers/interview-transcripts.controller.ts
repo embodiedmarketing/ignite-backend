@@ -52,8 +52,9 @@ export async function getInterviewTranscript(req: Request, res: Response) {
  * Create a new interview transcript
  */
 export async function createInterviewTranscript(req: Request, res: Response) {
+  console.log("createInterviewTranscript", req.body);
   try {
-    // Handle date conversion
+    // Handle date conversion - convert string to Date or keep as null
     const requestData = { ...req.body };
     if (
       requestData.interviewDate &&
@@ -72,9 +73,7 @@ export async function createInterviewTranscript(req: Request, res: Response) {
 
     const transcriptData =
       insertIcaInterviewTranscriptSchema.parse(requestData);
-    const transcript = await storage.createInterviewTranscript(
-      transcriptData
-    );
+    const transcript = await storage.createInterviewTranscript(transcriptData);
     res.status(201).json(transcript);
   } catch (error) {
     console.error("Error creating interview transcript:", error);
@@ -225,4 +224,3 @@ export async function resetStuckTranscripts(req: Request, res: Response) {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-

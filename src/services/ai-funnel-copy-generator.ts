@@ -84,10 +84,33 @@ async function retryWithBackoff<T>(
 }
 
 export async function generateFunnelCopy(input: FunnelCopyInput): Promise<FunnelCopyOutput> {
+  // Check if input contains interview-enhanced fields
+  const hasInterviewData = input && typeof input === 'object' && (
+    (input as any).frustrations || (input as any).nighttime_worries || (input as any).secret_fears ||
+    (input as any).magic_solution || (input as any).failed_solutions || (input as any).blockers ||
+    (input as any).decision_making || (input as any).investment_criteria || (input as any).success_measures
+  );
+
   const prompt = `You are an expert funnel copywriter specializing in high-converting sales pages. Generate complete funnel copy for all 4 pages based on the user's inputs.
 
 USER'S MESSAGING STRATEGY VOICE:
 ${input.messagingStrategyVoice || "Professional and conversion-focused"}
+
+${hasInterviewData ? `\n⭐ CRITICAL: This input data contains INTERVIEW-ENHANCED insights from customer interview transcripts.
+These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.
+
+YOU MUST:
+1. Use CINEMATIC, MOMENT-BY-MOMENT language from these interview insights in your funnel copy
+2. Include customer's exact words, internal dialogue, and emotional progression
+3. Add SPECIFIC, TANGIBLE outcomes with numbers, timeframes, and observable details
+4. Show sensory details and specific moments from their actual experience
+5. Make copy VISCERAL and AUTHENTIC - like you're talking directly to the customer using their own language
+
+EXAMPLE TRANSFORMATION:
+❌ Generic: "They feel stuck and overwhelmed"
+✅ Interview-enhanced: "They've been showing up online for months — posting, tweaking, trying every hack — and still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'"
+
+PRIORITIZE these interview-enhanced fields. Use the customer's exact language throughout your funnel copy.\n` : ''}
 
 USER'S INPUT DATA:
 Lead Magnet:

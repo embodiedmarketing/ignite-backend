@@ -1282,6 +1282,7 @@ export const insertPlatformResourceSchema = createInsertSchema(platformResources
   id: true,
   createdAt: true,
   updatedAt: true,
+  downloadCount: true, // Has default value, so omit from insert
 });
 
 export type PlatformResource = typeof platformResources.$inferSelect;

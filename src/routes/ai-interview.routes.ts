@@ -23,12 +23,19 @@ router.post(
   isAuthenticated,
   synthesizeInterviewsToStrategy
 );
+
+// Intelligent interview processing - processes transcript and saves to workbook responses
+// Route: POST /api/interview/intelligent-interview-processing
 router.post(
-  "/intelligent-processing",
+  "/intelligent-interview-processing",
   isAuthenticated,
   intelligentInterviewProcessing
 );
-router.post("/transfer-response", isAuthenticated, transferInterviewResponse);
+router.post(
+  "/transfer-interview-response",
+  isAuthenticated,
+  transferInterviewResponse
+);
 router.post(
   "/upload-transcript",
   upload.single("transcript"),

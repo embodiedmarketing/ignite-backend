@@ -62,10 +62,33 @@ async function generateEmotionalSalesPage(messaging: any, offer: any, offerType:
   
   const systemPrompt = `You are an expert sales copywriter who writes compelling, conversion-focused sales pages. You write ONLY actual sales copy using simple text formatting with proper line breaks. You NEVER output structure templates, guidelines, or instructions.`;
   
+  // Check if messaging strategy contains interview-enhanced fields
+  const hasInterviewData = messaging && typeof messaging === 'object' && (
+    messaging.frustrations || messaging.nighttime_worries || messaging.secret_fears ||
+    messaging.magic_solution || messaging.failed_solutions || messaging.blockers ||
+    messaging.decision_making || messaging.investment_criteria || messaging.success_measures
+  );
+
   const userPrompt = `Write a complete sales page for this user's offer using their messaging strategy and offer outline data.
 
 USER'S MESSAGING STRATEGY:
 ${JSON.stringify(messaging, null, 2)}
+
+${hasInterviewData ? `\n⭐ CRITICAL: This messaging strategy contains INTERVIEW-ENHANCED insights from customer interview transcripts. 
+These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.
+
+YOU MUST:
+1. Use CINEMATIC, MOMENT-BY-MOMENT language from these interview insights (show the moment, don't just describe)
+2. Include customer's exact words, internal dialogue, and emotional progression
+3. Add SPECIFIC, TANGIBLE outcomes with numbers, timeframes, and observable details
+4. Show sensory details and specific moments from their actual experience
+5. Make it VISCERAL and RAW - authentic like talking to a friend
+
+EXAMPLE TRANSFORMATION:
+❌ Generic: "They feel stuck and overwhelmed"
+✅ Interview-enhanced: "They've been showing up online for months — posting, tweaking, trying every hack — and still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?' That quiet doubt has turned into exhaustion and second-guessing every move."
+
+PRIORITIZE these interview-enhanced fields over generic messaging. Use the customer's exact language and emotional depth.\n` : ''}
 
 USER'S OFFER OUTLINE:
 ${JSON.stringify(offer, null, 2)}

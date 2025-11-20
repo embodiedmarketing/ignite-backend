@@ -547,27 +547,62 @@ function calculateCompleteness(responses: WorkbookResponses): number {
 }
 
 function extractKeyInsightsFromUserData(responses: WorkbookResponses, userContext: UserContextData, emotionalInsights?: string) {
+  // Interview-enhanced fields (prioritized - these come from customer interview transcripts)
+  const interviewEnhancedFields = [
+    'frustrations',
+    'nighttime_worries',
+    'secret_fears',
+    'magic_solution',
+    'demographics',
+    'failed_solutions',
+    'blockers',
+    'info_sources',
+    'decision_making',
+    'investment_criteria',
+    'success_measures',
+    'referral_outcomes'
+  ];
+
+  const interviewInsights: Array<{ key: string; value: string }> = [];
+  const regularFields: Array<{ key: string; value: string }> = [];
+
+  // Separate interview-enhanced fields from regular workbook fields
+  Object.entries(responses).forEach(([key, value]) => {
+    const isInterviewField = interviewEnhancedFields.some(field => 
+      key.toLowerCase().includes(field.toLowerCase())
+    );
+    
+    if (isInterviewField && value?.trim()) {
+      interviewInsights.push({ key, value });
+    } else {
+      regularFields.push({ key, value });
+    }
+  });
+
   return {
     // AI-extracted emotional insights (prioritized)
     emotionalInsights: emotionalInsights || "",
     
+    // Interview-enhanced insights (HIGHEST PRIORITY - from customer interview transcripts)
+    interviewInsights: interviewInsights,
+    
     // Structured data from workbook
-    positioning: Object.entries(responses)
-      .filter(([key]) => key.includes('positioning'))
-      .map(([key, value]) => ({ key, value })),
-    customerAvatar: Object.entries(responses)
-      .filter(([key]) => key.includes('customer-avatar'))
-      .map(([key, value]) => ({ key, value })),
-    brandVoice: Object.entries(responses)
-      .filter(([key]) => key.includes('brand-voice'))
-      .map(([key, value]) => ({ key, value })),
-    offer: Object.entries(responses)
-      .filter(([key]) => key.includes('offer') || key.includes('problem'))
-      .map(([key, value]) => ({ key, value })),
-    other: Object.entries(responses)
-      .filter(([key]) => !key.includes('positioning') && !key.includes('customer-avatar') && 
-                         !key.includes('brand-voice') && !key.includes('offer') && !key.includes('problem'))
-      .map(([key, value]) => ({ key, value })),
+    positioning: regularFields
+      .filter((item) => item.key.includes('positioning'))
+      .map((item) => ({ key: item.key, value: item.value })),
+    customerAvatar: regularFields
+      .filter((item) => item.key.includes('customer-avatar'))
+      .map((item) => ({ key: item.key, value: item.value })),
+    brandVoice: regularFields
+      .filter((item) => item.key.includes('brand-voice'))
+      .map((item) => ({ key: item.key, value: item.value })),
+    offer: regularFields
+      .filter((item) => item.key.includes('offer') || item.key.includes('problem'))
+      .map((item) => ({ key: item.key, value: item.value })),
+    other: regularFields
+      .filter((item) => !item.key.includes('positioning') && !item.key.includes('customer-avatar') && 
+                         !item.key.includes('brand-voice') && !item.key.includes('offer') && !item.key.includes('problem'))
+      .map((item) => ({ key: item.key, value: item.value })),
     businessContext: {
       name: userContext.businessName,
       industry: userContext.industry,
@@ -579,15 +614,61 @@ function extractKeyInsightsFromUserData(responses: WorkbookResponses, userContex
 function formatUserInsightsForPrompt(insights: any): string {
   let formatted = "";
   
-  // PRIORITY #1: AI-extracted emotional insights (most important for messaging)
+  // PRIORITY #1: Interview-enhanced insights from customer interview transcripts (HIGHEST PRIORITY)
+  if (insights.interviewInsights && insights.interviewInsights.length > 0) {
+    formatted += "===== ⭐ INTERVIEW-ENHANCED INSIGHTS (FROM CUSTOMER INTERVIEW TRANSCRIPTS) ⭐ =====\n";
+    formatted += "CRITICAL: These are direct insights extracted from customer interview transcripts. ";
+    formatted += "These contain the customer's EXACT WORDS, first-person language, and authentic emotional expressions. ";
+    formatted += "You MUST prioritize these over generic workbook responses. Use this language in your messaging.\n\n";
+    formatted += "INTERVIEW-ENHANCED FIELDS (Use these with highest priority for cinematic, authentic messaging):\n";
+    
+    insights.interviewInsights.forEach((item: any) => {
+      if (item.value?.trim()) {
+        // Map field names to readable descriptions
+        const fieldDescriptions: Record<string, string> = {
+          'frustrations': 'Frustrations (customer\'s exact words about pain points)',
+          'nighttime_worries': 'Nighttime Worries (what keeps them awake)',
+          'secret_fears': 'Secret Fears (hidden fears they won\'t admit)',
+          'magic_solution': 'Magic Solution (their ideal outcome)',
+          'demographics': 'Demographics (age, income, role - exact details)',
+          'failed_solutions': 'Failed Solutions (what they\'ve tried that didn\'t work)',
+          'blockers': 'Blockers (current obstacles)',
+          'info_sources': 'Info Sources (where they go for advice)',
+          'decision_making': 'Decision Making (how they make purchases)',
+          'investment_criteria': 'Investment Criteria (what they need to invest)',
+          'success_measures': 'Success Measures (how they measure success)',
+          'referral_outcomes': 'Referral Outcomes (what makes them recommend)'
+        };
+        
+        const fieldName = item.key.toLowerCase();
+        const description = Object.entries(fieldDescriptions).find(([key]) => 
+          fieldName.includes(key.toLowerCase())
+        )?.[1] || item.key;
+        
+        formatted += `**${description}:**\n${item.value}\n\n`;
+      }
+    });
+    
+    formatted += "===== ENHANCEMENT REQUIREMENTS FOR MESSAGING STRATEGY =====\n";
+    formatted += "When you see interview-enhanced fields above, your messaging MUST:\n";
+    formatted += "1. Use CINEMATIC, MOMENT-BY-MOMENT language (not description - show the moment)\n";
+    formatted += "2. Include customer's exact words, internal dialogue, and emotional progression\n";
+    formatted += "3. Add SPECIFIC, TANGIBLE outcomes with numbers, timeframes, and observable details\n";
+    formatted += "4. Show sensory details and specific moments from their actual experience\n";
+    formatted += "5. Make it VISCERAL and RAW - authentic like talking to a friend\n";
+    formatted += "6. Prioritize emotional depth and authenticity over generic descriptions\n\n";
+    formatted += "===== ADDITIONAL SOURCES =====\n\n";
+  }
+  
+  // PRIORITY #2: AI-extracted emotional insights (if no interview insights)
   if (insights.emotionalInsights?.trim()) {
     formatted += "===== EMOTIONAL INSIGHTS & CUSTOMER LANGUAGE (EXTRACTED BY AI) =====\n";
     formatted += "Use this emotional intelligence as your PRIMARY SOURCE for creating authentic, deep messaging.\n\n";
     formatted += insights.emotionalInsights;
-    formatted += "\n\n===== ADDITIONAL STRUCTURED DATA FROM WORKBOOK =====\n\n";
+    formatted += "\n\n===== STRUCTURED DATA FROM WORKBOOK =====\n\n";
   }
   
-  formatted += "BUSINESS OWNER'S VALIDATED RESPONSES:\n\n";
+  formatted += "BUSINESS OWNER'S WORKBOOK RESPONSES:\n\n";
   
   if (insights.positioning.length > 0) {
     formatted += "UNIQUE POSITIONING & EXPERTISE:\n";

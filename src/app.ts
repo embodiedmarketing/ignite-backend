@@ -18,7 +18,11 @@ export async function createApp() {
 
   const allowedOrigins =
     env.NODE_ENV === "development"
-      ? ["http://localhost:5173"]
+      ? [
+          "http://localhost:5173",
+          "https://dev.ignitebyembodied.com",
+          "https://new.ignitebyembodied.com",
+        ]
       : [env.FRONTEND_URL!];
 
   app.use(

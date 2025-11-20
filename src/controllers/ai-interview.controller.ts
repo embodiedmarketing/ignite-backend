@@ -206,62 +206,76 @@ export async function intelligentInterviewProcessing(
       messagingUpdates ? Object.keys(messagingUpdates) : "null/undefined"
     );
 
-    // Save the processed interview notes to database for persistence
+    // Save the processed interview insights to workbook responses so they appear in messaging strategy fields
     if (
       messagingUpdates &&
       messagingUpdates.updates &&
       Object.keys(messagingUpdates.updates).length > 0
     ) {
       try {
-        const savedNotes = [];
+        const savedResponses = [];
 
         // Extract the updates object from the response
         const updates = messagingUpdates.updates;
 
-        for (const [noteKey, content] of Object.entries(updates)) {
-          if (content && typeof content === "string" && content.trim()) {
+        // Step 1 is typically used for Messaging Strategy / Customer Research section
+        const MESSAGING_STRATEGY_STEP = 1;
+        const offerNumber = 1; // Default to offer 1
+
+        for (const [questionKey, content] of Object.entries(updates)) {
+          // Skip dataSourceReport and other metadata fields
+          if (
+            questionKey === "dataSourceReport" ||
+            typeof content !== "string"
+          ) {
+            continue;
+          }
+
+          if (content && content.trim()) {
             try {
-              // Check if note exists
-              const existingNote = await db.execute(
-                sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND note_key = ${noteKey}`
+              // Save to workbook responses so frontend can display in messaging strategy fields
+              await storage.upsertWorkbookResponse({
+                userId: parseInt(String(userId)),
+                stepNumber: MESSAGING_STRATEGY_STEP,
+                questionKey: questionKey, // e.g., "frustrations", "nighttime_worries", etc.
+                responseText: content.trim(),
+                sectionTitle: "Customer Research", // or could derive from questionKey
+                offerNumber: offerNumber,
+              });
+
+              savedResponses.push(questionKey);
+              console.log(
+                `[TRANSFER] Saved ${questionKey} to workbook responses for user ${userId}`
               );
-
-              if (existingNote.rows.length > 0) {
-                // Update existing note
-                await db.execute(
-                  sql`UPDATE interview_notes SET content = ${content}, source = 'ai-processing', updated_at = NOW() WHERE user_id = ${userId} AND note_key = ${noteKey}`
-                );
-              } else {
-                // Insert new note
-                await db.execute(
-                  sql`INSERT INTO interview_notes (user_id, note_key, content, source, created_at, updated_at) VALUES (${userId}, ${noteKey}, ${content}, 'ai-processing', NOW(), NOW())`
-                );
-              }
-
-              savedNotes.push(noteKey);
-            } catch (noteError) {
+            } catch (responseError) {
               console.error(
-                `Error saving individual note ${noteKey}:`,
-                noteError
+                `Error saving workbook response ${questionKey}:`,
+                responseError
               );
-              // Continue with other notes even if one fails
+              // Continue with other responses even if one fails
             }
           }
         }
 
         console.log(
-          `Successfully saved ${savedNotes.length} interview notes to database:`,
-          savedNotes
+          `Successfully saved ${savedResponses.length} interview insights to workbook responses:`,
+          savedResponses
         );
       } catch (dbError) {
-        console.error("Error saving interview notes to database:", dbError);
+        console.error(
+          "Error saving interview insights to workbook responses:",
+          dbError
+        );
         // Continue execution even if database save fails
       }
     }
 
+    // Return response with both the full structure and flattened updates for frontend convenience
     res.json({
       success: true,
       messagingUpdates,
+      // Flattened updates for easy frontend access (e.g., response.updates.frustrations)
+      updates: messagingUpdates?.updates || {},
       message:
         "Interview transcript processed intelligently and messaging strategy updated",
     });

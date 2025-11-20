@@ -58,6 +58,17 @@ CRITICAL REQUIREMENT: You MUST generate EXACTLY 5 emails following the exact tem
 
 Each paragraph in the email body MUST be separated by double newlines (\\n\\n) for proper white space and readability.`;
 
+  // Check if messaging strategy contains interview-enhanced fields
+  const messagingObj = typeof input.messagingStrategy === 'string' 
+    ? JSON.parse(input.messagingStrategy || '{}') 
+    : input.messagingStrategy || {};
+  
+  const hasInterviewData = messagingObj && typeof messagingObj === 'object' && (
+    messagingObj.frustrations || messagingObj.nighttime_worries || messagingObj.secret_fears ||
+    messagingObj.magic_solution || messagingObj.failed_solutions || messagingObj.blockers ||
+    messagingObj.decision_making || messagingObj.investment_criteria || messagingObj.success_measures
+  );
+
   const userPrompt = `Generate a 5-part lead nurture email sequence for the following business:
 
 ## LEAD MAGNET INFORMATION
@@ -79,7 +90,23 @@ Each paragraph in the email body MUST be separated by double newlines (\\n\\n) f
 **Content Flow**: ${input.contentOrder}
 
 ## BRAND VOICE & MESSAGING
-${input.messagingStrategy}
+${typeof input.messagingStrategy === 'string' ? input.messagingStrategy : JSON.stringify(input.messagingStrategy, null, 2)}
+
+${hasInterviewData ? `\n⭐ CRITICAL: This messaging strategy contains INTERVIEW-ENHANCED insights from customer interview transcripts.
+These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.
+
+YOU MUST:
+1. Use CINEMATIC, MOMENT-BY-MOMENT language from these interview insights in your emails
+2. Include customer's exact words, internal dialogue ("wondering, 'What am I missing?'")
+3. Add SPECIFIC, TANGIBLE outcomes with numbers and timeframes
+4. Show sensory details and specific moments ("Each time they open Instagram...")
+5. Make emails VISCERAL and AUTHENTIC - like you're talking directly to the customer using their own language
+
+EXAMPLE TRANSFORMATION:
+❌ Generic: "They feel stuck and overwhelmed"
+✅ Interview-enhanced: "They've been showing up online for months — posting, tweaking, trying every hack — and still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'"
+
+PRIORITIZE these interview-enhanced fields. Use the customer's exact language throughout your emails.\n` : ''}
 
 ## IDEAL CUSTOMER PROFILE
 ${input.idealCustomerProfile}

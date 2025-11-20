@@ -18,6 +18,7 @@ import { isAuthenticated } from "../middlewares/auth.middleware";
 const router = Router();
 
 router.post("/messaging-strategy", generateMessagingStrategy);
+router.post("/generate-messaging-strategy", generateMessagingStrategy);
 router.post("/offer-outline", generateOfferOutline);
 router.post("/sales-page", generateSalesPage);
 router.post("/coach-sales-section", coachSalesSection);
