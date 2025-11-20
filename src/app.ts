@@ -20,8 +20,8 @@ export async function createApp() {
     env.NODE_ENV === "development"
       ? [
           "http://localhost:5173",
-          "https://dev.ignitebyembodied.com",
           "https://new.ignitebyembodied.com",
+          "https://dev.ignitebyembodied.com",
         ]
       : [env.FRONTEND_URL!];
 
@@ -35,15 +35,6 @@ export async function createApp() {
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // allow all methods
       allowedHeaders: ["Content-Type", "Authorization"], // adjust for your headers
-    })
-  );
-
-  app.options(
-    "*",
-    cors({
-      origin: allowedOrigins,
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })
   );
 
