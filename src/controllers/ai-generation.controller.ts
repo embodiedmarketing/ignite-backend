@@ -34,6 +34,31 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
           }
         }
 
+        // Log interview-enhanced fields found in database
+        const interviewFieldsInDb = Object.keys(workbookResponses).filter(
+          (key) =>
+            [
+              "frustrations",
+              "nighttime_worries",
+              "secret_fears",
+              "magic_solution",
+              "demographics",
+              "failed_solutions",
+              "blockers",
+              "info_sources",
+              "decision_making",
+              "investment_criteria",
+              "success_measures",
+              "referral_outcomes",
+            ].some((field) => key.toLowerCase().includes(field.toLowerCase()))
+        );
+        if (interviewFieldsInDb.length > 0) {
+          console.log(
+            `[MESSAGING STRATEGY] ⭐ Found ${interviewFieldsInDb.length} interview-enhanced fields in database:`,
+            interviewFieldsInDb
+          );
+        }
+
         console.log(
           `[MESSAGING STRATEGY] Fetched ${
             Object.keys(workbookResponses).length
@@ -44,15 +69,63 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
           Object.keys(workbookResponses)
         );
 
-        // Merge with request body responses (request takes precedence for any conflicts)
+        // Identify interview-enhanced fields (these should NEVER be overwritten)
+        const interviewEnhancedFields = [
+          "frustrations",
+          "nighttime_worries",
+          "secret_fears",
+          "magic_solution",
+          "demographics",
+          "failed_solutions",
+          "blockers",
+          "info_sources",
+          "decision_making",
+          "investment_criteria",
+          "success_measures",
+          "referral_outcomes",
+        ];
+
+        // Check if we have interview insights in database
+        const hasInterviewInsights = Object.keys(workbookResponses).some(
+          (key) =>
+            interviewEnhancedFields.some((field) =>
+              key.toLowerCase().includes(field.toLowerCase())
+            )
+        );
+
+        if (hasInterviewInsights) {
+          console.log(
+            `[MESSAGING STRATEGY] ⭐ Interview insights detected in database - protecting them from override`
+          );
+        }
+
+        // Merge with request body responses, but PROTECT interview-enhanced fields
         if (
           requestWorkbookResponses &&
           Object.keys(requestWorkbookResponses).length > 0
         ) {
-          workbookResponses = {
-            ...workbookResponses,
-            ...requestWorkbookResponses,
-          };
+          // Start with database responses (includes interview insights)
+          const mergedResponses = { ...workbookResponses };
+
+          // Only merge non-interview fields from request body
+          for (const [key, value] of Object.entries(requestWorkbookResponses)) {
+            const isInterviewField = interviewEnhancedFields.some((field) =>
+              key.toLowerCase().includes(field.toLowerCase())
+            );
+
+            // Only add request body field if:
+            // 1. It's NOT an interview field (to protect interview insights), OR
+            // 2. It's an interview field but doesn't exist in database (new field)
+            if (!isInterviewField || !mergedResponses[key]) {
+              mergedResponses[key] = value;
+            } else {
+              console.log(
+                `[MESSAGING STRATEGY] 🔒 Protected interview field "${key}" from request body override`
+              );
+            }
+          }
+
+          workbookResponses = mergedResponses;
           console.log(
             `[MESSAGING STRATEGY] Merged with request body responses. Total keys:`,
             Object.keys(workbookResponses).length
