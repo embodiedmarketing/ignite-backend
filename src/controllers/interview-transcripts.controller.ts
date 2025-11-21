@@ -91,10 +91,73 @@ export async function updateInterviewTranscript(req: Request, res: Response) {
       return res.status(400).json({ message: "Invalid transcript ID" });
     }
 
-    // Convert string date to Date object if provided
-    const updates = { ...req.body };
-    if (updates.interviewDate && typeof updates.interviewDate === "string") {
-      updates.interviewDate = new Date(updates.interviewDate);
+    // Clean updates object - only allow specific fields to be updated
+    const body = req.body;
+    const updates: any = {};
+    
+    // Only copy allowed fields and exclude timestamp fields that shouldn't be updated
+    const allowedFields = [
+      "title",
+      "customerName",
+      "rawTranscript",
+      "interviewDate",
+      "platform",
+      "duration",
+      "tags",
+      "notes",
+      "status",
+      "extractedInsights",
+    ];
+    
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updates[field] = body[field];
+      }
+    }
+    
+    // Convert string date to Date object if provided, or null if empty/invalid
+    if (updates.interviewDate !== undefined) {
+      if (
+        updates.interviewDate &&
+        typeof updates.interviewDate === "string" &&
+        updates.interviewDate.trim()
+      ) {
+        // Valid date string - convert to Date
+        const date = new Date(updates.interviewDate);
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          // Invalid date string - set to null
+          console.warn(
+            `[UPDATE TRANSCRIPT] Invalid date string: ${updates.interviewDate}, setting to null`
+          );
+          updates.interviewDate = null;
+        } else {
+          updates.interviewDate = date;
+          console.log(
+            `[UPDATE TRANSCRIPT] Converted date string to Date object: ${date.toISOString()}`
+          );
+        }
+      } else {
+        // Empty string, null, or invalid - set to null
+        console.log(
+          `[UPDATE TRANSCRIPT] Empty/invalid interviewDate, setting to null. Value was:`,
+          updates.interviewDate
+        );
+        updates.interviewDate = null;
+      }
+    }
+    
+    // Log what we're about to update (for debugging)
+    console.log(`[UPDATE TRANSCRIPT] Update object keys:`, Object.keys(updates));
+    if (updates.interviewDate !== undefined) {
+      console.log(`[UPDATE TRANSCRIPT] interviewDate type:`, typeof updates.interviewDate);
+      console.log(
+        `[UPDATE TRANSCRIPT] interviewDate value:`,
+        updates.interviewDate instanceof Date
+          ? updates.interviewDate.toISOString()
+          : updates.interviewDate
+      );
+      console.log(`[UPDATE TRANSCRIPT] interviewDate is Date:`, updates.interviewDate instanceof Date);
     }
 
     // Get current transcript for status logic

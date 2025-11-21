@@ -133,38 +133,51 @@ export async function intelligentlyProcessInterviewTranscript(
 async function extractInterviewInsights(
   transcript: string
 ): Promise<{ insights: InterviewInsights; wasTruncated: boolean }> {
-  const prompt = `You are a customer research analyst. Extract insights from this interview transcript.
+  const prompt = `You are a customer research analyst. Extract ONLY what was explicitly stated in this interview transcript.
 
-MANDATORY RULE: Copy the customer's exact words. Use "I", "my", "me" exactly as they spoke. Do NOT change to "they", "their", "them".
+CRITICAL RULES - READ CAREFULLY:
+1. ONLY extract information that is EXPLICITLY stated in the transcript
+2. DO NOT make up, infer, guess, or assume ANY information
+3. DO NOT add details that weren't mentioned (e.g., don't mention "dad's health" if it wasn't discussed)
+4. If information is NOT in the transcript, return "N/A" (not empty string, not inferred info)
+5. Keep responses CONCISE - 1-2 sentences maximum per field
+6. Convert first-person to third-person: "I" → "they", "my" → "their", "me" → "them"
+7. Use the customer's EXACT words when possible - just change pronouns
+8. If a question was asked but not answered, return "N/A"
+9. DO NOT combine information from different contexts - if it wasn't explicitly connected, don't connect it
 
 TRANSCRIPT:
 ${transcript}
 
-Extract these insights using the customer's EXACT first-person words:
+Extract ONLY what was explicitly stated. For each field:
+- If the information IS in the transcript: Extract it (1-2 sentences max, converted to third-person)
+- If the information is NOT in the transcript: Return "N/A"
 
-1. frustrations - Copy their exact words about pain points
-2. nighttime_worries - Copy their exact words about what keeps them awake  
-3. secret_fears - Copy their exact words about hidden fears
-4. magic_solution - Copy their exact words about ideal outcomes
-5. demographics - Copy EXACTLY what they said about their demographics without changing anything
-6. failed_solutions - Copy their exact words about what didn't work
-7. blockers - Copy their exact words about current obstacles
-8. info_sources - Copy their exact words about where they get advice
-9. decision_making - Copy their exact words about how they decide
-10. investment_criteria - Copy their exact words about investment needs
-11. success_measures - Copy their exact words about measuring success
-12. referral_outcomes - Copy their exact words about referral criteria
-13. additional_insights - Any other exact quotes
+1. frustrations - Their exact words about pain points (if stated, else "N/A")
+2. nighttime_worries - What keeps them awake (if stated, else "N/A")
+3. secret_fears - Their hidden fears (if stated, else "N/A")
+4. magic_solution - Their ideal outcomes (if stated, else "N/A")
+5. demographics - Age, income, role (if stated, else "N/A" - format: "46, earning about 75K" or "N/A")
+6. failed_solutions - What they tried that didn't work (if stated, else "N/A")
+7. blockers - Current obstacles (if stated, else "N/A")
+8. info_sources - Where they go for advice (if stated, else "N/A")
+9. decision_making - How they make decisions (if stated, else "N/A")
+10. investment_criteria - What they need to invest (if stated, else "N/A")
+11. success_measures - How they measure success (if stated, else "N/A")
+12. referral_outcomes - What makes them recommend (if stated, else "N/A")
 
-WRONG: "they worry about covering payroll"
-RIGHT: "I worry about covering payroll"
+VALIDATION CHECK BEFORE RETURNING:
+- For each field, ask yourself: "Is this information EXPLICITLY stated in the transcript?"
+- If YES: Extract it (convert pronouns to third-person)
+- If NO: Return "N/A"
+- DO NOT infer connections (e.g., don't connect "dad" mentioned elsewhere to "nighttime worries" unless explicitly connected)
+- DO NOT add details from context clues - only use explicit statements
 
-Return only JSON with exact customer quotes. For demographics, copy their complete sentence exactly:
+Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitly stated:
 {
-  "frustrations": "exact customer words here",
-  "nighttime_worries": "exact customer words here", 
-  "secret_fears": "exact customer words here",
-  "demographics": "exact customer words here"
+  "frustrations": "They feel spread too thin" OR "N/A",
+  "nighttime_worries": "They worry about their family" OR "N/A",
+  "demographics": "46, earning about 75K" OR "N/A"
 }`;
 
   try {
@@ -175,15 +188,15 @@ Return only JSON with exact customer quotes. For demographics, copy their comple
           {
             role: "system",
             content:
-              "You are a customer research analyst. CRITICAL: Copy customer's exact first-person words. Never change 'I' to 'they' or 'my' to 'their'. Return only valid JSON.",
+              "You are a strict customer research analyst. CRITICAL RULES: 1) ONLY extract information EXPLICITLY stated in the transcript - DO NOT make up, infer, guess, or assume. 2) If information is NOT in the transcript, return \"N/A\" (never empty string or inferred info). 3) DO NOT add details that weren't mentioned (e.g., don't mention family details if not discussed). 4) Keep responses concise - 1-2 sentences maximum. 5) Convert first-person to third-person (I→they, my→their, me→them). 6) Use customer's exact words when possible. 7) If a question wasn't answered in the transcript, return \"N/A\". Return only valid JSON with \"N/A\" for missing information.",
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        max_tokens: 1500,
-        temperature: 0.3,
+        max_tokens: 1000,
+        temperature: 0.1,
       },
       {
         timeout: 90000,
@@ -228,14 +241,63 @@ Return only JSON with exact customer quotes. For demographics, copy their comple
       if (typeof value === "object" && value !== null) {
         if (key === "demographics") {
           const demo = value as any;
-          flattened[key] = `${demo.age || ""}-year-old ${
-            demo.job_title || "professional"
-          } earning $${demo.income || "unknown"} annually`.trim();
+          // Check if we have actual data or if it should be N/A
+          if (!demo.age && !demo.income && !demo.job_title) {
+            flattened[key] = "N/A";
+          } else {
+            let demoText = `${demo.age || ""}-year-old ${
+              demo.job_title || "professional"
+            } earning $${demo.income || "unknown"} annually`.trim();
+            // Only convert if it's not essentially empty (all fields unknown)
+            if (
+              (!demo.age && !demo.job_title) ||
+              (demo.income === "unknown" && !demo.age && !demo.job_title)
+            ) {
+              flattened[key] = "N/A";
+            } else {
+              // Convert demographics to third person too
+              demoText = convertToThirdPerson(demoText);
+              flattened[key] = demoText;
+            }
+          }
         } else {
-          flattened[key as keyof InterviewInsights] = JSON.stringify(value);
+          let jsonText = JSON.stringify(value);
+          // Check if it's essentially empty/null - convert to N/A
+          if (!jsonText || jsonText === "{}" || jsonText === "null" || jsonText === '""') {
+            flattened[key as keyof InterviewInsights] = "N/A";
+          } else {
+            jsonText = convertToThirdPerson(jsonText);
+            flattened[key as keyof InterviewInsights] = jsonText;
+          }
         }
       } else {
-        flattened[key as keyof InterviewInsights] = String(value || "");
+        let text = String(value || "");
+        // Convert empty strings, null, undefined, or whitespace-only to "N/A"
+        if (
+          !text ||
+          text.trim() === "" ||
+          text.trim().toLowerCase() === "null" ||
+          text.trim().toLowerCase() === "undefined"
+        ) {
+          flattened[key as keyof InterviewInsights] = "N/A";
+        } else {
+          // Check if it's already "N/A" (case-insensitive)
+          if (text.trim().toUpperCase() === "N/A") {
+            flattened[key as keyof InterviewInsights] = "N/A";
+          } else {
+            // Convert first person to third person
+            text = convertToThirdPerson(text);
+            flattened[key as keyof InterviewInsights] = text;
+          }
+        }
+      }
+    }
+
+    // Double-check: Convert any remaining first-person references to third-person (skip N/A)
+    for (const key in flattened) {
+      const value = flattened[key as keyof InterviewInsights];
+      if (value && value !== "N/A" && key !== "demographics") {
+        flattened[key as keyof InterviewInsights] = convertToThirdPerson(value);
       }
     }
 
@@ -244,6 +306,56 @@ Return only JSON with exact customer quotes. For demographics, copy their comple
     console.error("Failed to parse OpenAI response:", parseError);
     throw new Error("Invalid JSON response from AI");
   }
+}
+
+/**
+ * Convert first-person language to third-person language
+ */
+function convertToThirdPerson(text: string): string {
+  if (!text || typeof text !== "string") return text;
+
+  // Convert pronouns (case-sensitive word boundaries)
+  let converted = text;
+
+  // "I " → "they " (at start of sentence or after punctuation)
+  converted = converted.replace(/\bI\b/g, "they");
+  
+  // "my " → "their "
+  converted = converted.replace(/\bmy\b/g, "their");
+  
+  // " me " → " them " (with word boundaries)
+  converted = converted.replace(/\bme\b/g, "them");
+  
+  // "we " → "they "
+  converted = converted.replace(/\bwe\b/g, "they");
+  
+  // "our " → "their "
+  converted = converted.replace(/\bour\b/g, "their");
+  
+  // "us " → "them "
+  converted = converted.replace(/\bus\b/g, "them");
+  
+  // "myself" → "themselves"
+  converted = converted.replace(/\bmyself\b/g, "themselves");
+  
+  // "ourselves" → "themselves"
+  converted = converted.replace(/\bourselves\b/g, "themselves");
+
+  // Fix verb conjugations: "I am" → "they are", "I was" → "they were"
+  converted = converted.replace(/\bI am\b/g, "they are");
+  converted = converted.replace(/\bI'm\b/g, "they're");
+  converted = converted.replace(/\bI was\b/g, "they were");
+  converted = converted.replace(/\bI have\b/g, "they have");
+  converted = converted.replace(/\bI've\b/g, "they've");
+  converted = converted.replace(/\bI will\b/g, "they will");
+  converted = converted.replace(/\bI'll\b/g, "they'll");
+  converted = converted.replace(/\bI would\b/g, "they would");
+  converted = converted.replace(/\bI'd\b/g, "they'd");
+
+  // Fix possessive: "my" → "their" (already done above, but handle contractions)
+  converted = converted.replace(/\bmy\b/g, "their");
+
+  return converted;
 }
 
 function cleanDemographicsText(text: string): string {
@@ -346,30 +458,17 @@ async function synthesizeInsightsToMessagingStrategy(
     );
 
     if (mapping.strategyKey === "demographics" && insightValue) {
-      insightValue = cleanDemographicsText(insightValue);
+      // Don't clean if it's N/A
+      if (insightValue.trim().toUpperCase() !== "N/A") {
+        insightValue = cleanDemographicsText(insightValue);
+      }
     }
 
-    if (insightValue && insightValue.trim()) {
-      if (existingResponse && existingResponse.trim()) {
-        console.log(`Merging content for ${mapping.strategyKey}`);
-        try {
-          messagingUpdates[mapping.strategyKey] =
-            await intelligentlyMergeContent(
-              existingResponse,
-              insightValue,
-              mapping.question
-            );
-          console.log(`Successfully merged content for ${mapping.strategyKey}`);
-        } catch (error) {
-          console.error(
-            `Error merging content for ${mapping.strategyKey}:`,
-            error
-          );
-          messagingUpdates[mapping.strategyKey] = insightValue;
-        }
-      } else {
-        messagingUpdates[mapping.strategyKey] = insightValue;
-      }
+    // Transfer directly without AI synthesis/merging - just use extracted insights as-is
+    if (insightValue && insightValue.trim() && insightValue.trim().toUpperCase() !== "N/A") {
+      // Direct transfer: Use the extracted insight as-is, no AI merging
+      messagingUpdates[mapping.strategyKey] = insightValue;
+      console.log(`[DIRECT TRANSFER] ${mapping.strategyKey}: ${insightValue.substring(0, 50)}...`);
     }
   }
 
@@ -380,64 +479,6 @@ async function synthesizeInsightsToMessagingStrategy(
   return messagingUpdates;
 }
 
-async function intelligentlyMergeContent(
-  existingContent: string,
-  newInsight: string,
-  questionContext: string
-): Promise<string> {
-  console.log(`Merging content for context: ${questionContext}`);
-  console.log(`Existing content length: ${existingContent.length}`);
-  console.log(`New insight: ${newInsight}`);
-
-  const prompt = `You are an expert business strategist helping merge customer insights into messaging strategy.
-
-CONTEXT: ${questionContext}
-
-EXISTING CONTENT:
-${existingContent}
-
-NEW CUSTOMER INSIGHT:
-${newInsight}
-
-TASK: Intelligently merge the new customer insight with the existing content to create a richer, more comprehensive response. 
-
-GUIDELINES:
-- Preserve the best elements from both sources
-- Add depth and specificity from the new insight
-- Maintain third-person perspective (they/them, not I/me)
-- Create a flowing narrative that doesn't feel duplicated
-- Keep the response focused and concise (2-3 sentences max)
-- If the new insight contradicts existing content, favor the more specific/emotional version
-
-Return only the merged content, no explanations.`;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert business strategist who merges customer insights into cohesive messaging strategy content.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      max_tokens: 200,
-      temperature: 0.4,
-    });
-
-    const mergedContent =
-      response.choices[0]?.message?.content?.trim() || existingContent;
-    console.log(`Merge result: ${mergedContent}`);
-    return mergedContent;
-  } catch (error) {
-    console.error("Error in intelligentlyMergeContent:", error);
-    return `${existingContent}\n\n${newInsight}`.trim();
-  }
-}
 
 async function processLargeTranscriptInChunks(
   transcript: string,
