@@ -117,7 +117,8 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
             // 1. It's NOT an interview field (to protect interview insights), OR
             // 2. It's an interview field but doesn't exist in database (new field)
             if (!isInterviewField || !mergedResponses[key]) {
-              mergedResponses[key] = value;
+              mergedResponses[key] =
+                typeof value === "string" ? value : String(value || "");
             } else {
               console.log(
                 `[MESSAGING STRATEGY] 🔒 Protected interview field "${key}" from request body override`
@@ -176,10 +177,34 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
       )
     );
 
+    const requestTimestamp = Date.now();
+    console.log(
+      `[MESSAGING STRATEGY] 🆕 Generating NEW messaging strategy at ${new Date(
+        requestTimestamp
+      ).toISOString()}`
+    );
+    console.log(
+      `[MESSAGING STRATEGY] Request ID: req_${requestTimestamp}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`
+    );
+    console.log(
+      `[MESSAGING STRATEGY] Input data hash: ${
+        Object.keys(workbookResponses).length
+      } fields, ${JSON.stringify(workbookResponses).length} chars`
+    );
+
     const strategy = await generateMessagingStrategy(
       workbookResponses,
       interviewNotes || {},
       userId
+    );
+
+    console.log(
+      `[MESSAGING STRATEGY] ✅ Generation complete. Strategy preview: "${strategy.strategy?.substring(
+        0,
+        100
+      )}..."`
     );
 
     // Mark Messaging Strategy as complete in database
@@ -202,6 +227,25 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
         );
       }
     }
+
+    // Prevent caching - ensure fresh response every time
+    const generationTimestamp = Date.now();
+    res.set({
+      "Cache-Control": "no-cache, no-store, must-revalidate, private",
+      Pragma: "no-cache",
+      Expires: "0",
+      "X-Generation-Timestamp": generationTimestamp.toString(),
+      "X-Is-New-Generation": "true",
+      "X-Generation-ID":
+        (strategy.dataSourceReport?.generationMetadata
+          ?.generationId as string) || "unknown",
+    });
+
+    console.log(
+      `[MESSAGING STRATEGY] ✅ Returning NEW strategy (${
+        strategy.strategy?.length || 0
+      } characters)`
+    );
 
     res.json(strategy);
   } catch (error) {
