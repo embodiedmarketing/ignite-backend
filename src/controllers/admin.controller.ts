@@ -1239,12 +1239,57 @@ export async function createChecklistDefinition(req: Request, res: Response) {
       validatedData
     );
     res.status(201).json(definition);
-  } catch (error) {
+  } catch (error: any) {
+    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return res
         .status(400)
         .json({ message: "Invalid request data", errors: error.errors });
     }
+
+    // Handle database constraint violations (duplicate key errors)
+    // PostgreSQL error code 23505 = unique_violation, 23503 = foreign_key_violation
+    const pgError = error as any;
+    if (pgError?.code === "23505" || pgError?.code === "23503") {
+      const constraint = pgError?.constraint || "";
+      const detail = pgError?.detail || "";
+      
+      // Extract field name from constraint or detail
+      let fieldName = "field";
+      let duplicateValue = "";
+      
+      if (detail) {
+        // Parse detail like: "Key (section_key)=(launch-your-ads-lead-generation) already exists."
+        const match = detail.match(/Key \(([^)]+)\)=\(([^)]+)\)/);
+        if (match) {
+          fieldName = match[1];
+          duplicateValue = match[2];
+        }
+      } else if (constraint.includes("section_key")) {
+        fieldName = "section_key";
+        duplicateValue = validatedData?.sectionKey || "";
+      }
+
+      return res.status(409).json({
+        message: `A checklist definition with this ${fieldName} already exists`,
+        error: "DUPLICATE_KEY",
+        field: fieldName,
+        duplicateValue: duplicateValue,
+        detail: detail || `The ${fieldName} "${duplicateValue}" is already in use`,
+      });
+    }
+
+    // Handle other database errors
+    if (pgError?.code) {
+      console.error("Database error creating checklist definition:", error);
+      return res.status(400).json({
+        message: "Database error occurred",
+        error: pgError.code,
+        detail: pgError.detail || pgError.message || "Unknown database error",
+      });
+    }
+
+    // Generic error handler
     console.error("Error creating checklist definition:", error);
     res
       .status(500)
@@ -1274,12 +1319,57 @@ export async function updateChecklistDefinition(req: Request, res: Response) {
         .json({ message: "Checklist definition not found" });
     }
     res.json(definition);
-  } catch (error) {
+  } catch (error: any) {
+    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return res
         .status(400)
         .json({ message: "Invalid request data", errors: error.errors });
     }
+
+    // Handle database constraint violations (duplicate key errors)
+    // PostgreSQL error code 23505 = unique_violation, 23503 = foreign_key_violation
+    const pgError = error as any;
+    if (pgError?.code === "23505" || pgError?.code === "23503") {
+      const constraint = pgError?.constraint || "";
+      const detail = pgError?.detail || "";
+      
+      // Extract field name from constraint or detail
+      let fieldName = "field";
+      let duplicateValue = "";
+      
+      if (detail) {
+        // Parse detail like: "Key (section_key)=(launch-your-ads-lead-generation) already exists."
+        const match = detail.match(/Key \(([^)]+)\)=\(([^)]+)\)/);
+        if (match) {
+          fieldName = match[1];
+          duplicateValue = match[2];
+        }
+      } else if (constraint.includes("section_key")) {
+        fieldName = "section_key";
+        duplicateValue = validatedData?.sectionKey || "";
+      }
+
+      return res.status(409).json({
+        message: `A checklist definition with this ${fieldName} already exists`,
+        error: "DUPLICATE_KEY",
+        field: fieldName,
+        duplicateValue: duplicateValue,
+        detail: detail || `The ${fieldName} "${duplicateValue}" is already in use`,
+      });
+    }
+
+    // Handle other database errors
+    if (pgError?.code) {
+      console.error("Database error updating checklist definition:", error);
+      return res.status(400).json({
+        message: "Database error occurred",
+        error: pgError.code,
+        detail: pgError.detail || pgError.message || "Unknown database error",
+      });
+    }
+
+    // Generic error handler
     console.error("Error updating checklist definition:", error);
     res
       .status(500)

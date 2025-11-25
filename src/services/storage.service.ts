@@ -1303,7 +1303,7 @@ export class DatabaseStorage implements IStorage {
     // Clean up updates - ensure Date objects are valid or set to null
     // Also remove any fields that shouldn't be updated
     const cleanUpdates: any = {};
-    
+
     // Only copy allowed fields
     const allowedFields = [
       "title",
@@ -1317,37 +1317,41 @@ export class DatabaseStorage implements IStorage {
       "status",
       "extractedInsights",
     ];
-    
+
     for (const field of allowedFields) {
       if (updates[field as keyof typeof updates] !== undefined) {
         cleanUpdates[field] = updates[field as keyof typeof updates];
       }
     }
-    
+
     // Build final update object with only valid fields
     const finalUpdates: any = {};
-    
+
     // Copy all fields except interviewDate first
     for (const key in cleanUpdates) {
       if (key !== "interviewDate") {
         finalUpdates[key] = cleanUpdates[key];
       }
     }
-    
+
     // Handle interviewDate separately - CRITICAL: Only accept Date object or null
     if (cleanUpdates.interviewDate !== undefined) {
       const dateValue = cleanUpdates.interviewDate;
-      
+
       // Check if it's a valid Date object
       if (dateValue instanceof Date) {
         // Valid Date object - check if it's a valid date (not NaN)
         if (!isNaN(dateValue.getTime())) {
           // Valid Date - include it
           finalUpdates.interviewDate = dateValue;
-          console.log(`[STORAGE] Setting interviewDate to valid Date: ${dateValue.toISOString()}`);
+          console.log(
+            `[STORAGE] Setting interviewDate to valid Date: ${dateValue.toISOString()}`
+          );
         } else {
           // Invalid Date (NaN) - set to null
-          console.warn(`[STORAGE] Invalid Date object (NaN), setting interviewDate to null`);
+          console.warn(
+            `[STORAGE] Invalid Date object (NaN), setting interviewDate to null`
+          );
           finalUpdates.interviewDate = null;
         }
       } else if (dateValue === null) {
@@ -1360,15 +1364,21 @@ export class DatabaseStorage implements IStorage {
           const date = new Date(dateValue);
           if (!isNaN(date.getTime())) {
             finalUpdates.interviewDate = date;
-            console.log(`[STORAGE] Converted date string to Date: ${date.toISOString()}`);
+            console.log(
+              `[STORAGE] Converted date string to Date: ${date.toISOString()}`
+            );
           } else {
             // Invalid date string - set to null
-            console.warn(`[STORAGE] Invalid date string: ${dateValue}, setting to null`);
+            console.warn(
+              `[STORAGE] Invalid date string: ${dateValue}, setting to null`
+            );
             finalUpdates.interviewDate = null;
           }
         } else {
           // Empty string - set to null
-          console.warn(`[STORAGE] Empty date string, setting interviewDate to null`);
+          console.warn(
+            `[STORAGE] Empty date string, setting interviewDate to null`
+          );
           finalUpdates.interviewDate = null;
         }
       } else {
@@ -1381,10 +1391,10 @@ export class DatabaseStorage implements IStorage {
         // Don't include it in finalUpdates - field won't be updated
       }
     }
-    
+
     // Always update updatedAt
     finalUpdates.updatedAt = new Date();
-    
+
     // Final safety check: ensure interviewDate is only Date or null if present
     if (finalUpdates.interviewDate !== undefined) {
       if (
@@ -1399,7 +1409,7 @@ export class DatabaseStorage implements IStorage {
         delete finalUpdates.interviewDate;
       }
     }
-    
+
     // Final validation: Check ALL timestamp fields before sending to DB
     const timestampFields = ["interviewDate", "createdAt", "updatedAt"];
     for (const field of timestampFields) {
@@ -1420,13 +1430,18 @@ export class DatabaseStorage implements IStorage {
         }
       }
     }
-    
+
     // Ensure updatedAt is always a valid Date
-    if (!(finalUpdates.updatedAt instanceof Date) || isNaN(finalUpdates.updatedAt.getTime())) {
-      console.error(`[STORAGE] CRITICAL: updatedAt is invalid! Creating new Date`);
+    if (
+      !(finalUpdates.updatedAt instanceof Date) ||
+      isNaN(finalUpdates.updatedAt.getTime())
+    ) {
+      console.error(
+        `[STORAGE] CRITICAL: updatedAt is invalid! Creating new Date`
+      );
       finalUpdates.updatedAt = new Date();
     }
-    
+
     console.log(`[STORAGE] Final updates being sent to DB:`, {
       keys: Object.keys(finalUpdates),
       interviewDate:
@@ -1435,10 +1450,16 @@ export class DatabaseStorage implements IStorage {
           : finalUpdates.interviewDate === null
           ? "null"
           : "NOT PRESENT",
-      interviewDateType: finalUpdates.interviewDate instanceof Date ? "Date" : typeof finalUpdates.interviewDate,
-      updatedAt: finalUpdates.updatedAt instanceof Date ? finalUpdates.updatedAt.toISOString() : "INVALID!",
+      interviewDateType:
+        finalUpdates.interviewDate instanceof Date
+          ? "Date"
+          : typeof finalUpdates.interviewDate,
+      updatedAt:
+        finalUpdates.updatedAt instanceof Date
+          ? finalUpdates.updatedAt.toISOString()
+          : "INVALID!",
     });
-    
+
     // Wrap in try-catch to catch any remaining errors
     try {
       const [transcript] = await db
@@ -1449,13 +1470,19 @@ export class DatabaseStorage implements IStorage {
       return transcript || undefined;
     } catch (error: any) {
       console.error(`[STORAGE] Database update error:`, error);
-      console.error(`[STORAGE] Updates that caused error:`, JSON.stringify(finalUpdates, null, 2));
-      console.error(`[STORAGE] Field types:`, Object.keys(finalUpdates).map(key => ({
-        key,
-        type: typeof finalUpdates[key],
-        isDate: finalUpdates[key] instanceof Date,
-        value: finalUpdates[key],
-      })));
+      console.error(
+        `[STORAGE] Updates that caused error:`,
+        JSON.stringify(finalUpdates, null, 2)
+      );
+      console.error(
+        `[STORAGE] Field types:`,
+        Object.keys(finalUpdates).map((key) => ({
+          key,
+          type: typeof finalUpdates[key],
+          isDate: finalUpdates[key] instanceof Date,
+          value: finalUpdates[key],
+        }))
+      );
       throw error;
     }
   }

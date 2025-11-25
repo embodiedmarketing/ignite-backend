@@ -35,8 +35,8 @@ export async function createApp() {
         else callback(new Error(`CORS blocked for origin: ${origin}`));
       },
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // allow all methods
-      allowedHeaders: ["Content-Type", "Authorization"], // adjust for your headers
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], // allow all methods
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // adjust for your headers
     })
   );
 

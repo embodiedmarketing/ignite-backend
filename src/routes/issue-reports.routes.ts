@@ -14,4 +14,3 @@ router.patch("/:id", updateIssueReport);
 router.delete("/:id", deleteIssueReport);
 
 export default router;
-

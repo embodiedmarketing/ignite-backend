@@ -15,6 +15,13 @@
       "when": 1761728430283,
       "tag": "0001_familiar_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764002420687,
+      "tag": "0002_foamy_marten_broadcloak",
+      "breakpoints": true
     }
   ]
 }

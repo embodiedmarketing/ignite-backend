@@ -182,13 +182,22 @@ export async function intelligentInterviewProcessing(
   res: Response
 ) {
   try {
-    const { transcript, userId, existingMessagingStrategy } = req.body;
+    const { transcript, userId, existingMessagingStrategy, transcriptId } =
+      req.body;
 
     if (!transcript || !userId) {
       return res
         .status(400)
         .json({ message: "Transcript and userId are required" });
     }
+
+    console.log(
+      `[PROCESSING] Processing transcript for user ${userId}${
+        transcriptId
+          ? `, transcriptId: ${transcriptId}`
+          : " (no transcriptId provided)"
+      }`
+    );
 
     const { intelligentlyProcessInterviewTranscript } = await import(
       "../services/ai-intelligent-interview-processor"
@@ -270,6 +279,93 @@ export async function intelligentInterviewProcessing(
       }
     }
 
+    // if (transcriptId && messagingUpdates?.updates) {
+    //   try {
+    //     const transcriptIdNum = parseInt(String(transcriptId));
+    //     if (!isNaN(transcriptIdNum)) {
+    //       // Verify transcript exists and belongs to user
+    //       const existingTranscript = await storage.getInterviewTranscript(
+    //         transcriptIdNum
+    //       );
+
+    //       if (!existingTranscript) {
+    //         console.warn(
+    //           `[INTERVIEW NOTES] Transcript ${transcriptIdNum} not found, skipping interview_notes save`
+    //         );
+    //       } else if (
+    //         parseInt(String(existingTranscript.userId)) !==
+    //         parseInt(String(userId))
+    //       ) {
+    //         console.warn(
+    //           `[INTERVIEW NOTES] Transcript ${transcriptIdNum} does not belong to user ${userId}, skipping interview_notes save`
+    //         );
+    //       } else {
+    //         // Save each extracted answer to interview_notes with transcriptId
+    //         const savedNotes: string[] = [];
+    //         const updates = messagingUpdates.updates;
+
+    //         for (const [noteKey, content] of Object.entries(updates)) {
+    //           // Skip dataSourceReport and other metadata fields
+    //           if (
+    //             noteKey === "dataSourceReport" ||
+    //             typeof content !== "string"
+    //           ) {
+    //             continue;
+    //           }
+
+    //           if (
+    //             content &&
+    //             content.trim() &&
+    //             content.trim().toUpperCase() !== "N/A"
+    //           ) {
+    //             try {
+    //               // Check if note exists for this transcript
+    //               const existingNote = await db.execute(
+    //                 sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+    //               );
+
+    //               if (existingNote.rows.length > 0) {
+    //                 // Update existing note
+    //                 await db.execute(
+    //                   sql`UPDATE interview_notes SET content = ${content.trim()}, source = 'transcript', updated_at = NOW() WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+    //                 );
+    //               } else {
+    //                 // Insert new note
+    //                 await db.execute(
+    //                   sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source, is_deleted) VALUES (${userId}, ${transcriptIdNum}, ${noteKey}, ${content.trim()}, 'transcript', false)`
+    //                 );
+    //               }
+
+    //               savedNotes.push(noteKey);
+    //               console.log(
+    //                 `[INTERVIEW NOTES] Saved ${noteKey} to interview_notes for transcript ${transcriptIdNum}`
+    //               );
+    //             } catch (noteError) {
+    //               console.error(
+    //                 `Error saving interview note ${noteKey}:`,
+    //                 noteError
+    //               );
+    //               // Continue with other notes even if one fails
+    //             }
+    //           }
+    //         }
+
+    //         console.log(
+    //           `[INTERVIEW NOTES] ✅ Saved ${savedNotes.length} notes to interview_notes for transcript ${transcriptIdNum}:`,
+    //           savedNotes
+    //         );
+    //       }
+    //     }
+    //   } catch (notesError) {
+    //     console.error("Error saving insights to interview_notes:", notesError);
+    //     // Continue execution even if interview_notes save fails
+    //   }
+    // } else {
+    //   console.warn(
+    //     `[INTERVIEW NOTES] ⚠️ No transcriptId provided! Insights NOT saved to interview_notes.`
+    //   );
+    // }
+
     // Return response with both the full structure and flattened updates for frontend convenience
     res.json({
       success: true,
@@ -283,6 +379,129 @@ export async function intelligentInterviewProcessing(
     console.error("Error in intelligent interview processing:", error);
     res.status(500).json({
       message: "Failed to process interview transcript",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+
+/**
+ * Get interview notes for a specific transcript by ID
+ * This endpoint fetches notes from interview_notes table linked to a specific transcript
+ */
+export async function getTranscriptNotes(req: Request, res: Response) {
+  try {
+    const transcriptId = parseInt(req.params.id || (req.query.id as string));
+
+    if (!transcriptId || isNaN(transcriptId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Transcript ID is required",
+      });
+    }
+
+    console.log(
+      `[GET TRANSCRIPT NOTES] Fetching interview notes for transcript ID ${transcriptId}`
+    );
+
+    // Verify transcript exists
+    const transcript = await storage.getInterviewTranscript(transcriptId);
+    if (!transcript) {
+      return res.status(404).json({
+        success: false,
+        message: `Transcript with ID ${transcriptId} not found`,
+      });
+    }
+
+    // Fetch notes from interview_notes table for this transcript
+    const result = await db.execute(
+      sql`SELECT * FROM interview_notes WHERE transcript_id = ${transcriptId} AND is_deleted = false ORDER BY note_key`
+    );
+
+    // Map field names to user-friendly labels
+    const fieldLabels: Record<string, string> = {
+      frustrations: "Frustrations",
+      nighttime_worries: "Nighttime Worries",
+      secret_fears: "Secret Fears",
+      magic_solution: "Magic Solution (Ideal Outcome)",
+      demographics: "Demographics",
+      failed_solutions: "Failed Solutions",
+      blockers: "Blockers",
+      info_sources: "Info Sources",
+      decision_making: "Decision Making",
+      investment_criteria: "Investment Criteria",
+      success_measures: "Success Measures",
+      referral_outcomes: "Referral Outcomes",
+    };
+
+    // Extract answers from interview notes
+    const extractedAnswers: Record<string, string> = {};
+    const notesMetadata: Record<string, any> = {};
+
+    for (const row of result.rows) {
+      const noteKey = (row as any).note_key?.toLowerCase() || "";
+      const content = (row as any).content || "";
+      const source = (row as any).source || "transcript";
+
+      if (content && content.trim() && content.trim().toUpperCase() !== "N/A") {
+        extractedAnswers[noteKey] = content.trim();
+        notesMetadata[noteKey] = {
+          id: (row as any).id,
+          source: source,
+          createdAt: (row as any).created_at,
+          updatedAt: (row as any).updated_at,
+        };
+      }
+    }
+
+    const notesCount = Object.keys(extractedAnswers).length;
+
+    console.log(
+      `[GET TRANSCRIPT NOTES] Found ${notesCount} interview notes for transcript ${transcriptId}`
+    );
+
+    // Return response
+    res.json({
+      success: true,
+      message:
+        notesCount > 0
+          ? `Found ${notesCount} interview notes for this transcript`
+          : "No interview notes found for this transcript. Please process the transcript first.",
+
+      // Transcript metadata
+      transcript: {
+        id: transcript.id,
+        title: transcript.title,
+        customerName: transcript.customerName,
+        interviewDate: transcript.interviewDate,
+        platform: transcript.platform,
+        status: transcript.status,
+      },
+
+      // Extracted interview answers/responses
+      extractedAnswers: extractedAnswers,
+
+      // Field labels for display
+      fieldLabels: fieldLabels,
+
+      // Notes metadata (source, dates, etc.)
+      notesMetadata: notesMetadata,
+
+      // Summary
+      summary: {
+        totalNotesFound: notesCount,
+        noteKeys: Object.keys(extractedAnswers),
+        hasNotes: notesCount > 0,
+      },
+
+      // Metadata
+      timestamp: new Date().toISOString(),
+      transcriptId: transcriptId,
+    });
+  } catch (error) {
+    console.error("Error fetching transcript notes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch transcript notes",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
