@@ -9,14 +9,10 @@ import {
 
 const router = Router();
 
-router.get("/:userId", getInterviewNotes);
+router.get("/:transcriptId", getInterviewNotes);
 router.post("/", upsertInterviewNote);
 router.get("/:userId/:noteKey/history", getInterviewNoteHistory);
 router.post("/restore", restoreInterviewNote);
 router.post("/bulk", bulkSaveInterviewNotes);
 
 export default router;
-
-
-
-

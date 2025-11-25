@@ -279,92 +279,94 @@ export async function intelligentInterviewProcessing(
       }
     }
 
-    // if (transcriptId && messagingUpdates?.updates) {
-    //   try {
-    //     const transcriptIdNum = parseInt(String(transcriptId));
-    //     if (!isNaN(transcriptIdNum)) {
-    //       // Verify transcript exists and belongs to user
-    //       const existingTranscript = await storage.getInterviewTranscript(
-    //         transcriptIdNum
-    //       );
+    console.log("transcriptId", transcriptId, messagingUpdates);
 
-    //       if (!existingTranscript) {
-    //         console.warn(
-    //           `[INTERVIEW NOTES] Transcript ${transcriptIdNum} not found, skipping interview_notes save`
-    //         );
-    //       } else if (
-    //         parseInt(String(existingTranscript.userId)) !==
-    //         parseInt(String(userId))
-    //       ) {
-    //         console.warn(
-    //           `[INTERVIEW NOTES] Transcript ${transcriptIdNum} does not belong to user ${userId}, skipping interview_notes save`
-    //         );
-    //       } else {
-    //         // Save each extracted answer to interview_notes with transcriptId
-    //         const savedNotes: string[] = [];
-    //         const updates = messagingUpdates.updates;
+    if (transcriptId && messagingUpdates?.updates) {
+      try {
+        const transcriptIdNum = parseInt(String(transcriptId));
+        if (!isNaN(transcriptIdNum)) {
+          // Verify transcript exists and belongs to user
+          const existingTranscript = await storage.getInterviewTranscript(
+            transcriptIdNum
+          );
 
-    //         for (const [noteKey, content] of Object.entries(updates)) {
-    //           // Skip dataSourceReport and other metadata fields
-    //           if (
-    //             noteKey === "dataSourceReport" ||
-    //             typeof content !== "string"
-    //           ) {
-    //             continue;
-    //           }
+          if (!existingTranscript) {
+            console.warn(
+              `[INTERVIEW NOTES] Transcript ${transcriptIdNum} not found, skipping interview_notes save`
+            );
+          } else if (
+            parseInt(String(existingTranscript.userId)) !==
+            parseInt(String(userId))
+          ) {
+            console.warn(
+              `[INTERVIEW NOTES] Transcript ${transcriptIdNum} does not belong to user ${userId}, skipping interview_notes save`
+            );
+          } else {
+            // Save each extracted answer to interview_notes with transcriptId
+            const savedNotes: string[] = [];
+            const updates = messagingUpdates.updates;
 
-    //           if (
-    //             content &&
-    //             content.trim() &&
-    //             content.trim().toUpperCase() !== "N/A"
-    //           ) {
-    //             try {
-    //               // Check if note exists for this transcript
-    //               const existingNote = await db.execute(
-    //                 sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
-    //               );
+            for (const [noteKey, content] of Object.entries(updates)) {
+              // Skip dataSourceReport and other metadata fields
+              if (
+                noteKey === "dataSourceReport" ||
+                typeof content !== "string"
+              ) {
+                continue;
+              }
 
-    //               if (existingNote.rows.length > 0) {
-    //                 // Update existing note
-    //                 await db.execute(
-    //                   sql`UPDATE interview_notes SET content = ${content.trim()}, source = 'transcript', updated_at = NOW() WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
-    //                 );
-    //               } else {
-    //                 // Insert new note
-    //                 await db.execute(
-    //                   sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source, is_deleted) VALUES (${userId}, ${transcriptIdNum}, ${noteKey}, ${content.trim()}, 'transcript', false)`
-    //                 );
-    //               }
+              if (
+                content &&
+                content.trim() &&
+                content.trim().toUpperCase() !== "N/A"
+              ) {
+                try {
+                  // Check if note exists for this transcript
+                  const existingNote = await db.execute(
+                    sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+                  );
 
-    //               savedNotes.push(noteKey);
-    //               console.log(
-    //                 `[INTERVIEW NOTES] Saved ${noteKey} to interview_notes for transcript ${transcriptIdNum}`
-    //               );
-    //             } catch (noteError) {
-    //               console.error(
-    //                 `Error saving interview note ${noteKey}:`,
-    //                 noteError
-    //               );
-    //               // Continue with other notes even if one fails
-    //             }
-    //           }
-    //         }
+                  if (existingNote.rows.length > 0) {
+                    // Update existing note
+                    await db.execute(
+                      sql`UPDATE interview_notes SET content = ${content.trim()}, source = 'transcript', updated_at = NOW() WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+                    );
+                  } else {
+                    // Insert new note
+                    await db.execute(
+                      sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source, is_deleted) VALUES (${userId}, ${transcriptIdNum}, ${noteKey}, ${content.trim()}, 'transcript', false)`
+                    );
+                  }
 
-    //         console.log(
-    //           `[INTERVIEW NOTES] ✅ Saved ${savedNotes.length} notes to interview_notes for transcript ${transcriptIdNum}:`,
-    //           savedNotes
-    //         );
-    //       }
-    //     }
-    //   } catch (notesError) {
-    //     console.error("Error saving insights to interview_notes:", notesError);
-    //     // Continue execution even if interview_notes save fails
-    //   }
-    // } else {
-    //   console.warn(
-    //     `[INTERVIEW NOTES] ⚠️ No transcriptId provided! Insights NOT saved to interview_notes.`
-    //   );
-    // }
+                  savedNotes.push(noteKey);
+                  console.log(
+                    `[INTERVIEW NOTES] Saved ${noteKey} to interview_notes for transcript ${transcriptIdNum}`
+                  );
+                } catch (noteError) {
+                  console.error(
+                    `Error saving interview note ${noteKey}:`,
+                    noteError
+                  );
+                  // Continue with other notes even if one fails
+                }
+              }
+            }
+
+            console.log(
+              `[INTERVIEW NOTES] ✅ Saved ${savedNotes.length} notes to interview_notes for transcript ${transcriptIdNum}:`,
+              savedNotes
+            );
+          }
+        }
+      } catch (notesError) {
+        console.error("Error saving insights to interview_notes:", notesError);
+        // Continue execution even if interview_notes save fails
+      }
+    } else {
+      console.warn(
+        `[INTERVIEW NOTES] ⚠️ No transcriptId provided! Insights NOT saved to interview_notes.`
+      );
+    }
 
     // Return response with both the full structure and flattened updates for frontend convenience
     res.json({
