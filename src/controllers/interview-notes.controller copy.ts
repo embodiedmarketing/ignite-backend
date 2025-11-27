@@ -4,17 +4,27 @@ import { sql } from "drizzle-orm";
 
 /**
  * Get all interview notes for a user
+ * Optionally filter by transcriptId if provided in query params
  */
 export async function getInterviewNotes(req: Request, res: Response) {
   try {
     const userId = parseInt(req.params.userId);
+    const transcriptId = req.query.transcriptId
+      ? parseInt(req.query.transcriptId as string)
+      : null;
+
     if (!userId) {
       return res.status(400).json({ error: "Valid user ID is required" });
     }
 
-    const result = await db.execute(
-      sql`SELECT * FROM interview_notes WHERE user_id = ${userId} ORDER BY note_key`
-    );
+    // If transcriptId is provided, filter by it; otherwise get all notes for user
+    const result = transcriptId
+      ? await db.execute(
+          sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptId} AND is_deleted = false ORDER BY note_key`
+        )
+      : await db.execute(
+          sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND is_deleted = false ORDER BY transcript_id NULLS LAST, note_key`
+        );
 
     res.json(result.rows);
   } catch (error) {
@@ -25,10 +35,18 @@ export async function getInterviewNotes(req: Request, res: Response) {
 
 /**
  * Create or update interview note
+ * Now supports transcriptId to link notes to specific transcripts
  */
 export async function upsertInterviewNote(req: Request, res: Response) {
   try {
-    const { userId, noteKey, content, source = "manual", sessionId } = req.body;
+    const {
+      userId,
+      noteKey,
+      content,
+      source = "manual",
+      sessionId,
+      transcriptId, // NEW: Link note to specific transcript
+    } = req.body;
 
     if (!userId || !noteKey || content === undefined) {
       return res
@@ -36,10 +54,31 @@ export async function upsertInterviewNote(req: Request, res: Response) {
         .json({ error: "userId, noteKey, and content are required" });
     }
 
-    // Check if note exists
-    const existingNote = await db.execute(
-      sql`SELECT id, content FROM interview_notes WHERE user_id = ${userId} AND note_key = ${noteKey}`
+    // Validate transcriptId if provided
+    const transcriptIdNum = transcriptId
+      ? parseInt(String(transcriptId))
+      : null;
+    if (transcriptId && (isNaN(transcriptIdNum!) || transcriptIdNum! <= 0)) {
+      return res
+        .status(400)
+        .json({ error: "transcriptId must be a valid positive integer" });
+    }
+
+    console.log(
+      `[UPSERT NOTE] userId=${userId}, noteKey=${noteKey}, transcriptId=${
+        transcriptIdNum || "null"
+      }, source=${source}`
     );
+
+    // Check if note exists for this user + transcript + noteKey combination
+    // If transcriptId is null, check for notes without transcriptId
+    const existingNote = transcriptIdNum
+      ? await db.execute(
+          sql`SELECT id, content FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+        )
+      : await db.execute(
+          sql`SELECT id, content FROM interview_notes WHERE user_id = ${userId} AND transcript_id IS NULL AND note_key = ${noteKey}`
+        );
 
     let actionType = "create";
 
@@ -47,17 +86,31 @@ export async function upsertInterviewNote(req: Request, res: Response) {
       actionType = content === "" ? "delete" : "update";
 
       // Update existing note
-      await db.execute(
-        sql`UPDATE interview_notes SET content = ${content}, source = ${source}, is_deleted = ${
-          content === ""
-        }, updated_at = NOW() WHERE user_id = ${userId} AND note_key = ${noteKey}`
-      );
+      if (transcriptIdNum) {
+        await db.execute(
+          sql`UPDATE interview_notes SET content = ${content}, source = ${source}, is_deleted = ${
+            content === ""
+          }, updated_at = NOW() WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+        );
+      } else {
+        await db.execute(
+          sql`UPDATE interview_notes SET content = ${content}, source = ${source}, is_deleted = ${
+            content === ""
+          }, updated_at = NOW() WHERE user_id = ${userId} AND transcript_id IS NULL AND note_key = ${noteKey}`
+        );
+      }
     } else {
       // Insert new note (only if content is not empty)
       if (content !== "") {
-        await db.execute(
-          sql`INSERT INTO interview_notes (user_id, note_key, content, source, is_deleted) VALUES (${userId}, ${noteKey}, ${content}, ${source}, false)`
-        );
+        if (transcriptIdNum) {
+          await db.execute(
+            sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source, is_deleted) VALUES (${userId}, ${transcriptIdNum}, ${noteKey}, ${content}, ${source}, false)`
+          );
+        } else {
+          await db.execute(
+            sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source, is_deleted) VALUES (${userId}, NULL, ${noteKey}, ${content}, ${source}, false)`
+          );
+        }
       }
     }
 
@@ -68,10 +121,33 @@ export async function upsertInterviewNote(req: Request, res: Response) {
       })`
     );
 
+    console.log(
+      `[UPSERT NOTE] ✅ ${
+        actionType === "create"
+          ? "Created"
+          : actionType === "update"
+          ? "Updated"
+          : "Deleted"
+      } note: userId=${userId}, noteKey=${noteKey}, transcriptId=${
+        transcriptIdNum || "null"
+      }`
+    );
+
     res.json({
       success: true,
-      message: "Interview note saved successfully",
+      message: `Interview note ${
+        actionType === "create"
+          ? "saved"
+          : actionType === "update"
+          ? "updated"
+          : "deleted"
+      } successfully${
+        transcriptIdNum ? ` for transcript ${transcriptIdNum}` : ""
+      }`,
       actionType,
+      transcriptId: transcriptIdNum || null,
+      noteKey,
+      userId,
     });
   } catch (error) {
     console.error("Error saving interview note:", error);
@@ -191,10 +267,11 @@ export async function restoreInterviewNote(req: Request, res: Response) {
 
 /**
  * Bulk save interview notes from transcript parsing
+ * Now supports transcriptId to link notes to specific transcripts
  */
 export async function bulkSaveInterviewNotes(req: Request, res: Response) {
   try {
-    const { userId, notes, source = "transcript" } = req.body;
+    const { userId, notes, source = "transcript", transcriptId } = req.body;
 
     if (!userId || !notes || typeof notes !== "object") {
       return res
@@ -202,25 +279,57 @@ export async function bulkSaveInterviewNotes(req: Request, res: Response) {
         .json({ error: "userId and notes object are required" });
     }
 
+    // Validate transcriptId if provided
+    const transcriptIdNum = transcriptId
+      ? parseInt(String(transcriptId))
+      : null;
+    if (transcriptId && (isNaN(transcriptIdNum!) || transcriptIdNum! <= 0)) {
+      return res
+        .status(400)
+        .json({ error: "transcriptId must be a valid positive integer" });
+    }
+
+    console.log(
+      `[BULK SAVE NOTES] userId=${userId}, transcriptId=${
+        transcriptIdNum || "null"
+      }, notes count=${Object.keys(notes).length}`
+    );
+
     const savedNotes = [];
 
     for (const [noteKey, content] of Object.entries(notes)) {
       if (content && typeof content === "string" && content.trim()) {
-        // Check if note exists
-        const existingNote = await db.execute(
-          sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND note_key = ${noteKey}`
-        );
+        // Check if note exists for this user + transcript + noteKey combination
+        const existingNote = transcriptIdNum
+          ? await db.execute(
+              sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+            )
+          : await db.execute(
+              sql`SELECT id FROM interview_notes WHERE user_id = ${userId} AND transcript_id IS NULL AND note_key = ${noteKey}`
+            );
 
         if (existingNote.rows.length > 0) {
           // Update existing note
-          await db.execute(
-            sql`UPDATE interview_notes SET content = ${content}, source = ${source}, updated_at = NOW() WHERE user_id = ${userId} AND note_key = ${noteKey}`
-          );
+          if (transcriptIdNum) {
+            await db.execute(
+              sql`UPDATE interview_notes SET content = ${content}, source = ${source}, updated_at = NOW() WHERE user_id = ${userId} AND transcript_id = ${transcriptIdNum} AND note_key = ${noteKey}`
+            );
+          } else {
+            await db.execute(
+              sql`UPDATE interview_notes SET content = ${content}, source = ${source}, updated_at = NOW() WHERE user_id = ${userId} AND transcript_id IS NULL AND note_key = ${noteKey}`
+            );
+          }
         } else {
           // Insert new note
-          await db.execute(
-            sql`INSERT INTO interview_notes (user_id, note_key, content, source) VALUES (${userId}, ${noteKey}, ${content}, ${source})`
-          );
+          if (transcriptIdNum) {
+            await db.execute(
+              sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source) VALUES (${userId}, ${transcriptIdNum}, ${noteKey}, ${content}, ${source})`
+            );
+          } else {
+            await db.execute(
+              sql`INSERT INTO interview_notes (user_id, transcript_id, note_key, content, source) VALUES (${userId}, NULL, ${noteKey}, ${content}, ${source})`
+            );
+          }
         }
 
         savedNotes.push(noteKey);
@@ -229,8 +338,11 @@ export async function bulkSaveInterviewNotes(req: Request, res: Response) {
 
     res.json({
       success: true,
-      message: `Successfully saved ${savedNotes.length} interview notes`,
+      message: `Successfully saved ${savedNotes.length} interview notes${
+        transcriptIdNum ? ` for transcript ${transcriptIdNum}` : ""
+      }`,
       savedNotes,
+      transcriptId: transcriptIdNum,
     });
   } catch (error) {
     console.error("Error bulk saving interview notes:", error);
