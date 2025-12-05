@@ -19,6 +19,14 @@ interface MessagingStrategyResult {
   completeness: number;
   recommendations: string[];
   dataSourceReport?: any; // For debugging contamination issues
+  alignmentScore?: number; // Score showing how aligned the strategy is to source data
+  improvementNotes?: string[]; // Notes on what was improved from previous version
+}
+
+interface RegenerationOptions {
+  previousStrategy?: string;
+  feedbackNotes?: string;
+  focusAreas?: string[];
 }
 
 // EMOTIONAL INSIGHTS EXTRACTION FUNCTION
@@ -103,7 +111,8 @@ Format your response as follows:
 export async function generateMessagingStrategy(
   workbookResponses: WorkbookResponses,
   interviewNotes?: Record<string, string>,
-  userId: number = 0
+  userId: number = 0,
+  regenerationOptions?: RegenerationOptions
 ): Promise<MessagingStrategyResult> {
   try {
     // CONTAMINATION PREVENTION: Validate and separate data sources
@@ -327,13 +336,161 @@ All sections must reinforce:
 
 📌 FINAL OUTPUT REQUIREMENT
 
-Deliver a messaging strategy that mirrors the depth, accuracy, emotional nuance, and owner-specific authenticity. The strategy must feel like it could ONLY come from this specific business owner — never generic, never templated.`;
+Deliver a messaging strategy that mirrors the depth, accuracy, emotional nuance, and owner-specific authenticity. The strategy must feel like it could ONLY come from this specific business owner — never generic, never templated.
+
+🚨 ANTI-DRIFT RULES (CRITICAL - READ CAREFULLY)
+
+**DO NOT DEFAULT TO GENERIC LANGUAGE. The #1 mistake is drifting toward typical coaching/business language when the source data says something different.**
+
+COMMON DRIFT PATTERNS TO AVOID:
+
+1. **Audience Drift** - Do NOT assume "entrepreneur" or "business owner" unless the source data SAYS this
+   - If they say "professionals" → write "professionals" (not "entrepreneurs")
+   - If they say "women in transition" → write that (not "female founders")
+   - If they say "people feeling stuck" → write that (not "business owners ready to scale")
+   - ALWAYS USE THEIR EXACT AUDIENCE DESCRIPTION
+
+2. **Tone Drift** - Do NOT default to hustle/growth/scale language unless the source supports it
+   - If their tone is reflective → keep it reflective (not "let's crush it")
+   - If their tone is gentle → keep it gentle (not "stop playing small")
+   - If their tone is wise → keep it wise (not "game-changing results")
+   - MATCH THEIR ACTUAL VOICE, NOT TYPICAL MARKETING VOICE
+
+3. **Problem Drift** - Do NOT add generic business problems they didn't mention
+   - If they talk about "life pressure" → don't change it to "revenue challenges"
+   - If they talk about "feeling invisible" → don't change it to "marketing struggles"
+   - If they talk about "internal conflict" → don't change it to "business bottlenecks"
+   - USE THEIR EXACT PROBLEMS
+
+4. **Outcome Drift** - Do NOT add hustle outcomes they didn't promise
+   - If they promise "peace" → don't change it to "6-figure months"
+   - If they promise "clarity" → don't change it to "explosive growth"
+   - If they promise "alignment" → don't change it to "scaling fast"
+   - USE THEIR EXACT TRANSFORMATION
+
+**BEFORE WRITING EACH SECTION, ASK:**
+"Is this EXACTLY what they said, or am I defaulting to generic coaching language?"
+
+If you catch yourself writing typical marketing/coaching phrases, STOP and return to the source data.`;
 
     // Add unique variation to ensure different outputs each time
     const uniquePromptId = Date.now();
     const variationNote = `[Generation Request #${uniquePromptId} - ${new Date().toISOString()}]`;
 
+    // REGENERATION MODE: If previous strategy exists, include improvement instructions
+    const isRegeneration = regenerationOptions?.previousStrategy?.trim();
+    let regenerationContext = "";
+    
+    if (isRegeneration && regenerationOptions) {
+      console.log("[REGENERATION MODE] Previous strategy detected - generating improved version");
+      const prevStrategy = regenerationOptions.previousStrategy || "";
+      const feedbackNotes = regenerationOptions.feedbackNotes || "";
+      const focusAreas = regenerationOptions.focusAreas || [];
+      
+      regenerationContext = `
+
+===== 🔄 REGENERATION MODE: ENHANCE TO 100% ALIGNMENT =====
+
+**🎯 YOUR MISSION: Create an ENHANCED version that is:**
+1. **100% aligned to the Q&A source data** (not 85%, not 90% — EXACTLY 100%)
+2. **MORE CONCISE than the previous version** (enhancement ≠ more words)
+3. **MORE SPECIFIC than the previous version** (deeper accuracy, not broader coverage)
+4. **GROUNDED & TRUSTED ADVISOR TONE** (never promotional or hypey)
+
+**PREVIOUS STRATEGY TO ENHANCE:**
+${prevStrategy}
+
+${feedbackNotes ? `**USER FEEDBACK TO ADDRESS:**\n${feedbackNotes}\n` : ""}
+${focusAreas.length > 0 ? `**PRIORITY FOCUS AREAS:**\n${focusAreas.map(area => `- ${area}`).join('\n')}\n` : ""}
+
+**⚠️ COMMON REGENERATION MISTAKES TO AVOID:**
+
+❌ **MISTAKE 1: Adding verbosity** 
+- Previous: "They feel overwhelmed by daily demands"
+- BAD enhancement: "They feel deeply overwhelmed and exhausted by the constant, never-ending daily demands that pile up and create stress"
+- GOOD enhancement: "They feel overwhelmed by daily demands — the school runs, the aging parents, the work deadlines that never stop"
+→ Enhancement = MORE SPECIFIC, not MORE WORDS
+
+❌ **MISTAKE 2: Diluting pain points with wordiness**
+- If previous version was emotionally resonant and concise, KEEP IT CONCISE
+- Don't pad sentences with filler words
+- Every word must earn its place
+
+❌ **MISTAKE 3: Shifting to promotional tone**
+- Previous: "We help professionals find balance"
+- BAD: "We TRANSFORM professionals into POWERFUL balanced beings!"
+- GOOD: "We help professionals find the balance they've been quietly craving"
+→ Keep the trusted advisor tone, never become a salesperson
+
+❌ **MISTAKE 4: Reducing alignment to add "improvements"**
+- If previous version was 95% aligned, the new version must be 100%, NOT 85%
+- NEVER sacrifice alignment for "better marketing language"
+- Source data accuracy > copywriting flourishes
+
+**✅ WHAT "ENHANCED" ACTUALLY MEANS:**
+
+1. **More Precise Audience Description**
+   - Previous: "Professionals feeling stuck"
+   - Enhanced: "Professionals in their 40s-50s feeling the weight of family responsibilities while wondering if this is all there is"
+   → Added SPECIFICITY from source data, not generic expansion
+
+2. **Sharper Pain Points** (from source data)
+   - Previous: "They compare themselves to others"
+   - Enhanced: "They watch colleagues get promoted while they stay stuck, wondering what's wrong with them"
+   → Added EMOTIONAL DEPTH from source data, stayed concise
+
+3. **Clearer Outcomes** (exactly as stated in Q&A)
+   - Previous: "Find peace and clarity"
+   - Enhanced: "Wake up without dread, know exactly what matters, feel at peace with their choices"
+   → Added TANGIBLE DETAIL from source data, kept it grounded
+
+4. **Tighter Voice** (match owner's actual tone)
+   - Remove any sentence that sounds "marketing-y"
+   - Keep sentences that sound like a wise friend giving advice
+   - Empathetic, not promotional
+
+**🔍 100% ALIGNMENT CHECKLIST:**
+
+Before finalizing, verify EVERY element:
+- [ ] Audience: Uses EXACT description from Q&A (not my assumption)
+- [ ] Problems: Lists ONLY problems mentioned in Q&A (not generic ones)
+- [ ] Desires: States ONLY outcomes from Q&A (not typical coaching promises)
+- [ ] Voice: Matches owner's tone exactly (grounded, not promotional)
+- [ ] Framework: Uses EXACT name/structure from Q&A (not invented)
+- [ ] Differentiators: From Q&A only (not generic industry differentiators)
+- [ ] Every sentence traceable to source data
+
+**📏 CONCISENESS RULES:**
+
+- If previous version said something well in 10 words, don't expand to 25 words
+- Remove filler words: "really", "very", "truly", "deeply", "absolutely"
+- Remove repetitive points — say it once, say it well
+- Brevity is clarity. Concise is powerful.
+- The best enhancement often REMOVES words while adding PRECISION
+
+**🎭 TONE REQUIREMENTS:**
+
+- Trusted advisor, not salesperson
+- Empathetic, not excited
+- Grounded, not hypey
+- Wise, not pushy
+- Calm confidence, not aggressive claims
+
+**OUTPUT REQUIREMENT:**
+Generate an enhanced version that:
+1. Is 100% aligned to Q&A (every element verifiable against source)
+2. Is MORE CONCISE than previous (fewer words, more precision)
+3. Is MORE SPECIFIC (deeper accuracy from source data)
+4. Maintains grounded, trusted advisor tone throughout
+5. Could only come from THIS owner for THEIR specific audience
+
+===== END REGENERATION INSTRUCTIONS =====
+
+`;
+    }
+
     const userMessage = `${variationNote}
+${regenerationContext}
 
 ===== USER BUSINESS CONTEXT (From Workbook Responses) =====
 ${formatUserInsightsForPrompt(insights)}
@@ -417,6 +574,20 @@ VERIFICATION: Your output MUST show clear evidence that you used the structured 
     : ""
 }
 CREATE A COMPLETE MESSAGING STRATEGY WITH THE FOLLOWING SECTIONS:
+
+⚠️ **BEFORE YOU START WRITING:**
+1. Re-read ALL the workbook responses above
+2. Identify the EXACT audience they describe (not what you assume)
+3. Identify the EXACT problems they mention (not generic ones)
+4. Identify the EXACT outcomes they promise (not typical coaching outcomes)
+5. Identify THEIR voice and tone (not marketing-speak)
+6. Write ONLY what is supported by their answers
+
+**DO NOT DEFAULT TO:**
+- "Entrepreneur" or "business owner" unless they specifically said this
+- Hustle/scale/growth language unless their tone supports it
+- Generic coaching problems like "stuck" or "overwhelmed" unless they used these words
+- Income/revenue promises unless they specifically mentioned these
 
 # MESSAGING STRATEGY
 
@@ -636,32 +807,49 @@ Example:
 
 ---
 
-FINAL REMINDERS - AUTHENTIC VOICE, SPECIFIC, TANGIBLE STYLE:
+FINAL REMINDERS - 100% ALIGNMENT, CONCISE, GROUNDED:
 
-**BRAND VOICE REQUIREMENTS (HIGHEST PRIORITY):**
-- Extract and amplify the business owner's AUTHENTIC VOICE from their Brand Voice Development answers
-- The Brand Voice Guidelines section MUST be prominent and detailed - this is core to the strategy
+**🎯 100% Q&A ALIGNMENT (NON-NEGOTIABLE):**
+- Every audience description must come DIRECTLY from their answers
+- Every pain point must be EXACTLY what they described
+- Every desire/outcome must be THEIR stated transformation
+- Every differentiator must be what THEY said makes them unique
+- If it's not in the source data, it should NOT be in the strategy
+
+**✂️ CONCISENESS REQUIREMENTS:**
+- Say more with fewer words — brevity is power
+- Remove filler: "really", "very", "truly", "deeply", "absolutely", "actually"
+- Don't repeat the same point in different words
+- If 10 words work, don't use 25
+- Enhancement = more PRECISE, not more VERBOSE
+
+**🎭 TONE REQUIREMENTS:**
+- Trusted advisor, NOT salesperson
+- Empathetic and grounded, NOT excited and hypey
+- Wise and calm, NOT aggressive and pushy
+- Like a thoughtful friend giving honest advice
+- NEVER sound promotional or "marketing-y"
+
+**BRAND VOICE REQUIREMENTS:**
+- Extract and amplify the business owner's AUTHENTIC VOICE from their answers
 - Use their exact language, beliefs, and perspective throughout ALL sections
-- Every section should reflect THEIR personality and unique edge, not generic marketing voice
-- Hooks, messaging pillars, and FAQ answers MUST sound like THEY would say them
+- Every section should reflect THEIR personality, not generic marketing voice
+- Hooks and FAQ answers MUST sound like THEY would say them
 
 **SPECIFICITY REQUIREMENTS:**
-- USE TANGIBLE OUTCOMES EVERYWHERE: Replace every vague benefit with concrete, observable results (numbers, timeframes, specific actions)
-- NO VAGUE BENEFITS ALLOWED: "better work-life balance" → "close laptop at 5pm"; "grow business" → "sign 5 clients/month at $2K each"
-- Include specific moments, scenarios, and real-world situations
-- Use numbers, timeframes, and measurable outcomes throughout
+- Use TANGIBLE outcomes from their answers (not generic promises)
+- Include specific moments and real-world situations THEY mentioned
+- Use their numbers, timeframes, and metrics (don't invent new ones)
 
 **CUSTOMER LANGUAGE:**
-- Use customer's exact quotes and authentic language from their answers
-- Show specific struggles with tangible, relatable details
-- Always name both emotional cost AND emotional reward
-- Make belief shifts relatable with before/after examples
+- Use customer's exact quotes from their answers
+- Show specific struggles THEY described
+- Name emotional costs and rewards THEY identified
 
 **CONSISTENCY:**
-- INCLUDE user's unique differentiator/framework/system throughout (especially in Core Promise, Brand Voice Guidelines, and Offer Snapshot)
-- Everything must ladder back to the same core promise and the owner's authentic voice
-- Keep it simple, authentic, emotionally grounded—avoid all hype, buzzwords, jargon
-- AUTHENTIC over polished. THEIR VOICE over generic marketing. SPECIFIC over vague.`;
+- Everything must trace back to the source Q&A data
+- Keep it simple, authentic, emotionally grounded
+- CONCISE over verbose. ACCURATE over creative. THEIR VOICE over marketing voice.`;
 
     // FORCE NEW GENERATION: Add unique identifier and explicit instructions
     const generationId = `gen_${Date.now()}_${Math.random()
@@ -868,11 +1056,25 @@ ADDITIONAL CREATIVE DIRECTION:
       `[MESSAGING STRATEGY] ✅ NEW strategy generated successfully (${cleanStrategy.length} characters, ID: ${generationId})`
     );
 
+    // Calculate alignment score
+    const alignmentResult = calculateAlignmentScore(
+      cleanStrategy,
+      cleanUserResponses,
+      emotionalInsights
+    );
+
+    console.log(`[ALIGNMENT] Strategy alignment score: ${alignmentResult.score}%`);
+    if (isRegeneration) {
+      console.log(`[REGENERATION] This is an improved version of a previous strategy`);
+    }
+
     return {
       strategy: cleanStrategy,
       missingInformation: missingInfo,
       completeness,
       recommendations: generateRecommendations(completeness, missingInfo),
+      alignmentScore: alignmentResult.score,
+      improvementNotes: alignmentResult.improvementNotes,
       dataSourceReport: {
         ...contaminationReport,
         aiValidation: {
@@ -883,9 +1085,11 @@ ADDITIONAL CREATIVE DIRECTION:
         generationMetadata: {
           generationId,
           generatedAt: timestamp,
-          isNewGeneration: true,
+          isNewGeneration: !isRegeneration,
+          isRegeneration: !!isRegeneration,
           temperature: 0.85,
         },
+        alignmentDetails: alignmentResult.details,
       },
     };
   } catch (error) {
@@ -1352,4 +1556,308 @@ function hasTangibleOutcome(text: string): boolean {
   ];
 
   return outcomeIndicators.some((pattern) => pattern.test(text));
+}
+
+// ALIGNMENT SCORING FUNCTION
+function calculateAlignmentScore(
+  strategy: string,
+  workbookResponses: WorkbookResponses,
+  emotionalInsights: string
+): { score: number; details: string[]; improvementNotes: string[] } {
+  const strategyLower = strategy.toLowerCase();
+  let totalPoints = 0;
+  let maxPoints = 0;
+  const details: string[] = [];
+  const improvementNotes: string[] = [];
+
+  // 1. Check for direct quote usage (20 points max)
+  maxPoints += 20;
+  const allResponses = Object.values(workbookResponses).filter(r => r?.trim());
+  let quotesFound = 0;
+  
+  allResponses.forEach(response => {
+    if (!response) return;
+    // Check for significant phrases (5+ words) from responses
+    const words = response.split(/\s+/).filter(w => w.length > 3);
+    const significantPhrases = [];
+    
+    for (let i = 0; i < words.length - 4; i++) {
+      const phrase = words.slice(i, i + 5).join(' ').toLowerCase();
+      if (strategyLower.includes(phrase)) {
+        quotesFound++;
+        break; // Count each response once
+      }
+    }
+  });
+  
+  const quoteScore = Math.min(20, (quotesFound / Math.max(1, allResponses.length)) * 40);
+  totalPoints += quoteScore;
+  details.push(`Direct quotes usage: ${quotesFound}/${allResponses.length} responses referenced (${Math.round(quoteScore)} pts)`);
+  
+  if (quoteScore < 15) {
+    improvementNotes.push("Include more EXACT language and phrases from the workbook responses");
+  }
+
+  // 2. Check for proprietary framework/method mentions (15 points max)
+  maxPoints += 15;
+  const frameworkPatterns = [
+    /framework/gi,
+    /method/gi,
+    /system/gi,
+    /process/gi,
+    /approach/gi,
+    /→|->|step\s*\d/gi, // Arrow patterns or numbered steps
+  ];
+  
+  let frameworkMentions = 0;
+  frameworkPatterns.forEach(pattern => {
+    const matches = strategy.match(pattern);
+    if (matches) frameworkMentions += matches.length;
+  });
+  
+  const frameworkScore = Math.min(15, frameworkMentions * 3);
+  totalPoints += frameworkScore;
+  details.push(`Proprietary method integration: ${frameworkMentions} mentions (${Math.round(frameworkScore)} pts)`);
+  
+  if (frameworkScore < 10) {
+    improvementNotes.push("Integrate the owner's proprietary framework/method more prominently throughout");
+  }
+
+  // 3. Check for generic cliché avoidance (15 points max - lose points for clichés)
+  maxPoints += 15;
+  const genericClichés = [
+    "transform your life",
+    "unlock your potential",
+    "take it to the next level",
+    "maximize your",
+    "empowered",
+    "uplevel",
+    "game-changer",
+    "breakthrough",
+    "skyrocket",
+    "supercharge",
+    "crushing it",
+    "living your best life",
+  ];
+  
+  let clichéCount = 0;
+  genericClichés.forEach(cliché => {
+    if (strategyLower.includes(cliché.toLowerCase())) {
+      clichéCount++;
+    }
+  });
+  
+  const clichéScore = Math.max(0, 15 - (clichéCount * 3));
+  totalPoints += clichéScore;
+  details.push(`Generic cliché avoidance: ${clichéCount} clichés found (${Math.round(clichéScore)} pts)`);
+  
+  if (clichéScore < 12) {
+    improvementNotes.push("Remove generic industry clichés and replace with owner-specific language");
+  }
+
+  // 3b. Check for AUDIENCE DRIFT (10 points max - CRITICAL for alignment)
+  maxPoints += 10;
+  const driftIndicators = [
+    // Generic entrepreneur/business language that may not match actual avatar
+    { term: "entrepreneur", penalty: 2, note: "generic 'entrepreneur' language" },
+    { term: "business owner", penalty: 1, note: "generic 'business owner' language" },
+    { term: "scale your business", penalty: 3, note: "hustle/scale language" },
+    { term: "6-figure", penalty: 3, note: "income claim language" },
+    { term: "7-figure", penalty: 3, note: "income claim language" },
+    { term: "crushing it", penalty: 2, note: "hustle culture language" },
+    { term: "hustle", penalty: 2, note: "hustle language" },
+    { term: "grind", penalty: 2, note: "grind culture language" },
+    { term: "boss babe", penalty: 3, note: "cliché audience term" },
+    { term: "girlboss", penalty: 3, note: "cliché audience term" },
+    { term: "solopreneur", penalty: 1, note: "generic audience term" },
+    { term: "side hustle", penalty: 2, note: "hustle language" },
+    { term: "passive income", penalty: 2, note: "generic promise" },
+    { term: "work from anywhere", penalty: 1, note: "generic promise" },
+    { term: "fire your boss", penalty: 3, note: "aggressive language" },
+    { term: "quit your 9-5", penalty: 2, note: "generic positioning" },
+  ];
+  
+  let driftPenalty = 0;
+  const driftIssues: string[] = [];
+  
+  driftIndicators.forEach(indicator => {
+    const regex = new RegExp(indicator.term, 'gi');
+    const matches = strategyLower.match(regex);
+    if (matches && matches.length > 0) {
+      driftPenalty += indicator.penalty * matches.length;
+      driftIssues.push(`${indicator.note} (${matches.length}x)`);
+    }
+  });
+  
+  const driftScore = Math.max(0, 10 - driftPenalty);
+  totalPoints += driftScore;
+  details.push(`Audience drift check: ${driftPenalty} drift penalty (${Math.round(driftScore)} pts)`);
+  
+  if (driftScore < 7) {
+    improvementNotes.push(`DRIFT DETECTED: Strategy may have drifted from source data. Issues: ${driftIssues.slice(0, 3).join(', ')}`);
+    improvementNotes.push("Re-read the workbook answers and use THEIR exact audience description, not generic terms");
+  }
+
+  // 3c. Check for PROMOTIONAL/HYPEY TONE (10 points max)
+  maxPoints += 10;
+  const promotionalIndicators = [
+    { term: "transform", penalty: 1, note: "promotional language" },
+    { term: "powerful", penalty: 1, note: "hypey adjective" },
+    { term: "amazing", penalty: 2, note: "hypey adjective" },
+    { term: "incredible", penalty: 2, note: "hypey adjective" },
+    { term: "revolutionary", penalty: 3, note: "over-promotional" },
+    { term: "game-changing", penalty: 2, note: "cliché promotional" },
+    { term: "life-changing", penalty: 1, note: "promotional language" },
+    { term: "finally!", penalty: 2, note: "sales pressure language" },
+    { term: "imagine if", penalty: 1, note: "sales technique" },
+    { term: "what if i told you", penalty: 3, note: "salesy opener" },
+    { term: "secret", penalty: 2, note: "clickbait language" },
+    { term: "proven", penalty: 1, note: "promotional claim" },
+    { term: "guaranteed", penalty: 2, note: "promotional claim" },
+    { term: "exclusive", penalty: 1, note: "promotional language" },
+    { term: "limited time", penalty: 3, note: "urgency sales tactic" },
+    { term: "act now", penalty: 3, note: "urgency sales tactic" },
+    { term: "don't miss", penalty: 2, note: "urgency sales tactic" },
+  ];
+  
+  let promotionalPenalty = 0;
+  const promotionalIssues: string[] = [];
+  
+  promotionalIndicators.forEach(indicator => {
+    const regex = new RegExp(indicator.term, 'gi');
+    const matches = strategyLower.match(regex);
+    if (matches && matches.length > 0) {
+      promotionalPenalty += indicator.penalty * matches.length;
+      promotionalIssues.push(`${indicator.note} (${matches.length}x)`);
+    }
+  });
+  
+  const promotionalScore = Math.max(0, 10 - promotionalPenalty);
+  totalPoints += promotionalScore;
+  details.push(`Promotional tone check: ${promotionalPenalty} promotional penalty (${Math.round(promotionalScore)} pts)`);
+  
+  if (promotionalScore < 7) {
+    improvementNotes.push(`PROMOTIONAL TONE DETECTED: Strategy sounds too salesy. Issues: ${promotionalIssues.slice(0, 3).join(', ')}`);
+    improvementNotes.push("Use grounded, trusted advisor tone — not promotional marketing language");
+  }
+
+  // 3d. Check for VERBOSITY (5 points max)
+  maxPoints += 5;
+  const fillerWords = [
+    "really", "very", "truly", "deeply", "absolutely", "actually", 
+    "basically", "literally", "definitely", "certainly", "obviously",
+    "simply", "just", "quite", "rather", "somewhat"
+  ];
+  
+  let fillerCount = 0;
+  fillerWords.forEach(filler => {
+    const regex = new RegExp(`\\b${filler}\\b`, 'gi');
+    const matches = strategy.match(regex);
+    if (matches) fillerCount += matches.length;
+  });
+  
+  // Penalize excessive filler words (more than 5 is verbose)
+  const verbosityPenalty = Math.max(0, fillerCount - 5);
+  const verbosityScore = Math.max(0, 5 - verbosityPenalty);
+  totalPoints += verbosityScore;
+  details.push(`Verbosity check: ${fillerCount} filler words (${Math.round(verbosityScore)} pts)`);
+  
+  if (verbosityScore < 3) {
+    improvementNotes.push(`VERBOSITY DETECTED: ${fillerCount} filler words found. Remove: really, very, truly, deeply, etc.`);
+    improvementNotes.push("Be more concise — say more with fewer words");
+  }
+
+  // 4. Check for emotional insights integration (20 points max)
+  maxPoints += 20;
+  if (emotionalInsights?.trim()) {
+    const insightKeywords = emotionalInsights
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(w => w.length > 5)
+      .slice(0, 50); // Sample 50 significant words
+    
+    let insightsUsed = 0;
+    insightKeywords.forEach(keyword => {
+      if (strategyLower.includes(keyword)) {
+        insightsUsed++;
+      }
+    });
+    
+    const insightScore = Math.min(20, (insightsUsed / Math.max(1, insightKeywords.length)) * 40);
+    totalPoints += insightScore;
+    details.push(`Emotional insights integration: ${insightsUsed}/${insightKeywords.length} keywords (${Math.round(insightScore)} pts)`);
+    
+    if (insightScore < 15) {
+      improvementNotes.push("Weave more emotional insights and customer language throughout the strategy");
+    }
+  } else {
+    totalPoints += 10; // Partial points if no insights available
+    details.push("Emotional insights: Not available (10 pts default)");
+  }
+
+  // 5. Check for specificity (tangible outcomes) (15 points max)
+  maxPoints += 15;
+  const tangiblePatterns = [
+    /\$\d+/g, // Money amounts
+    /\d+\s*(clients?|customers?|sales?|leads?|students?)/gi, // Numbers
+    /\d+\s*(days?|weeks?|months?|hours?|minutes?)/gi, // Timeframes
+    /\d+[ap]m/gi, // Specific times
+    /\d+%/g, // Percentages
+  ];
+  
+  let tangibleCount = 0;
+  tangiblePatterns.forEach(pattern => {
+    const matches = strategy.match(pattern);
+    if (matches) tangibleCount += matches.length;
+  });
+  
+  const tangibleScore = Math.min(15, tangibleCount * 2);
+  totalPoints += tangibleScore;
+  details.push(`Tangible specificity: ${tangibleCount} specific numbers/outcomes (${Math.round(tangibleScore)} pts)`);
+  
+  if (tangibleScore < 10) {
+    improvementNotes.push("Add more specific numbers, timeframes, and measurable outcomes");
+  }
+
+  // 6. Check for section completeness (15 points max)
+  maxPoints += 15;
+  const requiredSections = [
+    "core promise",
+    "ideal customer",
+    "brand voice",
+    "problems",
+    "desires",
+    "belief shifts",
+    "differentiators",
+    "messaging pillars",
+    "hooks",
+    "offer snapshot",
+    "objection",
+  ];
+  
+  let sectionsFound = 0;
+  requiredSections.forEach(section => {
+    if (strategyLower.includes(section)) {
+      sectionsFound++;
+    }
+  });
+  
+  const sectionScore = Math.round((sectionsFound / requiredSections.length) * 15);
+  totalPoints += sectionScore;
+  details.push(`Section completeness: ${sectionsFound}/${requiredSections.length} sections (${sectionScore} pts)`);
+  
+  if (sectionScore < 13) {
+    improvementNotes.push("Ensure all required sections are present and properly labeled");
+  }
+
+  const finalScore = Math.round((totalPoints / maxPoints) * 100);
+  
+  console.log(`[ALIGNMENT SCORE] Final score: ${finalScore}% (${totalPoints}/${maxPoints} points)`);
+  details.forEach(d => console.log(`  - ${d}`));
+
+  return {
+    score: finalScore,
+    details,
+    improvementNotes: improvementNotes.length > 0 ? improvementNotes : ["Strategy is well-aligned with source data"],
+  };
 }
