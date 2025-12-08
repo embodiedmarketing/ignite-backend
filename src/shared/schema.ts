@@ -363,9 +363,6 @@ export const interviewNotes = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: integer("user_id").notNull(),
-    transcriptId: integer("transcript_id").references(
-      () => icaInterviewTranscripts.id
-    ),
     noteKey: varchar("note_key").notNull(), // e.g., "frustrations", "demographics", etc.
     content: text("content").notNull(),
     source: varchar("source").default("manual"), // manual, transcript, synthesis
@@ -374,11 +371,7 @@ export const interviewNotes = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    uniqueUserTranscriptNote: unique().on(
-      table.userId,
-      table.transcriptId,
-      table.noteKey
-    ),
+    uniqueUserNote: unique().on(table.userId, table.noteKey),
   })
 );
 

@@ -8,9 +8,29 @@ import { getUserId } from "../middlewares/auth.middleware";
  */
 export async function generateMessagingStrategy(req: Request, res: Response) {
   try {
-    const { workbookResponses: requestWorkbookResponses, interviewNotes } =
-      req.body;
+    const { 
+      workbookResponses: requestWorkbookResponses, 
+      interviewNotes,
+      // Regeneration options for improved alignment
+      previousStrategy,
+      feedbackNotes,
+      focusAreas,
+    } = req.body;
     const userId = req.session?.userId || 0;
+    
+    // Build regeneration options if previous strategy is provided
+    const regenerationOptions = previousStrategy ? {
+      previousStrategy,
+      feedbackNotes,
+      focusAreas,
+    } : undefined;
+    
+    if (regenerationOptions) {
+      console.log("[MESSAGING STRATEGY] 🔄 REGENERATION MODE - Improving previous strategy");
+      console.log(`[MESSAGING STRATEGY] Previous strategy length: ${previousStrategy?.length || 0} chars`);
+      if (feedbackNotes) console.log(`[MESSAGING STRATEGY] User feedback provided: ${feedbackNotes.substring(0, 100)}...`);
+      if (focusAreas?.length) console.log(`[MESSAGING STRATEGY] Focus areas: ${focusAreas.join(', ')}`);
+    }
 
     // Fetch the latest workbook responses from database to ensure we have interview insights
     // This is critical because interview insights are saved directly to the database
@@ -197,7 +217,8 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
     const strategy = await generateMessagingStrategy(
       workbookResponses,
       interviewNotes || {},
-      userId
+      userId,
+      regenerationOptions
     );
 
     console.log(
@@ -235,17 +256,23 @@ export async function generateMessagingStrategy(req: Request, res: Response) {
       Pragma: "no-cache",
       Expires: "0",
       "X-Generation-Timestamp": generationTimestamp.toString(),
-      "X-Is-New-Generation": "true",
+      "X-Is-New-Generation": regenerationOptions ? "false" : "true",
+      "X-Is-Regeneration": regenerationOptions ? "true" : "false",
+      "X-Alignment-Score": (strategy.alignmentScore || 0).toString(),
       "X-Generation-ID":
         (strategy.dataSourceReport?.generationMetadata
           ?.generationId as string) || "unknown",
     });
 
     console.log(
-      `[MESSAGING STRATEGY] ✅ Returning NEW strategy (${
+      `[MESSAGING STRATEGY] ✅ Returning ${regenerationOptions ? 'IMPROVED' : 'NEW'} strategy (${
         strategy.strategy?.length || 0
-      } characters)`
+      } characters, alignment: ${strategy.alignmentScore || 0}%)`
     );
+    
+    if (strategy.improvementNotes?.length) {
+      console.log(`[MESSAGING STRATEGY] 📋 Improvement notes: ${strategy.improvementNotes.join('; ')}`);
+    }
 
     res.json(strategy);
   } catch (error) {

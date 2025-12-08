@@ -182,22 +182,13 @@ export async function intelligentInterviewProcessing(
   res: Response
 ) {
   try {
-    const { transcript, userId, existingMessagingStrategy, transcriptId } =
-      req.body;
+    const { transcript, userId, existingMessagingStrategy,transcriptId } = req.body;
 
     if (!transcript || !userId) {
       return res
         .status(400)
         .json({ message: "Transcript and userId are required" });
     }
-
-    console.log(
-      `[PROCESSING] Processing transcript for user ${userId}${
-        transcriptId
-          ? `, transcriptId: ${transcriptId}`
-          : " (no transcriptId provided)"
-      }`
-    );
 
     const { intelligentlyProcessInterviewTranscript } = await import(
       "../services/ai-intelligent-interview-processor"
@@ -279,7 +270,7 @@ export async function intelligentInterviewProcessing(
       }
     }
 
-    console.log("transcriptId", transcriptId, messagingUpdates);
+      console.log("transcriptId", transcriptId, messagingUpdates);
 
     if (transcriptId && messagingUpdates?.updates) {
       try {
