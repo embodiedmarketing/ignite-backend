@@ -4,9 +4,14 @@ import {
   UserContextData,
   ClientContextData,
 } from "../utils/data-source-validator";
+import Anthropic from "@anthropic-ai/sdk";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface WorkbookResponses {
@@ -83,21 +88,36 @@ Format your response as follows:
 - [What solving the problem means to them emotionally]`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at extracting emotional insights and authentic customer language from raw questionnaire data.",
-        },
-        { role: "user", content: emotionalExtractionPrompt },
-      ],
+
+    // const response = await openai.chat.completions.create({
+    //   model: "gpt-4o",
+    //   messages: [
+    //     {
+    //       role: "system",
+    //       content:
+    //         "You are an expert at extracting emotional insights and authentic customer language from raw questionnaire data.",
+    //     },
+    //     { role: "user", content: emotionalExtractionPrompt },
+    //   ],
+    //   max_tokens: 3000,
+    //   temperature: 0.5,
+    // });
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514", // Claude Sonnet 4 (latest)
       max_tokens: 3000,
       temperature: 0.5,
+      system: "You are an expert at extracting emotional insights and authentic customer language from raw questionnaire data.",
+      messages: [
+        {
+          role: "user",
+          content: emotionalExtractionPrompt,
+        },
+      ],
     });
+    
 
-    const extractedInsights = response.choices[0]?.message?.content || "";
+    // const extractedInsights = response.choices[0]?.message?.content || "";
+    const extractedInsights = response.content[0].type === "text" ? response.content[0].text : "";
     console.log(
       "[EMOTIONAL INSIGHTS] Successfully extracted emotional insights"
     );
@@ -910,20 +930,30 @@ ADDITIONAL CREATIVE DIRECTION:
       `[MESSAGING STRATEGY] Using random variation: "${randomVariation}"`
     );
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemMessage },
-        { role: "user", content: finalUserMessage },
-      ],
+    // const response = await openai.chat.completions.create({
+    //   model: "gpt-4o",
+    //   messages: [
+    //     { role: "system", content: systemMessage },
+    //     { role: "user", content: finalUserMessage },
+    //   ],
+    //   max_tokens: 5000,
+    //   temperature: 0.9, // Increased to 0.9 for maximum variation
+    //   top_p: 0.95, // Nucleus sampling - allows more diverse token selection
+    //   frequency_penalty: 0.3, // Penalize frequent tokens to avoid repetition
+    //   presence_penalty: 0.3, // Encourage new topics and ideas
+    // });
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514", // Claude Sonnet 4 (latest)
       max_tokens: 5000,
       temperature: 0.9, // Increased to 0.9 for maximum variation
-      top_p: 0.95, // Nucleus sampling - allows more diverse token selection
-      frequency_penalty: 0.3, // Penalize frequent tokens to avoid repetition
-      presence_penalty: 0.3, // Encourage new topics and ideas
+      system: systemMessage,
+      messages: [
+        { role: "user", content: [ { type: "text", text: finalUserMessage } ]  },
+      ],
     });
 
-    const rawStrategy = response.choices[0]?.message?.content || "";
+    // const rawStrategy = response.choices[0]?.message?.content || "";
+    const rawStrategy = response.content[0].type === "text" ? response.content[0].text : "";
 
     // Log generation details to verify uniqueness
     const strategyHash = rawStrategy

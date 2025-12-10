@@ -13,6 +13,7 @@
     "db:migrate:interview-notes": "node --import tsx/esm scripts/apply-interview-notes-migration.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@neondatabase/serverless": "^0.10.4",
     "@sendgrid/mail": "^8.1.5",
     "axios": "^1.12.2",
