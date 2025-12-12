@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface SalesPageData {
   messagingStrategy?: any;
@@ -229,17 +229,18 @@ CRITICAL FORMATTING RULES:
 
 OUTPUT ONLY THE SALES PAGE COPY - NO META INSTRUCTIONS.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ],
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
     max_tokens: 4000,
     temperature: 0.7,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: userPrompt }
+    ],
   });
 
-  return response.choices[0].message.content || "";
+  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  return contentText || "";
 }
 
 function generateEnhancedFallbackSalesPage(messaging: any, offer: any, offerType: string): string {

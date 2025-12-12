@@ -1,9 +1,177 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error("[LAUNCH EMAILS] ANTHROPIC_API_KEY is not set in environment variables");
+}
+
+const anthropic = new Anthropic({ 
+  apiKey: process.env.ANTHROPIC_API_KEY || ""
+});
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function parseAnthropicResponse(responseObj: any): any {
+  // Handle response content
+  let contentText = "";
+  if (!responseObj.content || responseObj.content.length === 0) {
+    console.error(`[LAUNCH EMAILS] Empty content array in Anthropic response. Full response:`, JSON.stringify(responseObj, null, 2));
+    throw new Error("No content received from Anthropic - empty content array");
+  }
+  
+  const firstContent = responseObj.content[0];
+  if (firstContent.type === "text") {
+    contentText = firstContent.text || "";
+  } else {
+    console.error(`[LAUNCH EMAILS] Unexpected content type: ${firstContent.type}. Full response:`, JSON.stringify(responseObj, null, 2));
+    throw new Error(`Unexpected content type from Anthropic: ${firstContent.type}`);
+  }
+  
+  if (!contentText) {
+    console.error(`[LAUNCH EMAILS] No text content in Anthropic response. Response structure:`, JSON.stringify(responseObj, null, 2));
+    throw new Error("No content received from Anthropic");
+  }
+  
+  // Clean up any markdown code blocks and extract JSON
+  let cleanedContent = contentText.trim();
+  
+  // Remove markdown code blocks if present
+  if (cleanedContent.includes('```json')) {
+    // Extract content between ```json and ```
+    const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      cleanedContent = jsonMatch[1].trim();
+    } else {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    }
+  } else if (cleanedContent.includes('```')) {
+    // Extract content between ``` and ```
+    const codeMatch = cleanedContent.match(/```[a-z]*\s*([\s\S]*?)\s*```/);
+    if (codeMatch) {
+      cleanedContent = codeMatch[1].trim();
+    } else {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+  }
+  
+  // Try to find JSON object in the content (handle cases where there's text before/after JSON)
+  // Use a more robust method to find the complete JSON object
+  let jsonStart = cleanedContent.indexOf('{');
+  let jsonEnd = -1;
+  
+  if (jsonStart !== -1) {
+    // Find the matching closing brace by counting braces
+    let braceCount = 0;
+    let inString = false;
+    let escapeNext = false;
+    
+    for (let i = jsonStart; i < cleanedContent.length; i++) {
+      const char = cleanedContent[i];
+      
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      
+      if (!inString) {
+        if (char === '{') {
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEnd = i;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (jsonEnd !== -1 && jsonEnd > jsonStart) {
+      cleanedContent = cleanedContent.substring(jsonStart, jsonEnd + 1);
+    } else if (jsonStart !== -1) {
+      // Fallback: use last } if brace counting didn't work
+      const lastBrace = cleanedContent.lastIndexOf('}');
+      if (lastBrace > jsonStart) {
+        cleanedContent = cleanedContent.substring(jsonStart, lastBrace + 1);
+      }
+    }
+  }
+  
+  // Remove any leading/trailing whitespace and newlines
+  cleanedContent = cleanedContent.trim();
+  
+  // Try to fix incomplete/truncated JSON before parsing
+  // Count opening vs closing braces/brackets to detect incomplete JSON
+  const openBraces = (cleanedContent.match(/\{/g) || []).length;
+  const closeBraces = (cleanedContent.match(/\}/g) || []).length;
+  const openBrackets = (cleanedContent.match(/\[/g) || []).length;
+  const closeBrackets = (cleanedContent.match(/\]/g) || []).length;
+  
+  // Check if JSON appears incomplete (mismatched brackets/braces)
+  const missingBrackets = openBrackets - closeBrackets;
+  const missingBraces = openBraces - closeBraces;
+  
+  // If JSON doesn't end properly or has mismatched brackets, try to fix it
+  if ((missingBrackets > 0 || missingBraces > 0) || 
+      (!cleanedContent.endsWith('}') && !cleanedContent.endsWith(']') && cleanedContent.length > 100)) {
+    
+    // Remove any incomplete last element (if it looks like it's cut off mid-string)
+    // Check if the last character before } or ] might be inside a string
+    if (cleanedContent.match(/"[^"]*$/)) {
+      // Incomplete string, try to close it
+      const lastQuote = cleanedContent.lastIndexOf('"');
+      if (lastQuote > cleanedContent.length - 50) {
+        // Likely an incomplete string, remove it and the incomplete object
+        const lastOpenBrace = cleanedContent.lastIndexOf('{');
+        if (lastOpenBrace > cleanedContent.length - 200) {
+          cleanedContent = cleanedContent.substring(0, lastOpenBrace);
+        }
+      }
+    }
+    
+    // Add missing closing brackets and braces
+    if (missingBrackets > 0) {
+      cleanedContent += ']'.repeat(missingBrackets);
+    }
+    if (missingBraces > 0) {
+      cleanedContent += '}'.repeat(missingBraces);
+    }
+    
+    console.warn(`[LAUNCH EMAILS] JSON appeared incomplete, attempted to fix by adding ${missingBrackets} closing bracket(s) and ${missingBraces} closing brace(s)`);
+  }
+  
+  // Try to parse - if it fails, log more details
+  try {
+    return JSON.parse(cleanedContent);
+  } catch (parseError: any) {
+    // Log more context around the error position if available
+    const errorMatch = parseError.message.match(/position (\d+)/);
+    if (errorMatch) {
+      const errorPos = parseInt(errorMatch[1]);
+      const startPos = Math.max(0, errorPos - 100);
+      const endPos = Math.min(cleanedContent.length, errorPos + 100);
+      console.error(`[LAUNCH EMAILS] JSON parse error around position ${errorPos}:`);
+      console.error(`[LAUNCH EMAILS] Content snippet:`, cleanedContent.substring(startPos, endPos));
+    }
+    
+    console.error(`[LAUNCH EMAILS] JSON parse error. First 500 chars:`, cleanedContent.substring(0, 500));
+    console.error(`[LAUNCH EMAILS] Last 500 chars:`, cleanedContent.substring(Math.max(0, cleanedContent.length - 500)));
+    console.error(`[LAUNCH EMAILS] Parse error:`, parseError.message);
+    console.error(`[LAUNCH EMAILS] Full cleaned content length:`, cleanedContent.length);
+    
+    throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+  }
 }
 
 async function retryWithBackoff<T>(
@@ -19,16 +187,39 @@ async function retryWithBackoff<T>(
     } catch (error: any) {
       lastError = error;
       
-      if (error?.status === 429 && attempt < maxRetries) {
+      // Log error details
+      console.error(`[LAUNCH EMAILS] Retry attempt ${attempt + 1}/${maxRetries + 1} failed:`, {
+        message: error?.message,
+        status: error?.status,
+        code: error?.code,
+        name: error?.name,
+        type: error?.constructor?.name
+      });
+      
+      // Check if error has Anthropic-specific details
+      if (error?.error) {
+        console.error(`[LAUNCH EMAILS] Anthropic API error details:`, error.error);
+      }
+      
+      // Retry on rate limits or 5xx errors
+      const isRetryable = 
+        error?.status === 429 || // Rate limit
+        error?.status === 502 || // Bad Gateway
+        error?.status === 503 || // Service unavailable
+        error?.status === 504 || // Gateway timeout
+        (error?.status >= 500 && error?.status < 600); // Any 5xx server error
+      
+      if (isRetryable && attempt < maxRetries) {
         const retryAfterMs = error?.headers?.['retry-after-ms'] 
           ? parseInt(error.headers['retry-after-ms']) 
           : baseDelay * Math.pow(2, attempt);
         
-        console.log(`[RATE LIMIT] Waiting ${retryAfterMs}ms before retry ${attempt + 1}/${maxRetries}`);
+        console.log(`[LAUNCH EMAILS] Retryable error detected. Waiting ${retryAfterMs}ms before retry ${attempt + 1}/${maxRetries}`);
         await sleep(retryAfterMs);
         continue;
       }
       
+      // Non-retryable error or max retries reached
       throw error;
     }
   }
@@ -147,6 +338,39 @@ Purpose: ${sections.purpose}
 Outcomes: ${sections.outcomes}`;
 }
 
+async function generateWithRetry<T>(
+  generatorFn: () => Promise<T>,
+  emailType: string,
+  maxRetries: number = 3
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await generatorFn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if this is a JSON parsing error (retryable)
+      const isJsonParseError = 
+        error?.message?.includes('Failed to parse JSON') ||
+        error?.message?.includes('JSON') ||
+        error instanceof SyntaxError;
+      
+      if (isJsonParseError && attempt < maxRetries - 1) {
+        console.warn(`[LAUNCH EMAILS] ${emailType} - JSON parse error on attempt ${attempt + 1}/${maxRetries}, retrying...`);
+        await sleep(1000 * (attempt + 1)); // Progressive delay
+        continue;
+      }
+      
+      // Non-retryable error or max retries reached
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function generateLaunchEmailSequence(inputData: LaunchEmailInputData): Promise<LaunchEmailSequenceResult> {
   console.log('[LAUNCH EMAILS] Starting email sequence generation');
   
@@ -159,29 +383,49 @@ export async function generateLaunchEmailSequence(inputData: LaunchEmailInputDat
   const emails: GeneratedEmail[] = [];
   
   try {
-    // Generate emails sequentially to avoid rate limits
+    // Generate emails sequentially to avoid rate limits, with retry logic for JSON errors
     console.log('[LAUNCH EMAILS] Generating 5 registration invite emails');
-    const registrationEmails = await generateRegistrationInviteEmails(compactInputData);
+    const registrationEmails = await generateWithRetry(
+      () => generateRegistrationInviteEmails(compactInputData),
+      'Registration invites',
+      3
+    );
     emails.push(...registrationEmails);
     await sleep(500);
     
     console.log('[LAUNCH EMAILS] Generating confirmation email');
-    const confirmationEmail = await generateConfirmationEmail(compactInputData);
+    const confirmationEmail = await generateWithRetry(
+      () => generateConfirmationEmail(compactInputData),
+      'Confirmation',
+      3
+    );
     emails.push(confirmationEmail);
     await sleep(500);
     
     console.log('[LAUNCH EMAILS] Generating 3 nurture emails');
-    const nurtureEmails = await generateNurtureEmails(compactInputData);
+    const nurtureEmails = await generateWithRetry(
+      () => generateNurtureEmails(compactInputData),
+      'Nurture emails',
+      3
+    );
     emails.push(...nurtureEmails);
     await sleep(500);
     
     console.log('[LAUNCH EMAILS] Generating 3 reminder emails');
-    const reminderEmails = await generateReminderEmails(compactInputData);
+    const reminderEmails = await generateWithRetry(
+      () => generateReminderEmails(compactInputData),
+      'Reminder emails',
+      3
+    );
     emails.push(...reminderEmails);
     await sleep(500);
     
     console.log('[LAUNCH EMAILS] Generating 5 sales emails');
-    const salesEmails = await generateSalesEmails(compactInputData);
+    const salesEmails = await generateWithRetry(
+      () => generateSalesEmails(compactInputData),
+      'Sales emails',
+      3
+    );
     emails.push(...salesEmails);
     
     console.log(`[LAUNCH EMAILS] Successfully generated ${emails.length} emails`);
@@ -190,11 +434,25 @@ export async function generateLaunchEmailSequence(inputData: LaunchEmailInputDat
       emails,
       totalEmails: emails.length
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[LAUNCH EMAILS] Error generating email sequence:', error);
-    throw new Error('Failed to generate email sequence');
+    console.error('[LAUNCH EMAILS] Error details:', {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      name: error?.name,
+      stack: error?.stack?.split('\n').slice(0, 5).join('\n')
+    });
+    
+    // Preserve the original error message if it's informative
+    if (error?.message && error.message !== 'Failed to generate email sequence') {
+      throw error;
+    }
+    
+    throw new Error(`Failed to generate email sequence: ${error?.message || 'Unknown error'}`);
   }
 }
+
 
 async function generateRegistrationInviteEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 5 registration invite emails');
@@ -229,27 +487,44 @@ For each email:
 - Keep subject lines friendly like they're from a friend (e.g., "RE: Your strategy" or "Quick heads-up about tomorrow")
 
 OUTPUT FORMAT (JSON):
-Return a JSON array of 5 emails, each with:
+CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
+
+Return a JSON object with this exact structure:
 {
-  "subjectLine": "friendly subject line here",
-  "emailBody": "full email body with proper line breaks (\\n\\n for paragraphs)"
+  "emails": [
+    {
+      "subjectLine": "friendly subject line here",
+      "emailBody": "full email body. Use \\n\\n for paragraph breaks. Escape quotes: \\\"example\\\""
+    },
+    ...
+  ]
 }
+
+IMPORTANT JSON RULES:
+- Escape all double quotes in string values: \\\"
+- Escape all backslashes: \\\\
+- Use \\n for newlines in email bodies
+- Ensure proper comma placement between array elements
+- Close all brackets and braces properly
+- No trailing commas
 
 Make copy skimmable with short paragraphs. Avoid corporate or templated formatting.`;
 
-  const completion = await retryWithBackoff(() =>
-    openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
+  
+  const responseObj = await retryWithBackoff(() =>
+    anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.8,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     })
   );
   
-  const response = JSON.parse(completion.choices[0].message.content || '{"emails": []}');
+  const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
   
   return emailsArray.slice(0, 5).map((email: any, index: number) => ({
@@ -284,24 +559,39 @@ Include:
 Keep tone casual, warm, and excited — under 200 words.
 
 OUTPUT FORMAT (JSON):
+CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
+
 {
   "subjectLine": "friendly confirmation subject",
-  "emailBody": "full email body with proper line breaks"
-}`;
+  "emailBody": "full email body. Use \\n\\n for paragraph breaks. Escape quotes: \\\"example\\\""
+}
 
-  const completion = await retryWithBackoff(() =>
-    openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+IMPORTANT JSON RULES:
+- Escape all double quotes in string values: \\\"
+- Escape all backslashes: \\\\
+- Use \\n for newlines
+- No trailing commas
+- Close all braces properly`;
+
+  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
+  
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
+  }
+  
+  const responseObj = await retryWithBackoff(() =>
+    anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     })
   );
   
-  const response = JSON.parse(completion.choices[0].message.content || '{}');
+  const response = parseAnthropicResponse(responseObj);
   
   return {
     emailType: 'confirmation',
@@ -339,28 +629,43 @@ ${inputData.showUpBonus ? '- Tease the show-up bonus as extra reason to attend l
 - Keep tone warm, conversational, and focused on connection
 
 OUTPUT FORMAT (JSON):
-Return a JSON array of 3 emails:
+CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
+
 {
   "emails": [
-    {"subjectLine": "...", "emailBody": "..."},
+    {"subjectLine": "...", "emailBody": "... Use \\n\\n for breaks. Escape quotes: \\\"example\\\""},
     {"subjectLine": "...", "emailBody": "..."},
     {"subjectLine": "...", "emailBody": "..."}
   ]
-}`;
+}
 
-  const completion = await retryWithBackoff(() =>
-    openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+IMPORTANT JSON RULES:
+- Escape all double quotes in string values: \\\"
+- Escape all backslashes: \\\\
+- Use \\n for newlines in email bodies
+- Ensure proper comma placement between array elements
+- No trailing commas
+- Close all brackets and braces properly`;
+
+  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
+  
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
+  }
+  
+  const responseObj = await retryWithBackoff(() =>
+    anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.8,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     })
   );
   
-  const response = JSON.parse(completion.choices[0].message.content || '{"emails": []}');
+  const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
   
   return emailsArray.slice(0, 3).map((email: any, index: number) => ({
@@ -392,27 +697,43 @@ Each email should:
 - Use energetic, friendly tone
 
 OUTPUT FORMAT (JSON):
+CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
+
 {
   "emails": [
-    {"subjectLine": "...", "emailBody": "..."},
+    {"subjectLine": "...", "emailBody": "... Use \\n\\n for breaks. Escape quotes: \\\"example\\\""},
     {"subjectLine": "...", "emailBody": "..."},
     {"subjectLine": "...", "emailBody": "..."}
   ]
-}`;
+}
 
-  const completion = await retryWithBackoff(() =>
-    openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+IMPORTANT JSON RULES:
+- Escape all double quotes in string values: \\\"
+- Escape all backslashes: \\\\
+- Use \\n for newlines in email bodies
+- Ensure proper comma placement between array elements
+- No trailing commas
+- Close all brackets and braces properly`;
+
+  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
+  
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
+  }
+  
+  const responseObj = await retryWithBackoff(() =>
+    anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     })
   );
   
-  const response = JSON.parse(completion.choices[0].message.content || '{"emails": []}');
+  const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
   
   return emailsArray.slice(0, 3).map((email: any, index: number) => ({
@@ -468,19 +789,25 @@ OUTPUT FORMAT (JSON):
   ]
 }`;
 
-  const completion = await retryWithBackoff(() =>
-    openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Ensure the response is COMPLETE with all 5 emails and properly closed JSON structure.";
+  
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
+  }
+  
+  const responseObj = await retryWithBackoff(() =>
+    anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.8,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     })
   );
   
-  const response = JSON.parse(completion.choices[0].message.content || '{"emails": []}');
+  const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
   
   return emailsArray.slice(0, 5).map((email: any, index: number) => ({

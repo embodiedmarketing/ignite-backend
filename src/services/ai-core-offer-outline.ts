@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface CoreOfferResponses {
@@ -59,13 +59,12 @@ export async function generateCoreOfferOutline(
     // Build the prompt for AI generation
     const prompt = buildCoreOfferPrompt(responses, messagingStrategy);
 
-    // Generate the outline using GPT-4o
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert marketing strategist and business coach. Your role is to help entrepreneurs create compelling, conversion-ready Core Offer Outlines. Your specialty is transforming user responses into rich, emotionally compelling narratives that synthesize and EXPAND their input.
+    // Generate the outline using Claude Sonnet 4
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 5000,
+      temperature: 0.7,
+      system: `You are an expert marketing strategist and business coach. Your role is to help entrepreneurs create compelling, conversion-ready Core Offer Outlines. Your specialty is transforming user responses into rich, emotionally compelling narratives that synthesize and EXPAND their input.
 
 You MUST:
 - Write like a strategic marketer, not a chatbot
@@ -86,15 +85,14 @@ DEPTH RULES - CRITICAL:
 - Prioritize clarity, story, and emotional resonance over brevity
 - DO NOT SUMMARIZE — synthesize and expand
 
-You will analyze the user's inputs and create a structured, persuasive Core Offer Outline that includes emotional hooks, clear positioning, and conversion elements.`
-        },
+You will analyze the user's inputs and create a structured, persuasive Core Offer Outline that includes emotional hooks, clear positioning, and conversion elements.`,
+      messages: [
         { role: "user", content: prompt }
       ],
-      max_tokens: 5000,
-      temperature: 0.7,
     });
 
-    const generatedOutline = response.choices[0]?.message?.content || "";
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const generatedOutline = contentText || "";
 
     // Evaluate the generated outline
     const evaluation = await evaluateOutline(generatedOutline, responses);
@@ -343,15 +341,23 @@ Respond in valid JSON format:
   "coaching_feedback": "Detailed feedback with specific suggestions..."
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: evaluationPrompt }],
+    const userPromptWithJson = evaluationPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: userPromptWithJson }],
       max_tokens: 1500,
       temperature: 0.3,
-      response_format: { type: "json_object" }
     });
 
-    const evaluation = JSON.parse(response.choices[0]?.message?.content || "{}");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+    const evaluation = JSON.parse(cleanedContent || "{}");
     
     return {
       overall_score: evaluation.overall_score || 75,

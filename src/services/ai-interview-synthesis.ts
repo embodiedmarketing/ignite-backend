@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface InterviewResponse {
@@ -185,24 +185,22 @@ MERGED: "They want financial freedom and time flexibility." (No change - same id
 Return ONLY the merged content, no explanations or meta-commentary.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 500,
+      temperature: 0.7,
+      system:
+        "You are an expert at merging customer insights intelligently. You prevent repetition and create concise, cohesive narratives in third-person perspective.",
       messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at merging customer insights intelligently. You prevent repetition and create concise, cohesive narratives in third-person perspective.",
-        },
         {
           role: "user",
           content: prompt,
         },
       ],
-      max_tokens: 250,
-      temperature: 0.3,
     });
 
-    const mergedContent = response.choices[0]?.message?.content?.trim();
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const mergedContent = contentText.trim();
 
     if (!mergedContent) {
       throw new Error("No merged content received from AI");

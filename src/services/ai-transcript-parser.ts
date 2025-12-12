@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface ParsedAnswers {
@@ -42,25 +42,21 @@ INSTRUCTIONS:
 
 Return a JSON object with the extracted answers using the keys listed above.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      temperature: 0.3,
+      system: "You are an expert interview analyst who extracts specific customer responses from interview transcripts. Always return valid JSON with the requested structure.",
       messages: [
         {
-          role: "system",
-          content:
-            "You are an expert interview analyst who extracts specific customer responses from interview transcripts. Always return valid JSON with the requested structure.",
-        },
-        {
           role: "user",
-          content: prompt,
+          content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with the requested structure. Do not include any markdown formatting or code blocks.",
         },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
-      max_tokens: 1000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
+    const result = JSON.parse(contentText || "{}");
     return result;
   } catch (error) {
     console.error("Error parsing interview transcript:", error);
@@ -72,13 +68,13 @@ Return a JSON object with the extracted answers using the keys listed above.`;
         error.message.includes("quota"))
     ) {
       console.log(
-        "OpenAI rate limit hit, providing intelligent fallback parsing"
+        "Anthropic rate limit hit, providing intelligent fallback parsing"
       );
       return intelligentFallbackParsing(transcript);
     }
 
     console.log(
-      "OpenAI API error, using intelligent fallback:",
+      "Anthropic API error, using intelligent fallback:",
       error instanceof Error ? error.message : "Unknown error"
     );
     return intelligentFallbackParsing(transcript);

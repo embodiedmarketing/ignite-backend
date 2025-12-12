@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface QuestionCoachingRequest {
@@ -108,12 +108,13 @@ export async function coachQuestionResponse(
     const prompt = buildCoachingPrompt(request);
     const sectionGuidance = SECTION_COACHING_PROMPTS[request.questionKey];
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a confident, warm, and collaborative business coach and marketing strategist. Your role is to evaluate user responses to Core Offer questions with a mentor's eye.
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      temperature: 0.7,
+      system: `You are a confident, warm, and collaborative business coach and marketing strategist. Your role is to evaluate user responses to Core Offer questions with a mentor's eye.
 
 🧠 AI WRITING RULES YOU MUST ENFORCE:
 
@@ -189,21 +190,25 @@ Return your evaluation in JSON format:
   "rewriteRationale": "why this new version works better" or null,
   "alignmentIssues": ["issue 1", "issue 2"] or null,
   "suggestedFollowUps": [{"questionKey": "...", "suggestion": "..."}] or null
-}`
-        },
-        { role: "user", content: prompt }
+}`,
+      messages: [
+        { role: "user", content: userPromptWithJson }
       ],
-      max_tokens: 2000,
-      temperature: 0.7,
-      response_format: { type: "json_object" }
     });
 
-    const result = response.choices[0]?.message?.content;
-    if (!result) {
-      throw new Error("No response from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    const evaluation: CoachingEvaluation = JSON.parse(result);
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+
+    const evaluation: CoachingEvaluation = JSON.parse(cleanedContent);
     return evaluation;
 
   } catch (error) {
@@ -219,13 +224,13 @@ export async function generateRewrite(
     console.log(`[CORE OFFER COACH] Generating rewrite for: ${request.questionKey}`);
 
     const prompt = buildRewritePrompt(request);
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a skilled marketing strategist and business coach helping entrepreneurs clarify and strengthen their Core Offer messaging.
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1200,
+      temperature: 0.7,
+      system: `You are a skilled marketing strategist and business coach helping entrepreneurs clarify and strengthen their Core Offer messaging.
 
 🧠 AI WRITING RULES TO APPLY:
 
@@ -271,21 +276,25 @@ Return your rewrite in JSON format:
   "rewrittenText": "the improved version",
   "rationale": "why this version works better (warm, educational tone)",
   "improvements": ["improvement 1", "improvement 2", "improvement 3"]
-}`
-        },
-        { role: "user", content: prompt }
+}`,
+      messages: [
+        { role: "user", content: userPromptWithJson }
       ],
-      max_tokens: 1200,
-      temperature: 0.7,
-      response_format: { type: "json_object" }
     });
 
-    const result = response.choices[0]?.message?.content;
-    if (!result) {
-      throw new Error("No response from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    const rewrite: RewriteResult = JSON.parse(result);
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+
+    const rewrite: RewriteResult = JSON.parse(cleanedContent);
     return rewrite;
 
   } catch (error) {
@@ -301,13 +310,13 @@ export async function generateFinalSummary(
     console.log("[CORE OFFER COACH] Generating final summary");
 
     const prompt = buildSummaryPrompt(allResponses);
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a business coach wrapping up a strategy session. Review the user's completed Core Offer and provide an encouraging, strategic summary.
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      temperature: 0.7,
+      system: `You are a business coach wrapping up a strategy session. Review the user's completed Core Offer and provide an encouraging, strategic summary.
 
 🧠 EVALUATE AGAINST THESE CRITERIA:
 
@@ -349,18 +358,26 @@ Return in JSON format:
   "nextSteps": ["next step 1", "next step 2", "next step 3"],
   "totalScore": number (optional, out of 30),
   "scoreSummary": "e.g., Your outline scores 24/30. The biggest opportunity is..." (optional)
-}`
-        },
-        { role: "user", content: prompt }
+}`,
+      messages: [
+        { role: "user", content: userPromptWithJson }
       ],
-      max_tokens: 1000,
-      temperature: 0.7,
-      response_format: { type: "json_object" }
     });
 
-    const result = response.choices[0]?.message?.content;
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
+    }
+
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+    const result = cleanedContent;
     if (!result) {
-      throw new Error("No response from AI");
+      throw new Error("No response from Anthropic");
     }
 
     const summary: FinalSummary = JSON.parse(result);

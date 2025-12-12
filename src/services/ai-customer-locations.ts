@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface CustomerAvatar {
   frustration?: string;
@@ -74,23 +74,29 @@ Respond in JSON format:
   "nextSteps": ["actionable next steps"]
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using gpt-4o-mini for cost efficiency
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      temperature: 0.7,
+      system: "You are an expert at finding specific, real communities where target customers naturally gather. Always suggest actual, existing communities, influencers, and platforms - never make up fake names.",
       messages: [
         {
-          role: "system",
-          content: "You are an expert at finding specific, real communities where target customers naturally gather. Always suggest actual, existing communities, influencers, and platforms - never make up fake names."
-        },
-        {
           role: "user",
-          content: prompt
+          content: userPromptWithJson
         }
       ],
-      response_format: { type: "json_object" },
-      max_tokens: 1000
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{}');
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+    const result = JSON.parse(cleanedContent || '{}');
     return result;
     
   } catch (error) {

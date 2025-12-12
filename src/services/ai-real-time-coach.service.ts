@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface RealTimeFeedback {
   status: "typing" | "good-start" | "developing" | "strong";
@@ -30,12 +30,11 @@ export async function getRealTimeFeedback(
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are a supportive, encouraging AI coach helping entrepreneurs develop their strategic messaging. Your role is to provide real-time, collaborative feedback as they write their responses.
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 600,
+      temperature: 0.7,
+      system: `You are a supportive, encouraging AI coach helping entrepreneurs develop their strategic messaging. Your role is to provide real-time, collaborative feedback as they write their responses.
 
 TONE & APPROACH:
 - Be warm, encouraging, and constructive (never judgmental or critical)
@@ -62,7 +61,7 @@ AVOID:
 - Implying their work is wrong or inadequate
 
 Remember: You're a collaborator helping them refine great ideas, not a teacher grading their work.`,
-        },
+      messages: [
         {
           role: "user",
           content: `Question Context: ${sectionContext}
@@ -75,11 +74,9 @@ ${userResponse}
 Provide encouraging, constructive feedback that helps them deepen and refine their response. Include specific examples, rewording suggestions, and explain your reasoning. Make it feel collaborative, not corrective.`,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 600,
     });
 
-    const feedbackText = completion.choices[0]?.message?.content || "";
+    const feedbackText = response.content[0]?.type === "text" ? response.content[0].text : "";
 
     // Parse the AI response into structured feedback
     const feedback = parseFeedbackResponse(feedbackText, userResponse);

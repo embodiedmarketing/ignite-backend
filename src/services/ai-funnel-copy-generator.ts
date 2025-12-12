@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface FunnelCopyInput {
@@ -403,29 +403,34 @@ Generate actual copy content based on the user's inputs, but maintain this EXACT
   // Use retry logic for better reliability
   return retryWithBackoff(async () => {
     try {
-      console.log('[FUNNEL COPY] Starting OpenAI API call...');
+      console.log('[FUNNEL COPY] Starting Claude API call...');
       
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+      
+      const responseObj = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 8000,
+        temperature: 0.8,
+        system: "You are an expert funnel copywriter. You MUST respond with valid JSON only. Do not include any text outside the JSON object.",
         messages: [
           {
-            role: "system",
-            content: "You are an expert funnel copywriter. You MUST respond with valid JSON only. Do not include any text outside the JSON object."
-          },
-          {
             role: "user",
-            content: prompt,
+            content: userPromptWithJson,
           },
         ],
-        response_format: { type: "json_object" },
-        temperature: 0.8,
-        max_tokens: 8000,
       });
 
-      const responseText = completion.choices[0]?.message?.content;
+      const contentText = responseObj.content[0]?.type === "text" ? responseObj.content[0].text : "";
       
-      if (!responseText) {
-        throw new Error("Empty response from OpenAI");
+      if (!contentText) {
+        throw new Error("Empty response from Anthropic");
+      }
+      
+      let responseText = contentText.trim();
+      if (responseText.includes('```json')) {
+        responseText = responseText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+      } else if (responseText.includes('```')) {
+        responseText = responseText.replace(/```.*?\n/, '').replace(/```\s*$/, '');
       }
       
       console.log('[FUNNEL COPY] Received response, parsing JSON...');

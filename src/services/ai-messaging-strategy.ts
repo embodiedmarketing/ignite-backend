@@ -1,14 +1,9 @@
-import OpenAI from "openai";
 import {
   DataSourceValidator,
   UserContextData,
   ClientContextData,
 } from "../utils/data-source-validator";
 import Anthropic from "@anthropic-ai/sdk";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

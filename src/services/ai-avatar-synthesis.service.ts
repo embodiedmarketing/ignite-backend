@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface InterviewNotes {
   painPoints?: string;
@@ -74,14 +74,23 @@ Guidelines:
 - Focus on emotional drivers, not just functional needs
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: userPromptWithJson }],
       temperature: 0.3,
+      max_tokens: 2000,
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+    const result = JSON.parse(cleanedContent || '{}');
     
     return {
       frustration: result.frustration || "No interview data available yet",

@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface CustomerExperienceData {
   offerOutline?: any;
@@ -112,14 +112,23 @@ Create a detailed onboarding plan with:
 
 Focus on making buyers feel confident and clear about what to expect. Return as JSON.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
+  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 800,
-    response_format: { type: "json_object" },
+    temperature: 0.7,
   });
 
-  const result = JSON.parse(response.choices[0].message.content || '{}');
+  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  let cleanedContent = contentText.trim();
+  if (cleanedContent.includes('```json')) {
+    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+  } else if (cleanedContent.includes('```')) {
+    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+  }
+  const result = JSON.parse(cleanedContent || '{}');
   
   return {
     welcomeSequence: result.welcomeSequence || [],
@@ -147,14 +156,23 @@ Create a detailed delivery plan with:
 
 Focus on breaking down EXACTLY what content needs to be created for this offer to be complete. Return as JSON.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
+  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 1000,
-    response_format: { type: "json_object" },
+    temperature: 0.7,
   });
 
-  const result = JSON.parse(response.choices[0].message.content || '{}');
+  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  let cleanedContent = contentText.trim();
+  if (cleanedContent.includes('```json')) {
+    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+  } else if (cleanedContent.includes('```')) {
+    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+  }
+  const result = JSON.parse(cleanedContent || '{}');
   
   return {
     contentList: result.contentList || [],
@@ -184,14 +202,23 @@ Create a detailed communication plan with:
 
 Focus on maintaining engagement and providing ongoing value. Return as JSON.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
+  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 800,
-    response_format: { type: "json_object" },
+    temperature: 0.7,
   });
 
-  const result = JSON.parse(response.choices[0].message.content || '{}');
+  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  let cleanedContent = contentText.trim();
+  if (cleanedContent.includes('```json')) {
+    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+  } else if (cleanedContent.includes('```')) {
+    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+  }
+  const result = JSON.parse(cleanedContent || '{}');
   
   return {
     emailSchedule: result.emailSchedule || [],
@@ -219,14 +246,23 @@ Create a detailed feedback plan with:
 
 Focus on gathering actionable feedback that improves the offer and creates testimonials. Return as JSON.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
+  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 600,
-    response_format: { type: "json_object" },
+    temperature: 0.7,
   });
 
-  const result = JSON.parse(response.choices[0].message.content || '{}');
+  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+  let cleanedContent = contentText.trim();
+  if (cleanedContent.includes('```json')) {
+    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+  } else if (cleanedContent.includes('```')) {
+    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+  }
+  const result = JSON.parse(cleanedContent || '{}');
   
   return {
     collectionMethods: result.collectionMethods || [],

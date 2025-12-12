@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface OfferResponses {
@@ -82,14 +82,15 @@ Write this as a professional strategy document that could be used to create sale
 
 Avoid generic business language. Use the customer's actual language and focus on concrete outcomes and emotional benefits.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1500,
       temperature: 0.7,
     });
 
-    const outline = response.choices[0]?.message?.content || "";
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const outline = contentText || "";
 
     // Validate that we have substantial content
     if (!outline || outline.trim().length < 100) {

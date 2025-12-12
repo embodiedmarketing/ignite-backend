@@ -1,12 +1,12 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import {
   DataSourceValidator,
   UserContextData,
   ClientContextData,
 } from "../utils/data-source-validator";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface InterviewInsights {
@@ -181,32 +181,24 @@ Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitl
 }`;
 
   try {
-    const response = await openai.chat.completions.create(
-      {
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a strict customer research analyst. CRITICAL RULES: 1) ONLY extract information EXPLICITLY stated in the transcript - DO NOT make up, infer, guess, or assume. 2) If information is NOT in the transcript, return \"N/A\" (never empty string or inferred info). 3) DO NOT add details that weren't mentioned (e.g., don't mention family details if not discussed). 4) Keep responses concise - 1-2 sentences maximum. 5) Convert first-person to third-person (I→they, my→their, me→them). 6) Use customer's exact words when possible. 7) If a question wasn't answered in the transcript, return \"N/A\". Return only valid JSON with \"N/A\" for missing information.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.1,
-      },
-      {
-        timeout: 90000,
-      }
-    );
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      temperature: 0.1,
+      system: "You are a strict customer research analyst. CRITICAL RULES: 1) ONLY extract information EXPLICITLY stated in the transcript - DO NOT make up, infer, guess, or assume. 2) If information is NOT in the transcript, return \"N/A\" (never empty string or inferred info). 3) DO NOT add details that weren't mentioned (e.g., don't mention family details if not discussed). 4) Keep responses concise - 1-2 sentences maximum. 5) Convert first-person to third-person (I→they, my→their, me→them). 6) Use customer's exact words when possible. 7) If a question wasn't answered in the transcript, return \"N/A\". Return only valid JSON with \"N/A\" for missing information.",
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
+    });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No content received from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No content received from Anthropic");
     }
+    
+    const content = contentText;
 
     console.log("Raw AI response:", content);
     let cleanedResponse = content.trim();
@@ -303,7 +295,7 @@ Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitl
 
     return { insights: flattened, wasTruncated };
   } catch (parseError) {
-    console.error("Failed to parse OpenAI response:", parseError);
+    console.error("Failed to parse Anthropic response:", parseError);
     throw new Error("Invalid JSON response from AI");
   }
 }
@@ -618,32 +610,24 @@ Return ONLY a JSON object with suggested messaging enhancements:
 VALIDATION CHECK: Ensure your suggestions sound like they come from the business owner about their approach, NOT like client testimonials or client quotes.`;
 
   try {
-    const response = await openai.chat.completions.create(
-      {
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You enhance business messaging based on client research patterns. Never copy client quotes directly. Focus on helping the business owner refine their approach based on client insights.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        max_tokens: 1200,
-        temperature: 0.4,
-      },
-      {
-        timeout: 90000,
-      }
-    );
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1200,
+      temperature: 0.4,
+      system: "You enhance business messaging based on client research patterns. Never copy client quotes directly. Focus on helping the business owner refine their approach based on client insights.",
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
+    });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No content received from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No content received from Anthropic");
     }
+    
+    const content = contentText;
 
     let cleanedResponse = content.trim();
     if (cleanedResponse.startsWith("```")) {

@@ -1,8 +1,8 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { getQuestionSpecificCoaching, evaluateResponseAgainstCoaching } from './question-specific-coaching';
 
-// the newest Anthropic model is "claude-sonnet-4-20250514" which was released May 14, 2025. Use this by default unless user has already selected claude-3-7-sonnet-20250219
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Enhanced question-specific coaching that uses our coaching database
 function getQuestionSpecificCoachingPrompt(questionContext: string, userResponse: string): string {
@@ -114,19 +114,19 @@ Respond with ONLY valid JSON (no markdown):
   "conversationalResponse": "warm coaching response referencing their specific content and coaching insights"
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
       max_tokens: 800,
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No response from OpenAI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    let cleanContent = content;
+    let cleanContent = contentText;
     if (cleanContent.includes('```json')) {
       cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
     }
@@ -200,19 +200,19 @@ Respond with ONLY valid JSON (no markdown):
   "conversationalResponse": "warm coaching response that references their specific content"
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
       max_tokens: 800,
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No response from OpenAI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    let cleanContent = content;
+    let cleanContent = contentText;
     if (cleanContent.includes('```json')) {
       cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
     }
@@ -355,16 +355,15 @@ Provide ACTUAL improved response text they can copy and paste.
 
 Return as a JSON object with an "improvedVersions" array containing the enhanced responses.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with an 'improvedVersions' array. Do not include markdown formatting." }],
       max_tokens: 500
     });
 
-    const content = response.choices[0].message.content;
-    if (!content) return [];
-    const result = JSON.parse(content);
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) return [];
+    const result = JSON.parse(contentText);
     return result.improvedVersions || [];
   } catch (error) {
     console.error('Error generating improved versions:', error);
@@ -784,20 +783,20 @@ Respond ONLY with valid JSON (no markdown formatting):
 
 Focus on making this feel like a real coaching conversation, not generic advice.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
       max_tokens: 800,
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No response from OpenAI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
     // Clean up the response to handle markdown formatting
-    let cleanContent = content;
+    let cleanContent = contentText;
     if (cleanContent.includes('```json')) {
       cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
     }
@@ -937,14 +936,17 @@ Write an expanded version that feels natural and authentic to their voice, but w
 
 Return only the expanded response text, not additional commentary.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: [ { type: "text", text: prompt } ] }],
       max_tokens: 400,
       temperature: 0.7,
     });
-
-    return response.choices[0]?.message?.content || originalResponse;
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
+    }
+    return contentText;
 
   } catch (error) {
     console.error("Response expansion error:", error);

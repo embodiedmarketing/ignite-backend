@@ -57,16 +57,30 @@ KEY PRINCIPLES:
 CRITICAL REQUIREMENT: You MUST generate EXACTLY 5 emails following the exact template structure provided. Each email must follow its designated purpose and structure. No more, no less.
 
 Each paragraph in the email body MUST be separated by double newlines (\\n\\n) for proper white space and readability.`;
-
   // Check if messaging strategy contains interview-enhanced fields
-  const messagingObj = typeof input.messagingStrategy === 'string' 
-    ? JSON.parse(input.messagingStrategy || '{}') 
-    : input.messagingStrategy || {};
+  // messagingStrategy is a markdown string, so we check for interview field keywords in the text
+  const messagingStrategyText = typeof input.messagingStrategy === 'string' 
+    ? input.messagingStrategy 
+    : JSON.stringify(input.messagingStrategy || {});
   
-  const hasInterviewData = messagingObj && typeof messagingObj === 'object' && (
-    messagingObj.frustrations || messagingObj.nighttime_worries || messagingObj.secret_fears ||
-    messagingObj.magic_solution || messagingObj.failed_solutions || messagingObj.blockers ||
-    messagingObj.decision_making || messagingObj.investment_criteria || messagingObj.success_measures
+  // Check for interview-enhanced field keywords in the markdown text
+  const hasInterviewData = messagingStrategyText && typeof messagingStrategyText === 'string' && (
+    messagingStrategyText.toLowerCase().includes('frustrations') ||
+    messagingStrategyText.toLowerCase().includes('nighttime_worries') ||
+    messagingStrategyText.toLowerCase().includes('nighttime worries') ||
+    messagingStrategyText.toLowerCase().includes('secret_fears') ||
+    messagingStrategyText.toLowerCase().includes('secret fears') ||
+    messagingStrategyText.toLowerCase().includes('magic_solution') ||
+    messagingStrategyText.toLowerCase().includes('magic solution') ||
+    messagingStrategyText.toLowerCase().includes('failed_solutions') ||
+    messagingStrategyText.toLowerCase().includes('failed solutions') ||
+    messagingStrategyText.toLowerCase().includes('blockers') ||
+    messagingStrategyText.toLowerCase().includes('decision_making') ||
+    messagingStrategyText.toLowerCase().includes('decision making') ||
+    messagingStrategyText.toLowerCase().includes('investment_criteria') ||
+    messagingStrategyText.toLowerCase().includes('investment criteria') ||
+    messagingStrategyText.toLowerCase().includes('success_measures') ||
+    messagingStrategyText.toLowerCase().includes('success measures')
   );
 
   const userPrompt = `Generate a 5-part lead nurture email sequence for the following business:
@@ -90,7 +104,7 @@ Each paragraph in the email body MUST be separated by double newlines (\\n\\n) f
 **Content Flow**: ${input.contentOrder}
 
 ## BRAND VOICE & MESSAGING
-${typeof input.messagingStrategy === 'string' ? input.messagingStrategy : JSON.stringify(input.messagingStrategy, null, 2)}
+${messagingStrategyText}
 
 ${hasInterviewData ? `\n⭐ CRITICAL: This messaging strategy contains INTERVIEW-ENHANCED insights from customer interview transcripts.
 These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.

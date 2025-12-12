@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface MessagingStrategy {
   [key: string]: string;
@@ -140,15 +140,15 @@ Respond in JSON format:
 
 Make each topic idea feel personal and specific to their exact customer avatar and emotional landscape. Avoid generic advice - make it feel like you understand their customer deeply.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
       max_tokens: 2000,
       temperature: 0.8
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{}');
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const result = JSON.parse(contentText || '{}');
     
     return {
       topicIdeas: result.topicIdeas || [],

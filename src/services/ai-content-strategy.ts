@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface ContentPreferences {
@@ -194,14 +194,15 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 
 Output the complete Content Strategy Plan now.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 5000,
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content || "";
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const content = contentText || "";
     
     if (!content || content.trim().length < 100) {
       throw new Error("Generated content too short or empty");
@@ -792,14 +793,23 @@ Make sure to label each idea with its category (contrarian, emotional, practical
 
 Return ONLY the JSON array, no additional text.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON array with no markdown formatting or code blocks.";
+    
+    const responseObj = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: userPromptWithJson }],
       temperature: 0.8,
       max_tokens: 4000,
     });
 
-    const responseContent = completion.choices[0]?.message?.content || "[]";
+    const contentText = responseObj.content[0]?.type === "text" ? responseObj.content[0].text : "";
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+    const responseContent = cleanedContent || "[]";
     
     // Try to extract JSON from the response
     let jsonMatch = responseContent.match(/\[[\s\S]*\]/);

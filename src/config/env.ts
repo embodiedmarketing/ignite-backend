@@ -14,7 +14,7 @@ export const env = cleanEnv(process.env, {
   PORT: port({ default: 5000 }),
   DATABASE_URL: str(),
   SESSION_SECRET: str({ default: "development-secret-change-in-production" }),
-  OPENAI_API_KEY: str(),
+  ANTHROPIC_API_KEY: str(),
   STRIPE_SECRET_KEY: str({ default: "" }),
   VITE_STRIPE_PUBLIC_KEY: str({ default: "" }),
   STRIPE_PUBLIC_KEY: str({ default: "" }),

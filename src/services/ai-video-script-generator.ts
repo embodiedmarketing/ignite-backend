@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { IStorage } from "./storage.service";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface VideoScriptInput {
   userId: number;
@@ -163,24 +163,34 @@ CRITICAL FORMATTING RULES:
 - Each of the 3 scripts should test a different messaging angle while staying true to the user's authentic voice`;
 
   try {
-    console.log("[VIDEO SCRIPT GENERATOR] Calling OpenAI GPT-4o-mini for script generation");
+    console.log("[VIDEO SCRIPT GENERATOR] Calling Claude Sonnet 4 for script generation");
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
+    const userPromptWithJson = userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
       temperature: 0.8,
-      response_format: { type: "json_object" }
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     });
 
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error("No response from OpenAI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    const parsedResponse = JSON.parse(responseContent) as VideoScriptOutput;
+    // Clean up any markdown code blocks if present
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+
+    const parsedResponse = JSON.parse(cleanedContent) as VideoScriptOutput;
     
     console.log("[VIDEO SCRIPT GENERATOR] Successfully generated video scripts");
     

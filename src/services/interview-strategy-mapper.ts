@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface InterviewInsight {
@@ -129,14 +129,15 @@ GUIDELINES:
 
 OUTPUT: A single, comprehensive response that intelligently combines all relevant information without repetition.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 500,
       temperature: 0.7,
     });
 
-    return response.choices[0].message.content || existingResponse;
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    return contentText || existingResponse;
   } catch (error) {
     console.error("Error synthesizing response:", error);
     return existingResponse;

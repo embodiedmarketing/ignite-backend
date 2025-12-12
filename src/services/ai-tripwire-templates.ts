@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export interface TripwireFunnelPages {
@@ -150,24 +150,23 @@ REQUIREMENTS:
 Return ONLY the JSON object, nothing else.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      temperature: 0.7,
+      system: 'You are an expert funnel copywriter. You generate conversion-focused sales copy in strict JSON format. Never include markdown formatting or explanations - only valid JSON.',
       messages: [
         {
-          role: 'system',
-          content: 'You are an expert funnel copywriter. You generate conversion-focused sales copy in strict JSON format. Never include markdown formatting or explanations - only valid JSON.'
-        },
-        {
           role: 'user',
-          content: prompt
+          content: userPromptWithJson
         }
       ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" }
     });
 
-    const responseText = completion.choices[0]?.message?.content?.trim();
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const responseText = contentText.trim();
     
     if (!responseText) {
       return generateFallbackPages(productName);

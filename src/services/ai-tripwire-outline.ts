@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface TripwireResponses {
@@ -173,14 +173,15 @@ IMPORTANT INSTRUCTIONS:
 
 Generate the complete, comprehensive outline now:`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 4500,
       temperature: 0.7,
     });
 
-    const outline = response.choices[0]?.message?.content || "";
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const outline = contentText || "";
 
     // Validate content
     if (!outline || outline.trim().length < 100) {

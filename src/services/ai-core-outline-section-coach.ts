@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 interface SectionCoachingRequest {
@@ -101,26 +101,31 @@ Return in JSON format:
   "alignmentIssues": ["issue 1"] or []
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a confident, warm business coach evaluating Core Offer sections. Provide honest, constructive feedback with a mentor's tone - encouraging yet direct about improvements needed.`
-        },
-        { role: "user", content: prompt }
-      ],
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      system: `You are a confident, warm business coach evaluating Core Offer sections. Provide honest, constructive feedback with a mentor's tone - encouraging yet direct about improvements needed.`,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     });
 
-    const result = response.choices[0]?.message?.content;
-    if (!result) {
-      throw new Error("No response from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    const evaluation: SectionEvaluation = JSON.parse(result);
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+
+    const evaluation: SectionEvaluation = JSON.parse(cleanedContent);
     return evaluation;
 
   } catch (error) {
@@ -179,26 +184,31 @@ Return in JSON format:
   "improvements": ["improvement 1", "improvement 2", "improvement 3"]
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a skilled marketing strategist rewriting Core Offer sections. Your specialty is enhancing content with clarity and emotional impact while keeping it concise. For each paragraph, expand by 2-3 sentences to add expert insight and emotional depth. Keep the authentic voice while improving specificity and connection.`
-        },
-        { role: "user", content: prompt }
-      ],
+    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      system: `You are a skilled marketing strategist rewriting Core Offer sections. Your specialty is enhancing content with clarity and emotional impact while keeping it concise. For each paragraph, expand by 2-3 sentences to add expert insight and emotional depth. Keep the authentic voice while improving specificity and connection.`,
+      messages: [
+        { role: "user", content: userPromptWithJson }
+      ],
     });
 
-    const result = response.choices[0]?.message?.content;
-    if (!result) {
-      throw new Error("No response from AI");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    if (!contentText) {
+      throw new Error("No response from Anthropic");
     }
 
-    const rewrite: SectionRewriteResult = JSON.parse(result);
+    let cleanedContent = contentText.trim();
+    if (cleanedContent.includes('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.includes('```')) {
+      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
+    }
+
+    const rewrite: SectionRewriteResult = JSON.parse(cleanedContent);
     return rewrite;
 
   } catch (error) {

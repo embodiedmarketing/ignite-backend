@@ -1,6 +1,6 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface SalesPageCoachingResult {
   level: "needs-more-depth" | "good-foundation" | "high-converting";
@@ -141,15 +141,15 @@ Provide response in JSON format:
   "improvements": ["2-3 better versions of key phrases"]
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: coachingPrompt }],
-      response_format: { type: "json_object" },
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "user", content: coachingPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
       max_tokens: 600,
       temperature: 0.7,
     });
 
-    const analysis = JSON.parse(response.choices[0]?.message?.content || "{}");
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const analysis = JSON.parse(contentText || "{}");
     
     return {
       level: analysis.level || "needs-more-depth",
@@ -339,14 +339,15 @@ Rewrite this to be more compelling using the best practices above. Keep the core
 
 Return only the improved version, no explanation needed.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 300,
       temperature: 0.7,
     });
 
-    return response.choices[0]?.message?.content || currentContent;
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    return contentText || currentContent;
 
   } catch (error) {
     console.error('AI improvement error:', error);

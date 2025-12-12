@@ -15,7 +15,7 @@ import {
 import { insertStrategyInterviewLinkSchema } from "../models";
 import { insertSalesPageDraftSchema } from "../models";
 import { z } from "zod";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import DOMPurify from "isomorphic-dompurify";
 import { nanoid } from "nanoid";
 
@@ -979,8 +979,8 @@ export async function getImplementationCheckboxes(req: Request, res: Response) {
 }
 
 // Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // In-memory lock to prevent duplicate email generation requests
@@ -1087,11 +1087,11 @@ You MUST follow this EXACT formatting structure. Use HTML for proper formatting.
 
 Please generate compelling, emotionally resonant copy that converts. IMPORTANT: Follow the exact HTML formatting structure shown above.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [
         {
-          role: "system",
+          role: "assistant",
           content:
             "You are an expert conversion copywriter who writes emotionally engaging, benefit-driven copy for webinar and challenge funnels. Your copy is clear, concise, and follows proven conversion frameworks.",
         },
@@ -1104,7 +1104,7 @@ Please generate compelling, emotionally resonant copy that converts. IMPORTANT: 
       max_tokens: 3000,
     });
 
-    const generatedContent = completion.choices[0].message.content || "";
+      const generatedContent = completion.content[0]?.type === "text" ? completion.content[0].text : "";
 
     // Parse the response to separate Opt-In and Thank You page copy
     // Use positive lookahead to split without consuming the heading
@@ -1322,11 +1322,11 @@ Include CTA prompts after every major section. Use <strong> tags for headings an
 
 Generate a compelling, emotionally resonant sales page that converts. Follow the exact structure and formatting shown above.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [
         {
-          role: "system",
+          role: "assistant",
           content:
             "You are an expert conversion copywriter who writes long-form, narrative-driven sales pages that emotionally guide readers from awareness to action. Your copy is emotionally resonant, benefit-driven, and follows proven conversion frameworks.",
         },
@@ -1339,7 +1339,7 @@ Generate a compelling, emotionally resonant sales page that converts. Follow the
       max_tokens: 4000,
     });
 
-    const salesPageCopy = completion.choices[0].message.content || "";
+    const salesPageCopy = completion.content[0]?.type === "text" ? completion.content[0].text : "";
 
     console.log("[SALES PAGE] Sales page copy generated successfully");
     console.log("[SALES PAGE] Copy length:", salesPageCopy.length);

@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { 
   evaluateUniquePositioning, 
   evaluateBrandVoice, 
@@ -17,8 +17,8 @@ import { userMonitoring } from '../utils/user-monitoring';
 import { storage } from './storage.service';
 import { aiCoachingMonitor } from './ai-coaching-monitor';
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Enhanced rate limiting and caching for multi-user optimization
 const responseCache = new Map<string, { response: any; timestamp: number }>();
@@ -420,7 +420,7 @@ export async function analyzeResponse(
     // Gather comprehensive user information for enhanced AI analysis
     let userContext = {};
     try {
-      const { storage } = await import('./storage');
+      const { storage } = await import('../services/storage.service');
       const userObj = await storage.getUser(parseInt(userId));
       
       if (userObj) {
@@ -493,7 +493,7 @@ export async function analyzeResponse(
     if (userId && userId !== "anonymous") {
       try {
         // Import storage dynamically to avoid circular dependency
-        const { storage } = await import('./storage');
+        const { storage } = await import('../services/storage.service');
         const userObj = await storage.getUser(parseInt(userId));
         if (userObj) {
           await aiCoachingMonitor.logCoachingEvent({
@@ -576,14 +576,15 @@ Expand their response to be 3-4x longer with rich detail, specific examples, per
 Return only the expanded response, ready to use.
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Cost-efficient for multi-user scaling
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 400,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.5,
     });
 
-    return completion.choices[0].message.content || initialResponse;
+    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
+    return contentText || initialResponse;
   } catch (error) {
     console.error("Response expansion failed:", error);
     
@@ -624,14 +625,15 @@ Your task:
 Return only the cleaned-up text, ready to be used as their written response.
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       max_tokens: 300,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
     });
 
-    return completion.choices[0].message.content || transcript;
+    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
+    return contentText || transcript;
   } catch (error) {
     console.error("Audio transcript cleanup failed:", error);
     // Return cleaned transcript with basic cleanup

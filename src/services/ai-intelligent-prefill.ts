@@ -1,7 +1,7 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for high-quality prefill generation
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface IntelligentPrefillResult {
   prefillText: string;
@@ -46,14 +46,15 @@ ${questionType.examples}
 
 Create the response now. Return ONLY the response text that should be placed in the text area - no additional commentary, explanations, or quotation marks.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 300,
       temperature: 0.7,
     });
 
-    const prefillText = response.choices[0]?.message?.content?.trim() || "";
+    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const prefillText = contentText.trim() || "";
     
     return {
       prefillText,
