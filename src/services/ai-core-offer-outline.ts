@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse, validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -350,18 +352,23 @@ Respond in valid JSON format:
       temperature: 0.3,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const evaluation = JSON.parse(cleanedContent || "{}");
+    // Zod schema for evaluation response
+    const EvaluationSchema = z.object({
+      overall_score: z.number().min(0).max(100),
+      strengths: z.array(z.string()),
+      improvements_needed: z.array(z.string()),
+      coaching_feedback: z.string().min(1)
+    });
+    
+    const evaluation = validateAnthropicJsonResponse(
+      response,
+      EvaluationSchema,
+      "CORE_OFFER_EVALUATION"
+    );
     
     return {
-      overall_score: evaluation.overall_score || 75,
-      strengths: evaluation.strengths || [],
+      overall_score: evaluation.overall_score,
+      strengths: evaluation.strengths,
       improvements_needed: evaluation.improvements_needed || [],
       coaching_feedback: evaluation.coaching_feedback || "Great work! The outline is cohesive and ready to launch."
     };

@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -39,6 +41,29 @@ interface SectionRewriteResult {
   rationale: string;
   improvements: string[];
 }
+
+// Zod schemas for validation
+const SectionEvaluationSchema = z.object({
+  qualityScore: z.number().min(0).max(100),
+  categoryScores: z.object({
+    clarity: z.object({ score: z.number().min(1).max(5), reasoning: z.string() }),
+    specificity: z.object({ score: z.number().min(1).max(5), reasoning: z.string() }),
+    emotionalResonance: z.object({ score: z.number().min(1).max(5), reasoning: z.string() }),
+    alignment: z.object({ score: z.number().min(1).max(5), reasoning: z.string() })
+  }),
+  totalScore: z.number(),
+  strongPoints: z.array(z.string()),
+  needsWork: z.array(z.string()),
+  coachingFeedback: z.string().min(1),
+  needsRewrite: z.boolean(),
+  alignmentIssues: z.array(z.string())
+});
+
+const SectionRewriteResultSchema = z.object({
+  rewrittenContent: z.string().min(1),
+  rationale: z.string().min(1),
+  improvements: z.array(z.string())
+});
 
 export async function evaluateCoreOfferSection(
   request: SectionCoachingRequest
@@ -113,19 +138,12 @@ Return in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const evaluation: SectionEvaluation = JSON.parse(cleanedContent);
+    const evaluation = validateAnthropicJsonResponse(
+      response,
+      SectionEvaluationSchema,
+      "SECTION_EVALUATION"
+    );
+    
     return evaluation;
 
   } catch (error) {
@@ -196,19 +214,11 @@ Return in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const rewrite: SectionRewriteResult = JSON.parse(cleanedContent);
+    const rewrite = validateAnthropicJsonResponse(
+      response,
+      SectionRewriteResultSchema,
+      "SECTION_REWRITE"
+    );
     return rewrite;
 
   } catch (error) {

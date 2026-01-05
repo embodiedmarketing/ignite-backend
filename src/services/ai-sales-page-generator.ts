@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -57,7 +59,7 @@ export async function generateSalesPage(salesPageData: SalesPageData): Promise<S
 }
 
 async function generateEmotionalSalesPage(messaging: any, offer: any, offerType: string): Promise<string> {
-  // Add timeout and error handling for OpenAI API calls
+  // Add timeout and error handling for Anthropic API calls
   const timeout = 15000; // 15 second timeout
   
   const systemPrompt = `You are an expert sales copywriter who writes compelling, conversion-focused sales pages. You write ONLY actual sales copy using simple text formatting with proper line breaks. You NEVER output structure templates, guidelines, or instructions.`;
@@ -239,8 +241,21 @@ OUTPUT ONLY THE SALES PAGE COPY - NO META INSTRUCTIONS.`;
     ],
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  return contentText || "";
+  // Validate text response structure
+  const TextResponseSchema = z.object({
+    content: z.array(z.object({
+      type: z.literal("text"),
+      text: z.string().min(1)
+    })).min(1)
+  });
+  
+  const validatedResponse = validateAnthropicResponse(
+    response,
+    TextResponseSchema,
+    "SALES_PAGE_GENERATOR"
+  );
+  
+  return validatedResponse.content[0].text;
 }
 
 function generateEnhancedFallbackSalesPage(messaging: any, offer: any, offerType: string): string {

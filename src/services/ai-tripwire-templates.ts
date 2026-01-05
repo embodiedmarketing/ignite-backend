@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from '@anthropic-ai/sdk';
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -31,6 +33,35 @@ export interface TripwireFunnelPages {
     supportInfo?: string;
   };
 }
+
+// Zod schema for TripwireFunnelPages validation
+const TripwireFunnelPagesSchema = z.object({
+  thankyou: z.object({
+    headline: z.string().min(1),
+    transition: z.string().min(1),
+    productName: z.string().min(1),
+    quickTransformation: z.string().min(1),
+    price: z.string().min(1),
+    benefits: z.array(z.string()),
+    socialProof: z.string().optional(),
+    urgency: z.string().optional(),
+    ctaButton: z.string().min(1)
+  }),
+  checkout: z.object({
+    headline: z.string().min(1),
+    offerRecap: z.string().min(1),
+    whatsIncluded: z.array(z.string()),
+    price: z.string().min(1),
+    trustElements: z.array(z.string())
+  }),
+  confirmation: z.object({
+    headline: z.string().min(1),
+    deliveryInstructions: z.string().min(1),
+    nextSteps: z.array(z.string()),
+    encouragement: z.string().min(1),
+    supportInfo: z.string().optional()
+  })
+});
 
 export async function generateTripwireFunnelPages(
   outlineText: string,
@@ -165,22 +196,14 @@ Return ONLY the JSON object, nothing else.`;
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const responseText = contentText.trim();
+    // Parse and validate JSON response
+    const validatedResponse = validateAnthropicJsonResponse(
+      response,
+      TripwireFunnelPagesSchema,
+      "TRIPWIRE_TEMPLATES"
+    );
     
-    if (!responseText) {
-      return generateFallbackPages(productName);
-    }
-
-    const parsedResponse = JSON.parse(responseText);
-    
-    // Validate structure
-    if (!parsedResponse.thankyou || !parsedResponse.checkout || !parsedResponse.confirmation) {
-      console.warn('Invalid AI response structure, using fallback');
-      return generateFallbackPages(productName);
-    }
-
-    return parsedResponse as TripwireFunnelPages;
+    return validatedResponse;
     
   } catch (error) {
     console.error('Error generating tripwire funnel pages:', error);

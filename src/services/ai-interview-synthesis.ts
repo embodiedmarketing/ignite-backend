@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -199,8 +201,21 @@ Return ONLY the merged content, no explanations or meta-commentary.`;
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const mergedContent = contentText.trim();
+    // Validate text response structure
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string().min(1)
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "INTERVIEW_SYNTHESIS"
+    );
+    
+    const mergedContent = validatedResponse.content[0].text.trim();
 
     if (!mergedContent) {
       throw new Error("No merged content received from AI");

@@ -665,7 +665,7 @@ export async function generateEmailSequence(req: Request, res: Response) {
     } else if (error?.message?.toLowerCase().includes("no content received")) {
       errorMessage =
         "We didn't receive a complete response from the AI service. Please try again.";
-    } else if (error?.message?.includes("OPENAI_API_KEY")) {
+    } else if (error?.message?.includes("ANTHROPIC_API_KEY") || error?.message?.includes("API_KEY")) {
       errorMessage =
         "There's a configuration issue with our AI service. Please contact support.";
     } else if (error?.status >= 500) {
@@ -978,7 +978,7 @@ export async function getImplementationCheckboxes(req: Request, res: Response) {
   }
 }
 
-// Initialize OpenAI
+// Initialize Anthropic
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });

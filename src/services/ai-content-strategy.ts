@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse, validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -37,6 +39,16 @@ export interface ContentIdea {
   callToAction: string;
   category: 'contrarian' | 'emotional' | 'practical' | 'rooftop' | 'objection';
 }
+
+// Zod schema for ContentIdea validation
+const ContentIdeaSchema = z.object({
+  title: z.string().min(1),
+  coreMessage: z.string().min(1),
+  format: z.string().min(1),
+  emotionalIntention: z.string().min(1),
+  callToAction: z.string().min(1),
+  category: z.enum(['contrarian', 'emotional', 'practical', 'rooftop', 'objection'])
+});
 
 interface ContentStrategyResult {
   // Part 1: Content Strategy Overview
@@ -802,30 +814,16 @@ Return ONLY the JSON array, no additional text.`;
       max_tokens: 4000,
     });
 
-    const contentText = responseObj.content[0]?.type === "text" ? responseObj.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const responseContent = cleanedContent || "[]";
+    // Parse and validate JSON array response
+    const ContentIdeasArraySchema = z.array(ContentIdeaSchema).length(10);
     
-    // Try to extract JSON from the response
-    let jsonMatch = responseContent.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      // If no JSON found, try to parse the entire response
-      jsonMatch = [responseContent];
-    }
+    const validatedIdeas = validateAnthropicJsonResponse(
+      responseObj,
+      ContentIdeasArraySchema,
+      "CONTENT_IDEAS"
+    );
     
-    const ideas: ContentIdea[] = JSON.parse(jsonMatch[0]);
-    
-    // Validate and ensure we have exactly 10 ideas
-    if (ideas.length !== 10) {
-      throw new Error("Expected 10 content ideas");
-    }
-    
-    return ideas;
+    return validatedIdeas;
     
   } catch (error) {
     console.error("Error generating content ideas:", error);

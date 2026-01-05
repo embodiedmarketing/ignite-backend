@@ -51,7 +51,7 @@ Create a `.env` file in the `backend/` directory:
 ```env
 DATABASE_URL=your_database_url
 SESSION_SECRET=your_session_secret
-OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
 STRIPE_SECRET_KEY=your_stripe_secret
 SENDGRID_API_KEY=your_sendgrid_key
 PORT=5000

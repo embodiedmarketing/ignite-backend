@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse, validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -13,6 +15,19 @@ interface SalesPageCoachingResult {
   improvements: string[];
   examples: string[];
 }
+
+// Zod schema for SalesPageCoachingResult validation
+const SalesPageCoachingResultSchema = z.object({
+  level: z.enum(["needs-more-depth", "good-foundation", "high-converting"]),
+  levelDescription: z.string().min(1),
+  feedback: z.string().min(1),
+  suggestions: z.array(z.string()),
+  emotionalDepthScore: z.number().min(0).max(10),
+  clarityScore: z.number().min(0).max(10),
+  persuasionScore: z.number().min(0).max(10),
+  improvements: z.array(z.string()),
+  examples: z.array(z.string())
+});
 
 // PROVEN BEST PRACTICES from high-converting sales pages
 const HIGH_CONVERTING_PATTERNS = {
@@ -148,19 +163,15 @@ Provide response in JSON format:
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const analysis = JSON.parse(contentText || "{}");
+    const validatedResult = validateAnthropicJsonResponse(
+      response,
+      SalesPageCoachingResultSchema,
+      "SALES_PAGE_COACHING"
+    );
     
     return {
-      level: analysis.level || "needs-more-depth",
-      levelDescription: analysis.levelDescription || "Needs development",
-      feedback: analysis.feedback || "Add more emotional depth and specific details.",
-      suggestions: analysis.suggestions || getSectionSpecificGuidance(sectionType),
-      emotionalDepthScore: analysis.emotionalDepthScore || 3,
-      clarityScore: analysis.clarityScore || 3,
-      persuasionScore: analysis.persuasionScore || 3,
-      improvements: analysis.improvements || [],
-      examples: getExamplesForSection(sectionType)
+      ...validatedResult,
+      examples: validatedResult.examples.length > 0 ? validatedResult.examples : getExamplesForSection(sectionType)
     };
 
   } catch (error) {
@@ -346,8 +357,21 @@ Return only the improved version, no explanation needed.`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    return contentText || currentContent;
+    // Validate text response structure
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string()
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "SALES_PAGE_IMPROVEMENT"
+    );
+    
+    return validatedResponse.content[0].text || currentContent;
 
   } catch (error) {
     console.error('AI improvement error:', error);

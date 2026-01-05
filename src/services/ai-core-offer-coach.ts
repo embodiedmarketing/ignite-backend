@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -62,6 +64,50 @@ interface FinalSummary {
   totalScore?: number;
   scoreSummary?: string;
 }
+
+// Zod schemas for validation
+const CategoryScoreSchema = z.object({
+  score: z.number().min(1).max(5),
+  reasoning: z.string()
+});
+
+const CoachingEvaluationSchema = z.object({
+  qualityScore: z.number().min(0).max(100),
+  categoryScores: z.object({
+    clarity: CategoryScoreSchema,
+    specificity: CategoryScoreSchema,
+    differentiation: CategoryScoreSchema,
+    emotion: CategoryScoreSchema,
+    proof: CategoryScoreSchema,
+    alignment: CategoryScoreSchema
+  }).optional(),
+  totalScore: z.number().optional(),
+  coachingFeedback: z.string().min(1),
+  strongPoints: z.array(z.string()).optional(),
+  needsWork: z.array(z.string()).optional(),
+  needsRewrite: z.boolean(),
+  recommendedRewrite: z.string().optional(),
+  rewriteRationale: z.string().optional(),
+  alignmentIssues: z.array(z.string()).optional(),
+  suggestedFollowUps: z.array(z.object({
+    questionKey: z.string(),
+    suggestion: z.string()
+  })).optional()
+});
+
+const RewriteResultSchema = z.object({
+  rewrittenText: z.string().min(1),
+  rationale: z.string().min(1),
+  improvements: z.array(z.string())
+});
+
+const FinalSummarySchema = z.object({
+  summary: z.string().min(1),
+  keyStrengths: z.array(z.string()),
+  nextSteps: z.array(z.string()),
+  totalScore: z.number().optional(),
+  scoreSummary: z.string().optional()
+});
 
 // Section-specific coaching prompts mapping
 const SECTION_COACHING_PROMPTS: Record<string, { keyChecks: string; weakPrompt: string }> = {
@@ -196,19 +242,12 @@ Return your evaluation in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const evaluation: CoachingEvaluation = JSON.parse(cleanedContent);
+    const evaluation = validateAnthropicJsonResponse(
+      response,
+      CoachingEvaluationSchema,
+      "COACHING_EVALUATION"
+    );
+    
     return evaluation;
 
   } catch (error) {
@@ -282,19 +321,12 @@ Return your rewrite in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const rewrite: RewriteResult = JSON.parse(cleanedContent);
+    const rewrite = validateAnthropicJsonResponse(
+      response,
+      RewriteResultSchema,
+      "REWRITE_RESULT"
+    );
+    
     return rewrite;
 
   } catch (error) {
@@ -364,23 +396,12 @@ Return in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const result = cleanedContent;
-    if (!result) {
-      throw new Error("No response from Anthropic");
-    }
-
-    const summary: FinalSummary = JSON.parse(result);
+    const summary = validateAnthropicJsonResponse(
+      response,
+      FinalSummarySchema,
+      "FINAL_SUMMARY"
+    );
+    
     return summary;
 
   } catch (error) {

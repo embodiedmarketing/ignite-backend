@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -7,6 +9,9 @@ const anthropic = new Anthropic({
 interface ParsedAnswers {
   [key: string]: string;
 }
+
+// Zod schema for ParsedAnswers - flexible object with string values
+const ParsedAnswersSchema = z.record(z.string());
 
 export async function parseInterviewTranscript(
   transcript: string
@@ -55,9 +60,12 @@ Return a JSON object with the extracted answers using the keys listed above.`;
       ],
     });
 
-    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
-    const result = JSON.parse(contentText || "{}");
-    return result;
+    const validated = validateAnthropicJsonResponse(
+      response,
+      ParsedAnswersSchema,
+      "TRANSCRIPT_PARSER"
+    );
+    return validated;
   } catch (error) {
     console.error("Error parsing interview transcript:", error);
 
