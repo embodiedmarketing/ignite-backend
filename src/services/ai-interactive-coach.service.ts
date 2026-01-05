@@ -1,5 +1,7 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { getQuestionSpecificCoaching, evaluateResponseAgainstCoaching } from './question-specific-coaching';
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -121,21 +123,12 @@ Respond with ONLY valid JSON (no markdown):
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanContent = contentText;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
-    return parsed;
+    const validated = validateAnthropicJsonResponse(
+      response,
+      InteractiveCoachingResponseSchema,
+      "INTERACTIVE_COACH"
+    );
+    return validated;
 
   } catch (error) {
     console.error("General response analysis error:", error);
@@ -207,21 +200,12 @@ Respond with ONLY valid JSON (no markdown):
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanContent = contentText;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
-    return parsed;
+    const validated = validateAnthropicJsonResponse(
+      response,
+      InteractiveCoachingResponseSchema,
+      "INTERACTIVE_COACH"
+    );
+    return validated;
 
   } catch (error) {
     console.error("Offer analysis error:", error);
@@ -361,10 +345,12 @@ Return as a JSON object with an "improvedVersions" array containing the enhanced
       max_tokens: 500
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) return [];
-    const result = JSON.parse(contentText);
-    return result.improvedVersions || [];
+    const validatedResult = validateAnthropicJsonResponse(
+      response,
+      ImprovedVersionsResponseSchema,
+      "IMPROVED_VERSIONS"
+    );
+    return validatedResult.improvedVersions;
   } catch (error) {
     console.error('Error generating improved versions:', error);
     return [];
@@ -382,6 +368,24 @@ interface InteractiveCoachingResponse {
   encouragement: string;
   conversationalResponse: string;
 }
+
+// Zod schema for InteractiveCoachingResponse validation
+const InteractiveCoachingResponseSchema = z.object({
+  level: z.enum(["needs-more-detail", "good-start", "excellent-depth"]),
+  levelDescription: z.string().min(1),
+  feedback: z.string().min(1),
+  followUpQuestions: z.array(z.string()),
+  interactivePrompts: z.array(z.string()),
+  examples: z.array(z.string()),
+  nextSteps: z.array(z.string()),
+  encouragement: z.string().min(1),
+  conversationalResponse: z.string().min(1),
+});
+
+// Zod schema for improved versions response
+const ImprovedVersionsResponseSchema = z.object({
+  improvedVersions: z.array(z.string()).min(1)
+});
 
 // Question complexity analysis to provide appropriate support level
 function analyzeQuestionComplexity(questionContext: string): {
@@ -792,23 +796,18 @@ Focus on making this feel like a real coaching conversation, not generic advice.
 
     const content = response.content[0]?.type === "text" ? response.content[0].text : "";
     if (!content) {
-      throw new Error("No response from OpenAI");
+      throw new Error("No response from Anthropic");
     }
 
-    // Clean up the response to handle markdown formatting
-    let cleanContent = content;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
+    const validated = validateAnthropicJsonResponse(
+      response,
+      InteractiveCoachingResponseSchema,
+      "INTERACTIVE_COACH_MAIN"
+    );
     
     // Generate actual improved versions instead of generic suggestions
-    if (parsed.interactivePrompts && parsed.interactivePrompts.length > 0) {
-      const hasGenericSuggestions = parsed.interactivePrompts.some((prompt: string) => 
+    if (validated.interactivePrompts && validated.interactivePrompts.length > 0) {
+      const hasGenericSuggestions = validated.interactivePrompts.some((prompt: string) => 
         prompt.toLowerCase().includes('think about') || 
         prompt.toLowerCase().includes('consider') || 
         prompt.toLowerCase().includes('reflect on')
@@ -817,12 +816,12 @@ Focus on making this feel like a real coaching conversation, not generic advice.
       if (hasGenericSuggestions) {
         const improvedVersions = await generateActualImprovedVersions(userResponse, questionContext, messagingStrategy);
         if (improvedVersions.length > 0) {
-          parsed.interactivePrompts = improvedVersions;
+          validated.interactivePrompts = improvedVersions;
         }
       }
     }
     
-    return parsed;
+    return validated;
 
   } catch (error) {
     console.error("Interactive coaching error:", error);

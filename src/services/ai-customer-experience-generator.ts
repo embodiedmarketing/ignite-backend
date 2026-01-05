@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -67,6 +69,52 @@ interface ContentItem {
   dependencies?: string[];
 }
 
+// Zod schemas for validation
+const EmailTemplateSchema = z.object({
+  subject: z.string(),
+  timing: z.string(),
+  purpose: z.string(),
+  keyPoints: z.array(z.string()),
+  callToAction: z.string()
+});
+
+const ContentItemSchema = z.object({
+  type: z.string(),
+  title: z.string(),
+  description: z.string(),
+  estimatedTime: z.string(),
+  priority: z.enum(["high", "medium", "low"]),
+  dependencies: z.array(z.string()).optional()
+});
+
+const OnboardingPlanSchema = z.object({
+  welcomeSequence: z.array(EmailTemplateSchema),
+  clearNextSteps: z.array(z.string()),
+  avoidOverwhelm: z.array(z.string()),
+  keyInformation: z.array(z.string())
+});
+
+const DeliveryPlanSchema = z.object({
+  contentList: z.array(ContentItemSchema),
+  creationTimeline: z.array(z.string()),
+  deliveryMethods: z.array(z.string()),
+  qualityStandards: z.array(z.string())
+});
+
+const CommunicationPlanSchema = z.object({
+  emailSchedule: z.array(EmailTemplateSchema),
+  checkInCadence: z.array(z.string()),
+  valueAdds: z.array(z.string()),
+  retentionStrategy: z.array(z.string())
+});
+
+const FeedbackPlanSchema = z.object({
+  collectionMethods: z.array(z.string()),
+  timing: z.array(z.string()),
+  questions: z.array(z.string()),
+  implementation: z.array(z.string())
+});
+
 export async function generateComprehensiveCustomerExperience(
   data: CustomerExperienceData
 ): Promise<ComprehensiveExperiencePlan> {
@@ -121,21 +169,13 @@ Focus on making buyers feel confident and clear about what to expect. Return as 
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
+  const validatedResult = validateAnthropicJsonResponse(
+    response,
+    OnboardingPlanSchema,
+    "CUSTOMER_EXPERIENCE_ONBOARDING"
+  );
   
-  return {
-    welcomeSequence: result.welcomeSequence || [],
-    clearNextSteps: result.clearNextSteps || [],
-    avoidOverwhelm: result.avoidOverwhelm || [],
-    keyInformation: result.keyInformation || []
-  };
+  return validatedResult;
 }
 
 async function generateDeliveryPlan(
@@ -165,21 +205,13 @@ Focus on breaking down EXACTLY what content needs to be created for this offer t
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
+  const validatedResult = validateAnthropicJsonResponse(
+    response,
+    DeliveryPlanSchema,
+    "CUSTOMER_EXPERIENCE_DELIVERY"
+  );
   
-  return {
-    contentList: result.contentList || [],
-    creationTimeline: result.creationTimeline || [],
-    deliveryMethods: result.deliveryMethods || [],
-    qualityStandards: result.qualityStandards || []
-  };
+  return validatedResult;
 }
 
 async function generateCommunicationPlan(
@@ -211,21 +243,13 @@ Focus on maintaining engagement and providing ongoing value. Return as JSON.`;
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
+  const validatedResult = validateAnthropicJsonResponse(
+    response,
+    CommunicationPlanSchema,
+    "CUSTOMER_EXPERIENCE_COMMUNICATION"
+  );
   
-  return {
-    emailSchedule: result.emailSchedule || [],
-    checkInCadence: result.checkInCadence || [],
-    valueAdds: result.valueAdds || [],
-    retentionStrategy: result.retentionStrategy || []
-  };
+  return validatedResult;
 }
 
 async function generateFeedbackPlan(
@@ -255,21 +279,13 @@ Focus on gathering actionable feedback that improves the offer and creates testi
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
+  const validatedResult = validateAnthropicJsonResponse(
+    response,
+    FeedbackPlanSchema,
+    "CUSTOMER_EXPERIENCE_FEEDBACK"
+  );
   
-  return {
-    collectionMethods: result.collectionMethods || [],
-    timing: result.timing || [],
-    questions: result.questions || [],
-    implementation: result.implementation || []
-  };
+  return validatedResult;
 }
 
 function generateFallbackPlan(data: CustomerExperienceData): ComprehensiveExperiencePlan {

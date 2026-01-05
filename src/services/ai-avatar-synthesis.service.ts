@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -30,6 +32,26 @@ interface CustomerAvatarSynthesis {
   successMeasures: string;
   outcomes: string;
 }
+
+// Zod schema for CustomerAvatarSynthesis validation
+const CustomerAvatarSynthesisSchema = z.object({
+  frustration: z.string(),
+  fears: z.string(),
+  perfectDay: z.string(),
+  transformation: z.string(),
+  uniqueApproach: z.string(),
+  age: z.string(),
+  income: z.string(),
+  jobTitle: z.string(),
+  previousSolutions: z.string(),
+  blockers: z.string(),
+  informationSources: z.string(),
+  language: z.string(),
+  decisionMaking: z.string(),
+  investmentCriteria: z.string(),
+  successMeasures: z.string(),
+  outcomes: z.string(),
+});
 
 export async function synthesizeCustomerAvatar(interviewNotes: InterviewNotes): Promise<CustomerAvatarSynthesis> {
   try {
@@ -83,32 +105,30 @@ Guidelines:
       max_tokens: 2000,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const result = JSON.parse(cleanedContent || '{}');
+    const validated = validateAnthropicJsonResponse(
+      response,
+      CustomerAvatarSynthesisSchema,
+      "AVATAR_SYNTHESIS"
+    );
     
+    // Provide defaults for missing fields (Zod will ensure they exist, but handle gracefully)
     return {
-      frustration: result.frustration || "No interview data available yet",
-      fears: result.fears || "No interview data available yet", 
-      perfectDay: result.perfectDay || "No interview data available yet",
-      transformation: result.transformation || "No interview data available yet",
-      uniqueApproach: result.uniqueApproach || "No interview data available yet",
-      age: result.age || "Not determined from interviews",
-      income: result.income || "Not determined from interviews",
-      jobTitle: result.jobTitle || "Not determined from interviews", 
-      previousSolutions: result.previousSolutions || "No interview data available yet",
-      blockers: result.blockers || "No interview data available yet",
-      informationSources: result.informationSources || "No interview data available yet",
-      language: result.language || "No interview data available yet",
-      decisionMaking: result.decisionMaking || "No interview data available yet",
-      investmentCriteria: result.investmentCriteria || "No interview data available yet",
-      successMeasures: result.successMeasures || "No interview data available yet",
-      outcomes: result.outcomes || "No interview data available yet"
+      frustration: validated.frustration || "No interview data available yet",
+      fears: validated.fears || "No interview data available yet", 
+      perfectDay: validated.perfectDay || "No interview data available yet",
+      transformation: validated.transformation || "No interview data available yet",
+      uniqueApproach: validated.uniqueApproach || "No interview data available yet",
+      age: validated.age || "Not determined from interviews",
+      income: validated.income || "Not determined from interviews",
+      jobTitle: validated.jobTitle || "Not determined from interviews", 
+      previousSolutions: validated.previousSolutions || "No interview data available yet",
+      blockers: validated.blockers || "No interview data available yet",
+      informationSources: validated.informationSources || "No interview data available yet",
+      language: validated.language || "No interview data available yet",
+      decisionMaking: validated.decisionMaking || "No interview data available yet",
+      investmentCriteria: validated.investmentCriteria || "No interview data available yet",
+      successMeasures: validated.successMeasures || "No interview data available yet",
+      outcomes: validated.outcomes || "No interview data available yet"
     };
   } catch (error) {
     console.error("Customer avatar synthesis failed:", error);

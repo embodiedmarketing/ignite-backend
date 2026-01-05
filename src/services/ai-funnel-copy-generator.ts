@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from '@anthropic-ai/sdk';
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -52,6 +54,14 @@ interface FunnelCopyOutput {
   checkoutPage: string;
   confirmationPage: string;
 }
+
+// Zod schema for FunnelCopyOutput validation
+const FunnelCopyOutputSchema = z.object({
+  optInPage: z.string().min(1),
+  tripwirePage: z.string().min(1),
+  checkoutPage: z.string().min(1),
+  confirmationPage: z.string().min(1)
+});
 
 // Helper function to retry with exponential backoff
 async function retryWithBackoff<T>(
@@ -433,30 +443,16 @@ Generate actual copy content based on the user's inputs, but maintain this EXACT
         responseText = responseText.replace(/```.*?\n/, '').replace(/```\s*$/, '');
       }
       
-      console.log('[FUNNEL COPY] Received response, parsing JSON...');
+      console.log('[FUNNEL COPY] Received response, validating...');
       
-      // Parse JSON response
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('[FUNNEL COPY] JSON parse error:', parseError);
-        console.error('[FUNNEL COPY] Response text:', responseText.substring(0, 500));
-        throw new Error("Failed to parse AI response as JSON");
-      }
+      // Parse and validate JSON response
+      const validatedResult = validateAnthropicJsonResponse(
+        responseObj,
+        FunnelCopyOutputSchema,
+        "FUNNEL_COPY_GENERATOR"
+      );
       
-      // Validate required fields
-      if (!result.optInPage || !result.tripwirePage || !result.checkoutPage || !result.confirmationPage) {
-        console.error('[FUNNEL COPY] Missing required fields:', {
-          hasOptIn: !!result.optInPage,
-          hasTripwire: !!result.tripwirePage,
-          hasCheckout: !!result.checkoutPage,
-          hasConfirmation: !!result.confirmationPage
-        });
-        throw new Error("AI response missing required pages");
-      }
-      
-      console.log('[FUNNEL COPY] Successfully generated all 4 pages');
+      console.log('[FUNNEL COPY] Successfully validated all 4 pages');
       
       // Post-process to remove any unwanted content
       const cleanContent = (text: string) => {
@@ -474,10 +470,10 @@ Generate actual copy content based on the user's inputs, but maintain this EXACT
       };
       
       return {
-        optInPage: cleanContent(result.optInPage),
-        tripwirePage: cleanContent(result.tripwirePage),
-        checkoutPage: cleanContent(result.checkoutPage),
-        confirmationPage: cleanContent(result.confirmationPage),
+        optInPage: cleanContent(validatedResult.optInPage),
+        tripwirePage: cleanContent(validatedResult.tripwirePage),
+        checkoutPage: cleanContent(validatedResult.checkoutPage),
+        confirmationPage: cleanContent(validatedResult.confirmationPage),
       };
     } catch (error) {
       console.error('[FUNNEL COPY] Generation error:', error);

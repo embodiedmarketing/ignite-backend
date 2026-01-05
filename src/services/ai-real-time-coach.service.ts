@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -76,7 +78,21 @@ Provide encouraging, constructive feedback that helps them deepen and refine the
       ],
     });
 
-    const feedbackText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    // Validate response structure (text response)
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string().min(1)
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "REAL_TIME_COACH"
+    );
+    
+    const feedbackText = validatedResponse.content[0].text;
 
     // Parse the AI response into structured feedback
     const feedback = parseFeedbackResponse(feedbackText, userResponse);

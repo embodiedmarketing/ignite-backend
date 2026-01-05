@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

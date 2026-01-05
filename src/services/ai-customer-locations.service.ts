@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -87,20 +89,27 @@ Respond in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    if (!contentText) {
-      throw new Error("No response from Anthropic");
-    }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const result = JSON.parse(cleanedContent || '{}');
-    return result;
+    // Zod schema for customer locations response
+    const CustomerLocationsResponseSchema = z.object({
+      suggestions: z.array(z.object({
+        category: z.string().min(1),
+        platform: z.string().min(1),
+        specificLocation: z.string().min(1),
+        reasoning: z.string().min(1),
+        connectionStrategy: z.string().min(1),
+        estimatedAudience: z.string().min(1)
+      })),
+      summary: z.string().min(1),
+      nextSteps: z.array(z.string())
+    });
+    
+    const validatedResult = validateAnthropicJsonResponse(
+      response,
+      CustomerLocationsResponseSchema,
+      "CUSTOMER_LOCATIONS"
+    );
+    
+    return validatedResult;
     
   } catch (error) {
     console.error('Error generating customer locations:', error);

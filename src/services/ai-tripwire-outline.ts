@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from '@anthropic-ai/sdk';
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -180,8 +182,21 @@ Generate the complete, comprehensive outline now:`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const outline = contentText || "";
+    // Validate text response structure (markdown outline)
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string().min(1)
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "TRIPWIRE_OUTLINE"
+    );
+    
+    const outline = validatedResponse.content[0].text;
 
     // Validate content
     if (!outline || outline.trim().length < 100) {

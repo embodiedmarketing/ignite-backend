@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for high-quality prefill generation
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -53,8 +55,21 @@ Create the response now. Return ONLY the response text that should be placed in 
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const prefillText = contentText.trim() || "";
+    // Validate text response structure
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string()
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "INTELLIGENT_PREFILL"
+    );
+    
+    const prefillText = validatedResponse.content[0].text.trim();
     
     return {
       prefillText,

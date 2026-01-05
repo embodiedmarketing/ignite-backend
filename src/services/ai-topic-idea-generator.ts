@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -19,6 +21,21 @@ interface TopicIdeaResult {
   topicIdeas: TopicIdea[];
   strategicInsights: string[];
 }
+
+// Zod schemas for validation
+const TopicIdeaSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  emotionalHook: z.string().min(1),
+  contentType: z.string().min(1),
+  keyPoints: z.array(z.string()).min(1),
+  reelIdeas: z.array(z.string()).min(1)
+});
+
+const TopicIdeaResultSchema = z.object({
+  topicIdeas: z.array(TopicIdeaSchema).min(1),
+  strategicInsights: z.array(z.string()).min(1)
+});
 
 function validateMessagingStrategy(strategy: MessagingStrategy): { isValid: boolean; message: string } {
   if (!strategy || typeof strategy !== 'object') {
@@ -147,13 +164,14 @@ Make each topic idea feel personal and specific to their exact customer avatar a
       temperature: 0.8
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const result = JSON.parse(contentText || '{}');
+    // Parse and validate JSON response
+    const validatedResult = validateAnthropicJsonResponse(
+      response,
+      TopicIdeaResultSchema,
+      "TOPIC_IDEA_GENERATOR"
+    );
     
-    return {
-      topicIdeas: result.topicIdeas || [],
-      strategicInsights: result.strategicInsights || []
-    };
+    return validatedResult;
 
   } catch (error) {
     console.error('Error generating topic ideas:', error);

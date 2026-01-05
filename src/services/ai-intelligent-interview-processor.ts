@@ -1,9 +1,11 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   DataSourceValidator,
   UserContextData,
   ClientContextData,
 } from "../utils/data-source-validator";
+import { validateAnthropicJsonResponse } from "../utils/anthropic-validator";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -30,6 +32,17 @@ interface MessagingStrategyUpdate {
   [key: string]: string | any;
   dataSourceReport?: any;
 }
+
+// Zod schemas for AI response validation
+const InterviewInsightsSchema = z.record(z.string().optional());
+
+const MessagingStrategyUpdateSchema = z.object({
+  positioning_enhancement: z.string().optional(),
+  value_proposition_refinement: z.string().optional(),
+  brand_voice_adjustment: z.string().optional(),
+  key_messages_improvement: z.string().optional(),
+  customer_avatar_refinement: z.string().optional(),
+}).catchall(z.any());
 
 export async function intelligentlyProcessInterviewTranscript(
   transcript: string,
@@ -197,30 +210,18 @@ Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitl
     if (!contentText) {
       throw new Error("No content received from Anthropic");
     }
+
+    console.log("Raw AI response:", contentText);
     
-    const content = contentText;
-
-    console.log("Raw AI response:", content);
-    let cleanedResponse = content.trim();
-
-    if (cleanedResponse.startsWith("```")) {
-      cleanedResponse = cleanedResponse
-        .replace(/^```(json)?\s*/, "")
-        .replace(/\s*```\s*$/, "");
-    }
-
-    let wasTruncated = false;
-    if (!cleanedResponse.endsWith("}")) {
-      wasTruncated = true;
-      const lastCompleteField = cleanedResponse.lastIndexOf('",');
-      if (lastCompleteField > 0) {
-        cleanedResponse =
-          cleanedResponse.substring(0, lastCompleteField + 1) + "\n}";
-      }
-    }
-
-    console.log("Cleaned response:", cleanedResponse);
-    const parsed = JSON.parse(cleanedResponse);
+    // Detect truncation from raw content text (before validation)
+    const wasTruncated = !contentText.trim().endsWith("}");
+    
+    // Validate and parse using Zod
+    const parsed = validateAnthropicJsonResponse(
+      response,
+      InterviewInsightsSchema,
+      "INTERVIEW_INSIGHTS"
+    );
 
     const flattened: InterviewInsights = {};
 
@@ -626,17 +627,13 @@ VALIDATION CHECK: Ensure your suggestions sound like they come from the business
     if (!contentText) {
       throw new Error("No content received from Anthropic");
     }
-    
-    const content = contentText;
 
-    let cleanedResponse = content.trim();
-    if (cleanedResponse.startsWith("```")) {
-      cleanedResponse = cleanedResponse
-        .replace(/^```(json)?\s*/, "")
-        .replace(/\s*```\s*$/, "");
-    }
-
-    const parsed = JSON.parse(cleanedResponse);
+    // Validate and parse using Zod
+    const parsed = validateAnthropicJsonResponse(
+      response,
+      MessagingStrategyUpdateSchema,
+      "MESSAGING_STRATEGY_UPDATE"
+    );
 
     const aiOutputText = JSON.stringify(parsed);
     const validationResult = DataSourceValidator.validateAIOutput(

@@ -1,4 +1,6 @@
+import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateAnthropicResponse } from "../utils/anthropic-validator";
 import { 
   evaluateUniquePositioning, 
   evaluateBrandVoice, 
@@ -632,8 +634,21 @@ Return only the cleaned-up text, ready to be used as their written response.
       temperature: 0.3,
     });
 
-    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
-    return contentText || transcript;
+    // Validate text response structure
+    const TextResponseSchema = z.object({
+      content: z.array(z.object({
+        type: z.literal("text"),
+        text: z.string()
+      })).min(1)
+    });
+    
+    const validatedResponse = validateAnthropicResponse(
+      response,
+      TextResponseSchema,
+      "TRANSCRIPT_CLEANUP"
+    );
+    
+    return validatedResponse.content[0].text || transcript;
   } catch (error) {
     console.error("Audio transcript cleanup failed:", error);
     // Return cleaned transcript with basic cleanup
