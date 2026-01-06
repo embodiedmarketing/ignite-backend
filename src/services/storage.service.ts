@@ -3248,6 +3248,8 @@ export class DatabaseStorage implements IStorage {
       lastActivityAt: thread.lastActivityAt,
       createdAt: thread.createdAt,
       updatedAt: thread.updatedAt,
+      authorName: thread.authorName,
+      authorEmail: thread.authorEmail,
     }));
 
     return {
@@ -3338,6 +3340,8 @@ export class DatabaseStorage implements IStorage {
       attachments: post.attachments,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      authorName: post.authorName,
+      authorEmail: post.authorEmail,
     }));
 
     return {

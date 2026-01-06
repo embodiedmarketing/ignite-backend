@@ -1,6 +1,8 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface EmailSequenceInput {
   userId: number;
@@ -223,25 +225,21 @@ Remember:
         console.log(`[EMAIL SEQUENCE] Switching to ${modelToUse} for better reliability after ${attempt} failed attempts`);
       }
       
-      const completion = await openai.chat.completions.create(
+      const completion = await anthropic.messages.create(
         {
-          model: modelToUse,
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          temperature: 0.7,
+          system: systemPrompt,
           messages: [
-            { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
           ],
-          temperature: 0.7,
-          response_format: { type: "json_object" },
-          max_tokens: 4000 // Ensure we get complete responses
-        },
-        {
-          timeout: 120000 // Increased to 120 seconds (2 minutes) for complex generations
         }
       );
 
-      const content = completion.choices[0].message.content;
+      const content = completion.content[0]?.type === "text" ? completion.content[0].text : "";
       if (!content) {
-        throw new Error("No content received from OpenAI");
+        throw new Error("No content received from Anthropic");
       }
 
       const result = JSON.parse(content);
