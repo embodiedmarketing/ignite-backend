@@ -1,6 +1,7 @@
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { env } from "../config/env";
+import { pool } from "../config/db";
 
 /**
  * Session configuration middleware
@@ -9,7 +10,7 @@ export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
-    conString: env.DATABASE_URL,
+    pool: pool, // Use the existing Neon pool instead of creating a new connection
     createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",

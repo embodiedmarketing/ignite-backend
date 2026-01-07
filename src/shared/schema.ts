@@ -1781,3 +1781,29 @@ export type ChecklistStepDefinition =
 export type InsertChecklistStepDefinition = z.infer<
   typeof insertChecklistStepDefinitionSchema
 >;
+
+// Coaching call recordings table
+export const coachingCallRecordings = pgTable("coaching_call_recordings", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  date: varchar("date", { length: 50 }).notNull(), // Stored as string in YYYY-MM-DD format
+  duration: varchar("duration", { length: 255 }),
+  vimeoId: varchar("vimeo_id", { length: 255 }),
+  description: text("description"),
+  transcript: text("transcript"),
+  category: varchar("category", { length: 100 }), // e.g., "strategy", "technical", etc.
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dateIdx: index("idx_coaching_call_recordings_date").on(table.date),
+  categoryIdx: index("idx_coaching_call_recordings_category").on(table.category),
+}));
+
+export const insertCoachingCallRecordingSchema = createInsertSchema(coachingCallRecordings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CoachingCallRecording = typeof coachingCallRecordings.$inferSelect;
+export type InsertCoachingCallRecording = z.infer<typeof insertCoachingCallRecordingSchema>;

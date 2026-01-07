@@ -46,6 +46,7 @@ import {
   trainingVideos,
   platformResources,
   checklistStepDefinitions,
+  coachingCallRecordings,
   type User,
   type UpsertUser,
   type Offer,
@@ -137,6 +138,8 @@ import {
   type InsertChecklistStepDefinition,
   type UserLogin,
   type InsertUserLogin,
+  type CoachingCallRecording,
+  type InsertCoachingCallRecording,
 } from "../models";
 import { db } from "../config/db";
 import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
@@ -748,6 +751,16 @@ export interface IStorage {
     updates: Partial<ChecklistStepDefinition>
   ): Promise<ChecklistStepDefinition | undefined>;
   deleteChecklistStepDefinition(id: number): Promise<boolean>;
+
+  // Coaching Call Recordings
+  getAllCoachingCallRecordings(): Promise<CoachingCallRecording[]>;
+  getCoachingCallRecording(id: number): Promise<CoachingCallRecording | undefined>;
+  createCoachingCallRecording(recording: InsertCoachingCallRecording): Promise<CoachingCallRecording>;
+  updateCoachingCallRecording(
+    id: number,
+    updates: Partial<InsertCoachingCallRecording>
+  ): Promise<CoachingCallRecording | undefined>;
+  deleteCoachingCallRecording(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3953,6 +3966,50 @@ export class DatabaseStorage implements IStorage {
       .update(checklistStepDefinitions)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(checklistStepDefinitions.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Coaching Call Recordings
+  async getAllCoachingCallRecordings(): Promise<CoachingCallRecording[]> {
+    return await db
+      .select()
+      .from(coachingCallRecordings)
+      .orderBy(desc(coachingCallRecordings.date));
+  }
+
+  async getCoachingCallRecording(id: number): Promise<CoachingCallRecording | undefined> {
+    const [recording] = await db
+      .select()
+      .from(coachingCallRecordings)
+      .where(eq(coachingCallRecordings.id, id))
+      .limit(1);
+    return recording;
+  }
+
+  async createCoachingCallRecording(recording: InsertCoachingCallRecording): Promise<CoachingCallRecording> {
+    const [newRecording] = await db
+      .insert(coachingCallRecordings)
+      .values(recording)
+      .returning();
+    return newRecording;
+  }
+
+  async updateCoachingCallRecording(
+    id: number,
+    updates: Partial<InsertCoachingCallRecording>
+  ): Promise<CoachingCallRecording | undefined> {
+    const [updated] = await db
+      .update(coachingCallRecordings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coachingCallRecordings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCoachingCallRecording(id: number): Promise<boolean> {
+    const result = await db
+      .delete(coachingCallRecordings)
+      .where(eq(coachingCallRecordings.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }
