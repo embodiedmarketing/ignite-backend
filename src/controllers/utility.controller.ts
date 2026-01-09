@@ -1581,3 +1581,36 @@ export async function generateLaunchEmailSequence(req: Request, res: Response) {
     });
   }
 }
+
+/**
+ * Get Vimeo video transcript
+ */
+export async function getVimeoTranscript(req: Request, res: Response) {
+  try {
+    const { videoUrl, vimeoAccessToken } = req.body;
+
+    if (!videoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "videoUrl is required",
+      });
+    }
+
+    const { getVimeoTranscript: getVimeoTranscriptUtil } = await import(
+      "../utils/vimeo-transcript"
+    );
+
+    const transcript = await getVimeoTranscriptUtil(videoUrl, vimeoAccessToken);
+
+    res.json({
+      success: true,
+      transcript,
+    });
+  } catch (error: any) {
+    console.error("Error getting Vimeo transcript:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to get Vimeo transcript",
+    });
+  }
+}
