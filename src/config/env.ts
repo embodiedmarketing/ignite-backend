@@ -1,11 +1,6 @@
 import "dotenv/config";
 import { cleanEnv, str, port } from "envalid";
 
-/**
- * Environment variable configuration and validation
- * Uses envalid for type-safe environment variable validation
- */
-
 export const env = cleanEnv(process.env, {
   NODE_ENV: str({
     choices: ["development", "production", "test"],

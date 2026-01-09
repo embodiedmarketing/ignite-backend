@@ -1,5 +1,5 @@
 import { storage } from "../services/storage.service";
-import type { InsertMessagingStrategy, InsertWorkbookResponse } from "@shared/schema";
+import type { InsertMessagingStrategy, InsertWorkbookResponse } from "../models/schema";
 
 /**
  * Database Migration Utility

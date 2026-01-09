@@ -1,10 +1,3 @@
-/**
- * Shared Constants
- * 
- * Constants that can be used by both frontend and backend.
- */
-
-// API Endpoints
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
@@ -29,20 +22,17 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-// Validation constants
 export const VALIDATION = {
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   PASSWORD_MIN_LENGTH: 6,
   PASSWORD_MAX_LENGTH: 128,
 } as const;
 
-// Session constants
 export const SESSION = {
-  TTL: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+  TTL: 7 * 24 * 60 * 60 * 1000, 
   NAME: 'connect.sid',
 } as const;
 
-// File upload constants
 export const FILE_UPLOAD = {
   MAX_SIZE: 10 * 1024 * 1024, // 10MB
   ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
