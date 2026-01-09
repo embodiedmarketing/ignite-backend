@@ -39,6 +39,7 @@ import {
   getOptimizationSuggestions,
   saveImplementationCheckboxes,
   getImplementationCheckboxes,
+  getVimeoTranscript,
 } from "../controllers/utility.controller";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 
@@ -166,5 +167,8 @@ router.get(
   isAuthenticated,
   getImplementationCheckboxes
 );
+
+// Vimeo transcript route
+router.post("/vimeo-transcript", getVimeoTranscript);
 
 export default router;

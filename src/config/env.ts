@@ -25,6 +25,7 @@ export const env = cleanEnv(process.env, {
   GMAIL_APP_PASSWORD: str({ default: "" }),
   FRONTEND_URL: str({ default: "http://localhost:5173" }),
   REPL_ID: str({ default: "" }),
+  VIMEO_ACCESS_TOKEN: str({ default: "9a4a0ec8da6f6f737282f29be15fd42f" }),
 });
 
 export default env;

@@ -1335,3 +1335,52 @@ export const insertCoachingCallRecordingSchema = createInsertSchema(coachingCall
 
 export type CoachingCallRecording = typeof coachingCallRecordings.$inferSelect;
 export type InsertCoachingCallRecording = z.infer<typeof insertCoachingCallRecordingSchema>;
+
+// Coaching calls schedule table for managing scheduled calls
+export const coachingCallsSchedule = pgTable("coaching_calls_schedule", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // Strategy, Messaging, Ads, Tech Support, Accountability
+  day: varchar("day", { length: 20 }).notNull(), // Monday, Tuesday, etc.
+  time: varchar("time", { length: 50 }).notNull(), // e.g., "1:00 PM EST"
+  date: varchar("date", { length: 50 }).notNull(), // YYYY-MM-DD format
+  description: text("description"),
+  link: text("link"), // Zoom or meeting link
+  color: varchar("color", { length: 20 }).notNull().default("blue"), // blue, green, purple, orange, coral, slate
+  canceled: boolean("canceled").notNull().default(false),
+  cancelReason: text("cancel_reason"),
+  recurring: boolean("recurring").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  dateIdx: index("idx_coaching_calls_schedule_date").on(table.date),
+  categoryIdx: index("idx_coaching_calls_schedule_category").on(table.category),
+}));
+
+export const insertCoachingCallScheduleSchema = createInsertSchema(coachingCallsSchedule).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().min(1, "Title is required"),
+  category: z.enum(["Strategy", "Messaging", "Ads", "Tech Support", "Accountability"], {
+    errorMap: () => ({ message: "Category must be one of: Strategy, Messaging, Ads, Tech Support, Accountability" })
+  }),
+  day: z.enum(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], {
+    errorMap: () => ({ message: "Day must be a valid day of the week" })
+  }),
+  time: z.string().min(1, "Time is required"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  description: z.string().optional().default(""),
+  link: z.string().optional().default("").refine(
+    (val) => !val || val === "" || z.string().url().safeParse(val).success,
+    { message: "Link must be a valid URL or empty" }
+  ),
+  color: z.enum(["blue", "green", "purple", "orange", "coral", "slate"]).optional().default("blue"),
+  canceled: z.boolean().optional().default(false),
+  cancelReason: z.string().optional().default(""),
+  recurring: z.boolean().optional().default(false),
+});
+
+export type CoachingCallSchedule = typeof coachingCallsSchedule.$inferSelect;
+export type InsertCoachingCallSchedule = z.infer<typeof insertCoachingCallScheduleSchema>;

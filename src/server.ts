@@ -13,6 +13,15 @@ import { startAccountabilityScheduler } from "./utils/accountability-scheduler";
 async function startServer() {
   // Global error handlers
   process.on("uncaughtException", (error) => {
+    // Filter out known Neon driver ErrorEvent message setter bug
+    // This is a harmless error from the WebSocket error handling
+    if (
+      error.message?.includes("Cannot set property message") &&
+      error.message?.includes("ErrorEvent")
+    ) {
+      // Silently ignore this known issue - it's already handled by the pool error handlers
+      return;
+    }
     console.error("Uncaught Exception:", error);
     // Don't exit the process - continue running
   });

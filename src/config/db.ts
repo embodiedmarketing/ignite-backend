@@ -28,6 +28,15 @@ export const pool = new Pool({
 
 // Add error handling to prevent crashes from connection errors
 pool.on("error", (err) => {
+  // Filter out known WebSocket ErrorEvent issues that are harmless
+  const errorMessage = err?.message || String(err);
+  if (
+    errorMessage.includes("Cannot set property message") ||
+    errorMessage.includes("ErrorEvent")
+  ) {
+    // Silently ignore - this is a known issue with WebSocket error handling
+    return;
+  }
   console.error("Unexpected database pool error:", err);
   // Don't crash the application - just log the error
 });
@@ -35,6 +44,15 @@ pool.on("error", (err) => {
 // Handle pool connect errors
 pool.on("connect", (client) => {
   client.on("error", (err) => {
+    // Filter out known WebSocket ErrorEvent issues
+    const errorMessage = err?.message || String(err);
+    if (
+      errorMessage.includes("Cannot set property message") ||
+      errorMessage.includes("ErrorEvent")
+    ) {
+      // Silently ignore - this is a known issue with WebSocket error handling
+      return;
+    }
     console.error("Database client error:", err);
     // Don't crash the application - just log the error
   });

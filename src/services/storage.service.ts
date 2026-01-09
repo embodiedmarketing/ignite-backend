@@ -47,6 +47,7 @@ import {
   platformResources,
   checklistStepDefinitions,
   coachingCallRecordings,
+  coachingCallsSchedule,
   type User,
   type UpsertUser,
   type Offer,
@@ -140,6 +141,8 @@ import {
   type InsertUserLogin,
   type CoachingCallRecording,
   type InsertCoachingCallRecording,
+  type CoachingCallSchedule,
+  type InsertCoachingCallSchedule,
 } from "../models";
 import { db } from "../config/db";
 import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
@@ -761,6 +764,17 @@ export interface IStorage {
     updates: Partial<InsertCoachingCallRecording>
   ): Promise<CoachingCallRecording | undefined>;
   deleteCoachingCallRecording(id: number): Promise<boolean>;
+
+  // Coaching Calls Schedule
+  getAllCoachingCallsSchedule(): Promise<CoachingCallSchedule[]>;
+  getCoachingCallSchedule(id: number): Promise<CoachingCallSchedule | undefined>;
+  createCoachingCallSchedule(schedule: InsertCoachingCallSchedule): Promise<CoachingCallSchedule>;
+  createCoachingCallSchedules(schedules: InsertCoachingCallSchedule[]): Promise<CoachingCallSchedule[]>;
+  updateCoachingCallSchedule(
+    id: number,
+    updates: Partial<InsertCoachingCallSchedule>
+  ): Promise<CoachingCallSchedule | undefined>;
+  deleteCoachingCallSchedule(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4010,6 +4024,61 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(coachingCallRecordings)
       .where(eq(coachingCallRecordings.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Coaching Calls Schedule
+  async getAllCoachingCallsSchedule(): Promise<CoachingCallSchedule[]> {
+    return await db
+      .select()
+      .from(coachingCallsSchedule)
+      .orderBy(coachingCallsSchedule.date);
+  }
+
+  async getCoachingCallSchedule(id: number): Promise<CoachingCallSchedule | undefined> {
+    const [call] = await db
+      .select()
+      .from(coachingCallsSchedule)
+      .where(eq(coachingCallsSchedule.id, id))
+      .limit(1);
+    return call;
+  }
+
+  async createCoachingCallSchedule(schedule: InsertCoachingCallSchedule): Promise<CoachingCallSchedule> {
+    const [newCall] = await db
+      .insert(coachingCallsSchedule)
+      .values(schedule)
+      .returning();
+    return newCall;
+  }
+
+  async createCoachingCallSchedules(schedules: InsertCoachingCallSchedule[]): Promise<CoachingCallSchedule[]> {
+    if (schedules.length === 0) {
+      return [];
+    }
+    const newCalls = await db
+      .insert(coachingCallsSchedule)
+      .values(schedules)
+      .returning();
+    return newCalls;
+  }
+
+  async updateCoachingCallSchedule(
+    id: number,
+    updates: Partial<InsertCoachingCallSchedule>
+  ): Promise<CoachingCallSchedule | undefined> {
+    const [updated] = await db
+      .update(coachingCallsSchedule)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coachingCallsSchedule.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCoachingCallSchedule(id: number): Promise<boolean> {
+    const result = await db
+      .delete(coachingCallsSchedule)
+      .where(eq(coachingCallsSchedule.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

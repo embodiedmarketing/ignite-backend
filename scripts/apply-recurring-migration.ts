@@ -1,0 +1,57 @@
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+import * as dotenv from "dotenv";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Load environment variables
+dotenv.config();
+
+// Configure Neon
+neonConfig.webSocketConstructor = ws;
+neonConfig.useSecureWebSocket = true;
+neonConfig.pipelineConnect = false;
+neonConfig.pipelineTLS = false;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set");
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+async function applyMigration() {
+  const client = await pool.connect();
+
+  try {
+    console.log("Starting migration: Add recurring column to coaching_calls_schedule...");
+
+    // Read and execute the migration SQL
+    const migrationPath = join(process.cwd(), "migrations", "0007_add_recurring_to_coaching_calls_schedule.sql");
+    const migrationSQL = readFileSync(migrationPath, "utf-8");
+    
+    console.log("Executing migration SQL...");
+    await client.query(migrationSQL);
+    console.log("✓ Migration applied successfully");
+
+    console.log("\n✅ Migration completed successfully!");
+  } catch (error) {
+    console.error("❌ Migration failed:", error);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+applyMigration()
+  .then(() => {
+    console.log("Migration script finished");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Migration script error:", error);
+    process.exit(1);
+  });
+
