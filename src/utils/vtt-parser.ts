@@ -1,6 +1,4 @@
-/**
- * Parse VTT (WebVTT) files and extract text content
- */
+
 export function parseVTT(vttContent: string): string {
   const lines = vttContent.split("\n");
   const textLines: string[] = [];
@@ -12,10 +10,8 @@ export function parseVTT(vttContent: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // Skip WEBVTT header
     if (line.startsWith("WEBVTT")) continue;
 
-    // Handle STYLE blocks
     if (line.startsWith("STYLE")) {
       inStyleBlock = true;
       continue;
@@ -27,7 +23,6 @@ export function parseVTT(vttContent: string): string {
       continue;
     }
 
-    // Handle REGION blocks
     if (line.startsWith("REGION")) {
       inRegionBlock = true;
       continue;
@@ -39,8 +34,6 @@ export function parseVTT(vttContent: string): string {
       continue;
     }
 
-    // Handle NOTE blocks (skip entire block until blank line)
-    // Only detect NOTE when not inside cue text to avoid skipping dialogue starting with "NOTE:"
     if (!inCueText && line.startsWith("NOTE")) {
       inNoteBlock = true;
       continue;
@@ -52,21 +45,17 @@ export function parseVTT(vttContent: string): string {
       continue;
     }
 
-    // Detect timestamp lines (format: 00:00:00.000 --> 00:00:00.000)
     if (line.includes("-->")) {
       inCueText = true;
       continue;
     }
 
-    // Handle empty lines - they separate cues
     if (!line) {
       inCueText = false;
       continue;
     }
 
-    // Collect cue text (all lines after timestamp until blank line)
     if (inCueText) {
-      // Remove inline WebVTT tags like <v Speaker>, <c>, <i>, etc.
       let cleanedLine = line.replace(/<[^>]+>/g, "");
 
       if (cleanedLine.trim()) {

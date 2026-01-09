@@ -1,11 +1,3 @@
-/**
- * Shared TypeScript Types
- * 
- * Additional shared types that can be used by both frontend and backend.
- * Database-related types are in shared/schema.ts
- */
-
-// API Response types
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -13,7 +5,6 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-// Pagination types
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -22,7 +13,6 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-// Common request/response types
 export interface PaginationParams {
   page?: number;
   pageSize?: number;
@@ -33,7 +23,6 @@ export interface SortParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-// File upload types
 export interface FileUploadResult {
   url: string;
   filename: string;
@@ -41,7 +30,6 @@ export interface FileUploadResult {
   mimeType: string;
 }
 
-// Error types
 export interface ApiError {
   code: string;
   message: string;
