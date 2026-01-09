@@ -63,4 +63,3 @@ applyMigration()
     process.exit(1);
   });
 
-
