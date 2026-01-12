@@ -17,3 +17,4 @@ CREATE TABLE "coaching_calls_schedule" (
 CREATE INDEX "idx_coaching_calls_schedule_date" ON "coaching_calls_schedule" ("date");--> statement-breakpoint
 CREATE INDEX "idx_coaching_calls_schedule_category" ON "coaching_calls_schedule" ("category");
 
+
