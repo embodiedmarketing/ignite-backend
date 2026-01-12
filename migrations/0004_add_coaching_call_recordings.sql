@@ -17,3 +17,4 @@ CREATE INDEX "idx_coaching_call_recordings_date" ON "coaching_call_recordings" (
 CREATE INDEX "idx_coaching_call_recordings_category" ON "coaching_call_recordings" ("category");--> statement-breakpoint
 ALTER TABLE "coaching_call_recordings" ADD CONSTRAINT "coaching_call_recordings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 
+

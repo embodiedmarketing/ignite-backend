@@ -739,6 +739,138 @@ export async function getUserProgress(req: Request, res: Response) {
       sql`SELECT * FROM implementation_checkboxes WHERE user_id = ${userId}`
     );
 
+    // Get user for userStats
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get user-level completion statistics (matching format from getAdminUsageStats)
+    const userCompletionStats = await db
+      .select({
+        userId: sql`users.id`,
+        userEmail: sql`users.email`,
+        firstName: sql`users.first_name`,
+        lastName: sql`users.last_name`,
+        completedSections: sql`COUNT(DISTINCT section_completions.id)::int`,
+        totalResponses: sql`COUNT(DISTINCT workbook_responses.id)::int`,
+        hasMessagingStrategy: sql`COUNT(DISTINCT messaging_strategies.id) > 0`,
+        hasOfferOutline: sql`COUNT(DISTINCT user_offer_outlines.id) > 0`,
+        loginCount: sql`COUNT(DISTINCT user_logins.id)::int`,
+        lastLogin: sql`MAX(user_logins.login_at)`,
+      })
+      .from(sql`users`)
+      .leftJoin(sql`section_completions`, sql`section_completions.user_id = users.id`)
+      .leftJoin(sql`workbook_responses`, sql`workbook_responses.user_id = users.id`)
+      .leftJoin(sql`messaging_strategies`, sql`messaging_strategies.user_id = users.id`)
+      .leftJoin(sql`user_offer_outlines`, sql`user_offer_outlines.user_id = users.id`)
+      .leftJoin(sql`user_logins`, sql`user_logins.user_id = users.id`)
+      .where(sql`users.id = ${userId}`)
+      .groupBy(sql`users.id`);
+
+    // Get detailed section completions
+    const sectionDetails = await db
+      .select({
+        userId: sectionCompletions.userId,
+        sectionTitle: sectionCompletions.sectionTitle,
+        stepNumber: sectionCompletions.stepNumber,
+        completedAt: sectionCompletions.completedAt,
+      })
+      .from(sectionCompletions)
+      .where(eq(sectionCompletions.userId, userId))
+      .orderBy(desc(sectionCompletions.completedAt));
+
+    // Get all messaging strategies for this user
+    const allMessagingStrategies = await db
+      .select({
+        id: messagingStrategies.id,
+        userId: messagingStrategies.userId,
+        title: messagingStrategies.title,
+        version: messagingStrategies.version,
+        isActive: messagingStrategies.isActive,
+        createdAt: messagingStrategies.createdAt,
+      })
+      .from(messagingStrategies)
+      .where(eq(messagingStrategies.userId, userId))
+      .orderBy(desc(messagingStrategies.createdAt));
+
+    // Get all offer outlines for this user
+    const allOfferOutlines = await db
+      .select({
+        id: userOfferOutlines.id,
+        userId: userOfferOutlines.userId,
+        title: userOfferOutlines.title,
+        offerNumber: userOfferOutlines.offerNumber,
+        isActive: userOfferOutlines.isActive,
+        createdAt: userOfferOutlines.createdAt,
+      })
+      .from(userOfferOutlines)
+      .where(eq(userOfferOutlines.userId, userId))
+      .orderBy(desc(userOfferOutlines.createdAt));
+
+    // Get all sales page drafts for this user
+    const allSalesPages = await db
+      .select({
+        id: salesPageDrafts.id,
+        userId: salesPageDrafts.userId,
+        draftNumber: salesPageDrafts.draftNumber,
+        isActive: salesPageDrafts.isActive,
+        createdAt: salesPageDrafts.createdAt,
+      })
+      .from(salesPageDrafts)
+      .where(eq(salesPageDrafts.userId, userId))
+      .orderBy(desc(salesPageDrafts.createdAt));
+
+    // Get all IGNITE docs for this user
+    const allIgniteDocs = await db
+      .select({
+        id: igniteDocuments.id,
+        userId: igniteDocuments.userId,
+        title: igniteDocuments.title,
+        docType: igniteDocuments.docType,
+        createdAt: igniteDocuments.createdAt,
+      })
+      .from(igniteDocuments)
+      .where(eq(igniteDocuments.userId, userId))
+      .orderBy(desc(igniteDocuments.createdAt));
+
+    // Build userStats in the same format as getAdminUsageStats
+    const userStatsData = userCompletionStats[0];
+    const userStats = userStatsData ? {
+      ...userStatsData,
+      completedSectionsList: sectionDetails.map((section) => ({
+        title: section.sectionTitle,
+        stepNumber: section.stepNumber,
+        completedAt: section.completedAt,
+      })),
+      messagingStrategies: allMessagingStrategies.map((strategy) => ({
+        id: strategy.id,
+        title: strategy.title,
+        version: strategy.version,
+        isActive: strategy.isActive,
+        createdAt: strategy.createdAt,
+      })),
+      offerOutlines: allOfferOutlines.map((outline) => ({
+        id: outline.id,
+        title: outline.title,
+        offerNumber: outline.offerNumber,
+        isActive: outline.isActive,
+        createdAt: outline.createdAt,
+      })),
+      salesPages: allSalesPages.map((page) => ({
+        id: page.id,
+        draftNumber: page.draftNumber,
+        isActive: page.isActive,
+        createdAt: page.createdAt,
+      })),
+      igniteDocs: allIgniteDocs.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        docType: doc.docType,
+        createdAt: doc.createdAt,
+      })),
+    } : null;
+
     res.json({
       workbookProgress,
       strategies,
@@ -749,6 +881,7 @@ export async function getUserProgress(req: Request, res: Response) {
       liveLaunches: launches,
       sectionCompletions: completions,
       checkboxes: checkboxes.rows,
+      userStats,
     });
   } catch (error) {
     console.error("Error fetching user progress:", error);
