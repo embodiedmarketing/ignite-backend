@@ -4067,6 +4067,8 @@ export class DatabaseStorage implements IStorage {
     id: number,
     updates: Partial<InsertCoachingCallSchedule>
   ): Promise<CoachingCallSchedule | undefined> {
+
+    console.log(`[DEBUG] Updating coaching call schedule:`, { coachingCallsSchedule:coachingCallsSchedule.id, id: id });
     const [updated] = await db
       .update(coachingCallsSchedule)
       .set({ ...updates, updatedAt: new Date() })
