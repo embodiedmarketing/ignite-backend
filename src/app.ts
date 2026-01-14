@@ -22,9 +22,6 @@ export async function createApp() {
     env.NODE_ENV === "development"
       ? [
           "http://localhost:5173",
-          "https://new.ignitebyembodied.com",
-          "https://dev.ignitebyembodied.com",
-          "https://ignitebyembodied.com"
         ]
       : [env.FRONTEND_URL!];
 

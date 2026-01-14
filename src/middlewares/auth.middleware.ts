@@ -42,7 +42,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       // User is inactive, destroy session
       req.session.destroy(() => {});
       return res.status(403).json({ 
-        message: "Your account has been deactivated. Please contact support." 
+        message: "Your account has been deactivated. Please contact support." ,
       });
     }
   } catch (error) {

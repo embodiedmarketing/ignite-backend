@@ -29,6 +29,7 @@ import {
   updateChecklistDefinition,
   deleteChecklistDefinition,
   toggleUserActive,
+  toggleUserAdmin,
 } from "../controllers/admin.controller";
 import { isAdmin } from "../middlewares/admin.middleware";
 
@@ -36,8 +37,13 @@ const router = Router();
 
 // Admin login (no middleware required)
 router.post("/login", adminLogin);
-router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
+
 // Admin routes (require isAdmin middleware)
+// Specific routes first (before generic :userId route)
+router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
+router.put("/users/:userId/toggle-admin", isAdmin, toggleUserAdmin);
+router.get("/users/:userId/progress", isAdmin, getUserProgress);
+router.post("/users/:userId/reset-progress", isAdmin, resetUserProgress);
 router.get("/users", isAdmin, getAdminUsers);
 router.get("/users/:userId", isAdmin, getAdminUserDetails);
 router.get("/users/:userId/progress", isAdmin, getUserProgress);
