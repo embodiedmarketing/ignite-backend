@@ -552,7 +552,7 @@ You MUST integrate the interview insights above into your messaging strategy as 
     "minSceneBeats": 0
   }
 }
-\`\`\`
+
 
 **You MUST satisfy the minimum requirements (minQuotes, minOutcomes, minSceneBeats) for each section above.**
 

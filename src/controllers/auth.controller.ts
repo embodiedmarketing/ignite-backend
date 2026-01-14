@@ -89,6 +89,13 @@ export async function login(req: Request, res: Response) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // Check if user is active
+    if (user.isActive === false) {
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
+      });
+    }
+
     // Update last login timestamp
     await storage.updateUser(user.id, { lastLoginAt: new Date() });
 
@@ -140,6 +147,15 @@ export async function getCurrentUser(req: Request, res: Response) {
     const user = await storage.getUser(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user is active
+    if (user.isActive === false) {
+      // Destroy session if user is inactive
+      req.session.destroy(() => {});
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
+      });
     }
 
     // Return user without password hash

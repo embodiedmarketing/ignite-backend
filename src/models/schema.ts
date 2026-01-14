@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   subscriptionStatus: varchar("subscription_status"), // active, canceled, past_due, etc.
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
   lastLoginAt: timestamp("last_login_at"),
   lastVisitedPath: varchar("last_visited_path", { length: 500 }), // "continue where you left off"
   lastVisitedSection: varchar("last_visited_section", { length: 255 }), // friendly section name

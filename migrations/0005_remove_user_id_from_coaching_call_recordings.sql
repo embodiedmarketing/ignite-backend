@@ -3,3 +3,4 @@ ALTER TABLE "coaching_call_recordings" DROP CONSTRAINT IF EXISTS "coaching_call_
 ALTER TABLE "coaching_call_recordings" DROP COLUMN IF EXISTS "user_id";
 
 
+

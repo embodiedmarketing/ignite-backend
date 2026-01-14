@@ -29,6 +29,20 @@
       "when": 1767791631112,
       "tag": "0003_unique_azazel",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768322198579,
+      "tag": "0004_charming_robin_chapel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1768323004761,
+      "tag": "0005_mighty_stellaris",
+      "breakpoints": true
     }
   ]
 }

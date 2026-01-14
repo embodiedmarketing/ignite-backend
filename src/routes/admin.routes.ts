@@ -28,6 +28,7 @@ import {
   createChecklistDefinition,
   updateChecklistDefinition,
   deleteChecklistDefinition,
+  toggleUserActive,
 } from "../controllers/admin.controller";
 import { isAdmin } from "../middlewares/admin.middleware";
 
@@ -35,7 +36,7 @@ const router = Router();
 
 // Admin login (no middleware required)
 router.post("/login", adminLogin);
-
+router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
 // Admin routes (require isAdmin middleware)
 router.get("/users", isAdmin, getAdminUsers);
 router.get("/users/:userId", isAdmin, getAdminUserDetails);

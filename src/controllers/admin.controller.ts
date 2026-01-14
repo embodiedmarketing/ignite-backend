@@ -42,6 +42,13 @@ export async function adminLogin(req: Request, res: Response) {
       return res.status(401).json({ message: "Invalid admin credentials" });
     }
 
+    // Check if user is active
+    if (user.isActive === false) {
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
+      });
+    }
+
     await storage.updateUser(user.id, { lastLoginAt: new Date() });
 
     await storage.recordUserLogin({
@@ -103,6 +110,40 @@ export async function getAdminUsers(req: Request, res: Response) {
     res.status(500).json({ message: "Failed to fetch users" });
   }
 }
+
+
+
+export async function toggleUserActive(req: Request, res: Response) {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedUser = await storage.updateUser(userId, { 
+      isActive: !user.isActive, 
+      updatedAt: new Date() 
+    });
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ 
+      message: "User active status toggled successfully", 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error("Error toggling user active:", error);
+    res.status(500).json({ message: "Failed to toggle user active" });
+  }
+}
+
 
 /**
  * Get detailed user profile for admin
