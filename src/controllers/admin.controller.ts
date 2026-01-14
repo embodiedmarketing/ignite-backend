@@ -44,8 +44,8 @@ export async function adminLogin(req: Request, res: Response) {
 
     // Check if user is active
     if (user.isActive === false) {
-      return res.status(403).json({ 
-        message: "Your account has been deactivated. Please contact support." 
+      return res.status(200).json({ 
+        message: "Your account has been deactivated. Please contact support." , user: user
       });
     }
 
@@ -81,6 +81,38 @@ export async function adminLogin(req: Request, res: Response) {
 /**
  * Get all users for admin dashboard
  */
+// export async function getAdminUsers(req: Request, res: Response) {
+//   try {
+//     const usersList = await db
+//       .select({
+//         id: sql`users.id`,
+//         email: sql`users.email`,
+//         firstName: sql`users.first_name`,
+//         lastName: sql`users.last_name`,
+//         isActive: sql`users.is_active`,
+//         businessName: sql`users.business_name`,
+//         subscriptionStatus: sql`users.subscription_status`,
+//         lastLoginAt: sql`users.last_login_at`,
+//         createdAt: sql`users.created_at`,
+//         completedSections: sql`COUNT(DISTINCT section_completions.id)::int`,
+//       })
+//       .from(sql`users`)
+//       .leftJoin(
+//         sql`section_completions`,
+//         sql`section_completions.user_id = users.id`
+//       )
+//       // .where(sql`users.is_admin = false`)
+//       .groupBy(sql`users.id`)
+//       .orderBy(sql`users.created_at DESC`);
+
+//     res.json(usersList);
+//   } catch (error) {
+//     console.error("Error fetching users:", error);
+//     res.status(500).json({ message: "Failed to fetch users" });
+//   }
+// }
+
+
 export async function getAdminUsers(req: Request, res: Response) {
   try {
     const usersList = await db
@@ -89,6 +121,8 @@ export async function getAdminUsers(req: Request, res: Response) {
         email: sql`users.email`,
         firstName: sql`users.first_name`,
         lastName: sql`users.last_name`,
+        isActive: sql`users.is_active`,
+        isAdmin: sql`users.is_admin`,
         businessName: sql`users.business_name`,
         subscriptionStatus: sql`users.subscription_status`,
         lastLoginAt: sql`users.last_login_at`,
@@ -100,7 +134,6 @@ export async function getAdminUsers(req: Request, res: Response) {
         sql`section_completions`,
         sql`section_completions.user_id = users.id`
       )
-      .where(sql`users.is_admin = false`)
       .groupBy(sql`users.id`)
       .orderBy(sql`users.created_at DESC`);
 
@@ -115,6 +148,8 @@ export async function getAdminUsers(req: Request, res: Response) {
 
 export async function toggleUserActive(req: Request, res: Response) {
   try {
+
+    console.log(`[DEBUG] Toggling user active:`, { userId: req.params.userId },req.body);
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user ID" });
@@ -126,21 +161,61 @@ export async function toggleUserActive(req: Request, res: Response) {
     }
 
     const updatedUser = await storage.updateUser(userId, { 
-      isActive: !user.isActive, 
-      updatedAt: new Date() 
+      isActive: req.body.isActive, 
     });
     
+
+console.log(`[DEBUG] Updated user:`, { updatedUser });
+
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
     res.json({ 
-      message: "User active status toggled successfully", 
+      message: "User Status Updated successfully", 
       user: updatedUser 
     });
   } catch (error) {
     console.error("Error toggling user active:", error);
     res.status(500).json({ message: "Failed to toggle user active" });
+  }
+}
+
+/**
+ * Toggle user admin status
+ */
+export async function toggleUserAdmin(req: Request, res: Response) {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Validate payload
+    if (typeof req.body.isAdmin !== "boolean") {
+      return res.status(400).json({ message: "isAdmin must be a boolean value" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedUser = await storage.updateUser(userId, { 
+      isAdmin: req.body.isAdmin, 
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ 
+      message: "User admin status updated successfully", 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error("Error toggling user admin:", error);
+    res.status(500).json({ message: "Failed to update user admin status" });
   }
 }
 
