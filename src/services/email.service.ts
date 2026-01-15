@@ -1,12 +1,4 @@
-import sgMail from '@sendgrid/mail';
 import nodemailer from 'nodemailer';
-
-// Initialize SendGrid with API key
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  console.warn('SendGrid API key not found. Email sending will be disabled.');
-}
 
 // Create Nodemailer transporter for Gmail
 const createGmailTransporter = () => {
@@ -27,7 +19,7 @@ const createGmailTransporter = () => {
   });
 };
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@launch-platform.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.GMAIL_USER || 'noreply@launch-platform.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5000';
 
 interface EmailOptions {
@@ -38,21 +30,21 @@ interface EmailOptions {
 }
 
 async function sendEmail(options: EmailOptions): Promise<boolean> {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.error('Cannot send email: SendGrid API key not configured');
+  const transporter = createGmailTransporter();
+  
+  if (!transporter) {
+    console.error('Cannot send email: Gmail credentials not configured');
     return false;
   }
 
   try {
-    const msg = {
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER || FROM_EMAIL,
       to: options.to,
-      from: FROM_EMAIL,
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-    };
-
-    await sgMail.send(msg);
+    });
     console.log(`Email sent successfully to ${options.to}`);
     return true;
   } catch (error) {
@@ -130,28 +122,6 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
     The Ignite Team
   `;
 
-  // Use Nodemailer (Gmail) for password reset emails
-  const transporter = createGmailTransporter();
-  
-  if (transporter) {
-    try {
-      await transporter.sendMail({
-        from: process.env.GMAIL_USER || FROM_EMAIL,
-        to: email,
-        subject: 'Reset Your Ignite Password',
-        html,
-        text,
-      });
-      console.log(`Password reset email sent to ${email} via Gmail`);
-      return true;
-    } catch (error) {
-      console.error('Error sending password reset email via Gmail:', error);
-      // Fallback to SendGrid if Gmail fails
-      console.log('Attempting to send via SendGrid...');
-    }
-  }
-
-  // Fallback to SendGrid if Gmail is not configured or failed
   return sendEmail({
     to: email,
     subject: 'Reset Your Ignite Password',

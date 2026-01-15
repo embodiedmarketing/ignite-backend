@@ -53,7 +53,8 @@ DATABASE_URL=your_database_url
 SESSION_SECRET=your_session_secret
 OPENAI_API_KEY=your_openai_key
 STRIPE_SECRET_KEY=your_stripe_secret
-SENDGRID_API_KEY=your_sendgrid_key
+GMAIL_USER=your_gmail_address
+GMAIL_APP_PASSWORD=your_gmail_app_password
 PORT=5000
 NODE_ENV=development
 ```
