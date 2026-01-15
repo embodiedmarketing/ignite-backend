@@ -22,6 +22,7 @@ export async function createApp() {
     env.NODE_ENV === "development"
       ? [
           "http://localhost:5173",
+          "https://ignite-backend-stagging.up.railway.app"
         ]
       : [env.FRONTEND_URL!];
 
