@@ -323,6 +323,121 @@ export async function createPost(req: Request, res: Response) {
 }
 
 /**
+ * Update a thread (requires authentication and ownership)
+ */
+export async function updateThread(req: Request, res: Response) {
+  try {
+    const threadId = parseInt(req.params.id);
+    if (isNaN(threadId)) {
+      return res.status(400).json({ message: "Invalid thread ID" });
+    }
+
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate updates (only title and body can be updated)
+    const validatedData = insertForumThreadSchema.partial().parse(req.body);
+
+    const updatedThread = await storage.updateThread(
+      threadId,
+      userId,
+      validatedData
+    );
+
+    res.json(updatedThread);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Thread not found") {
+        return res.status(404).json({ message: "Thread not found" });
+      }
+      if (error.message.includes("Unauthorized")) {
+        return res
+          .status(403)
+          .json({ message: "You can only update your own threads" });
+      }
+    }
+    console.error("Error updating thread:", error);
+    res.status(500).json({ message: "Failed to update thread" });
+  }
+}
+
+/**
+ * Update a post (requires authentication and ownership)
+ */
+export async function updatePost(req: Request, res: Response) {
+  try {
+    const postId = parseInt(req.params.id);
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
+
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate updates (only body can be updated)
+    const validatedData = insertForumPostSchema.partial().parse(req.body);
+
+    const updatedPost = await storage.updatePost(
+      postId,
+      userId,
+      validatedData
+    );
+
+    res.json(updatedPost);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Post not found") {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      if (error.message.includes("Unauthorized")) {
+        return res
+          .status(403)
+          .json({ message: "You can only update your own posts" });
+      }
+    }
+    console.error("Error updating post:", error);
+    res.status(500).json({ message: "Failed to update post" });
+  }
+}
+
+/**
+ * Delete a post (requires authentication and ownership)
+ */
+export async function deletePost(req: Request, res: Response) {
+  try {
+    const postId = parseInt(req.params.id);
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
+
+    const userId = req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await storage.deletePost(postId, userId);
+    res.json({ success: true, message: "Post deleted successfully" });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Post not found") {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      if (error.message.includes("Unauthorized")) {
+        return res
+          .status(403)
+          .json({ message: "You can only delete your own posts" });
+      }
+    }
+    console.error("Error deleting post:", error);
+    res.status(500).json({ message: "Failed to delete post" });
+  }
+}
+
+/**
  * Delete a thread (requires authentication and ownership)
  */
 export async function deleteThread(req: Request, res: Response) {

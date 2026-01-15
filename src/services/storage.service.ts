@@ -660,6 +660,11 @@ export interface IStorage {
     | { thread: ForumThread; posts: ForumPost[]; category: ForumCategory }
     | undefined
   >;
+  updateThread(
+    threadId: number,
+    userId: number,
+    data: Partial<InsertForumThread>
+  ): Promise<ForumThread>;
   deleteThread(threadId: number, userId: number): Promise<boolean>;
   getRecentForumActivity(limit: number): Promise<any[]>;
 
@@ -669,6 +674,11 @@ export interface IStorage {
     userId: number,
     data: InsertForumPost,
     parentId?: number
+  ): Promise<ForumPost>;
+  updatePost(
+    postId: number,
+    userId: number,
+    data: Partial<InsertForumPost>
   ): Promise<ForumPost>;
   deletePost(postId: number, userId: number): Promise<boolean>;
 
@@ -3418,6 +3428,38 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updatePost(
+    postId: number,
+    userId: number,
+    data: Partial<InsertForumPost>
+  ): Promise<ForumPost> {
+    // First check if the post exists and belongs to the user
+    const [post] = await db
+      .select()
+      .from(forumPosts)
+      .where(eq(forumPosts.id, postId));
+
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    if (post.userId !== userId) {
+      throw new Error("Unauthorized: You can only update your own posts");
+    }
+
+    // Update the post
+    const [updated] = await db
+      .update(forumPosts)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(forumPosts.id, postId))
+      .returning();
+
+    return updated;
+  }
+
   async deletePost(postId: number, userId: number): Promise<boolean> {
     // First check if the post exists and belongs to the user
     const [post] = await db
@@ -3449,6 +3491,38 @@ export class DatabaseStorage implements IStorage {
     });
 
     return true;
+  }
+
+  async updateThread(
+    threadId: number,
+    userId: number,
+    data: Partial<InsertForumThread>
+  ): Promise<ForumThread> {
+    // First check if the thread exists and belongs to the user
+    const [thread] = await db
+      .select()
+      .from(forumThreads)
+      .where(eq(forumThreads.id, threadId));
+
+    if (!thread) {
+      throw new Error("Thread not found");
+    }
+
+    if (thread.userId !== userId) {
+      throw new Error("Unauthorized: You can only update your own threads");
+    }
+
+    // Update the thread
+    const [updated] = await db
+      .update(forumThreads)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(forumThreads.id, threadId))
+      .returning();
+
+    return updated;
   }
 
   async deleteThread(threadId: number, userId: number): Promise<boolean> {
