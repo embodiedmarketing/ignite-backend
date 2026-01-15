@@ -22,7 +22,6 @@ export async function createApp() {
     env.NODE_ENV === "development"
       ? [
           "http://localhost:5173",
-          "http://192.168.18.31:5173",
         ]
       : [env.FRONTEND_URL!];
 
