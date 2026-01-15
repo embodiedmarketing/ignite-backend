@@ -18,8 +18,6 @@ export const env = cleanEnv(process.env, {
   STRIPE_SECRET_KEY: str({ default: "" }),
   VITE_STRIPE_PUBLIC_KEY: str({ default: "" }),
   STRIPE_PUBLIC_KEY: str({ default: "" }),
-  SENDGRID_API_KEY: str({ default: "" }),
-  SENDGRID_SENDER_EMAIL: str({ default: "" }),
   ONTRAPORT_WEBHOOK_SECRET: str({ default: "" }),
   GMAIL_USER: str({ default: "" }),
   GMAIL_APP_PASSWORD: str({ default: "" }),
