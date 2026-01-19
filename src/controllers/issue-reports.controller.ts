@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import { insertIssueReportSchema } from "@backend/models";
+import { sendIssueReportUpdateEmail } from "../services/email.service";
 
 /**
  * Get all issue reports
@@ -65,6 +66,58 @@ export async function updateIssueReport(req: Request, res: Response) {
     if (!updated) {
       return res.status(404).json({ message: "Issue report not found" });
     }
+
+    // Resolve the email of the user who created the issue:
+    // 1) Prefer the stored userEmail on the issue report
+    // 2) Fallback to the email from the users table via userId
+    try {
+      const explicitEmail = updated.userEmail;
+      let resolvedEmail = explicitEmail;
+
+      if (!resolvedEmail && updated.userId) {
+        const user = await storage.getUser(updated.userId);
+        resolvedEmail = user?.email ?? null;
+      }
+
+      if (resolvedEmail && updated.status === "resolved") {
+        await sendIssueReportUpdateEmail(resolvedEmail, updated);
+      } else {
+        console.warn(
+          `[ISSUE-REPORT] No email found for issue report ${updated.id}; skipping email notification.`
+        );
+      }
+    } catch (emailError) {
+      console.error(
+        "[ISSUE-REPORT] Failed to send issue update email:",
+        emailError
+      );
+      // Do not fail the API request if email sending fails
+    }
+
+    // Optionally create an in-app notification for the user
+    try {
+      await storage.createNotification({
+        userId: updated.userId,
+        type: "issue_status_updated",
+        title: `Your issue "${updated.title}" was updated`,
+        message: `Status: ${updated.status}${
+          updated.adminNotes ? ` - ${updated.adminNotes}` : ""
+        }`,
+        metadata: {
+          issueReportId: updated.id,
+          status: updated.status,
+        },
+        isRead: false,
+        link: updated.pageUrl ?? null,
+      } as any);
+    } catch (notifError) {
+      console.error(
+        "[ISSUE-REPORT] Failed to create user notification for issue update:",
+        notifError
+      );
+      // Non-fatal
+    }
+
     res.json(updated);
   } catch (error) {
     console.error("Error updating issue report:", error);

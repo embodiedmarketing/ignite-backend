@@ -445,6 +445,7 @@ export const checklistItems = pgTable(
 export const issueReports = pgTable("issue_reports", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
+  userName: varchar("user_name"),
   userEmail: varchar("user_email"),
   issueType: varchar("issue_type").notNull(), // bug, feature_request, improvement, technical_issue
   priority: varchar("priority").notNull().default("medium"), // low, medium, high, critical

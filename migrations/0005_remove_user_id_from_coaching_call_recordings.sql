@@ -7,3 +7,5 @@ ALTER TABLE "coaching_call_recordings" DROP COLUMN IF EXISTS "user_id";
 
 
 
+
+
