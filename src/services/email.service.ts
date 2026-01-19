@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { IssueReport } from "@backend/shared";
 
 const createGmailTransporter = () => {
   const gmailUser = process.env.GMAIL_USER;
@@ -265,6 +266,122 @@ export async function sendForumNotification(params: {
   return sendEmail({
     to: 'team@embodiedmarketing.com',
     subject: `[Forum] ${activityType} in ${params.categoryName}: ${params.threadTitle}`,
+    html,
+    text,
+  });
+}
+
+/**
+ * Send an email about an issue report update to a specific user email.
+ * The caller is responsible for resolving the correct recipient email
+ * (typically the user who created the bug/issue).
+ */
+export async function sendIssueReportUpdateEmail(
+  to: string,
+  report: IssueReport
+): Promise<boolean> {
+  if (!to) {
+    console.warn(
+      `[ISSUE-REPORT] No recipient email provided for issue report ${report.id}, skipping email notification.`
+    );
+    return false;
+  }
+
+  const issueUrl = report.pageUrl;
+
+
+  const statusLabel = report.status ?? "updated";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Your Issue Has Been Updated</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .content { background: #f7f3ef; padding: 30px; border-radius: 0 0 8px 8px; }
+        .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #ec7357; color: #fff; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .footer { text-align: center; color: #666; font-size: 14px; margin-top: 20px; }
+        .meta { font-size: 14px; color: #555; }
+        .label { font-weight: bold; }
+        .box { background: #fff; border-left: 4px solid #ec7357; padding: 12px 16px; margin: 12px 0; }
+        a.button { display: inline-block; background: #ec7357; color: white; padding: 10px 18px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Ignite By Embodied</h1>
+        </div>
+        <div class="content">
+          <p>Hi there ${report?.userName ? ` ${report.userName},` : ""}</p>
+          <p>Your issue report has been <span class="status-pill">${statusLabel}</span>.</p>
+          ${
+            report.adminNotes
+              ? `<div class="box">
+                  <div class="label">Comment from Admin:</div>
+                  <div>${report.adminNotes}</div>
+                </div>`
+              : ""
+          }
+
+          <div class="meta">
+            <p><span class="label">Issue ID:</span> #${report.id}</p>
+            <p><span class="label">Title:</span> ${report.title}</p>
+            <p><span class="label">Type:</span> ${report.issueType}</p>
+            <p><span class="label">Priority:</span> ${report.priority}</p>
+            <p><span class="label">Status:</span> ${report.status}</p>
+          </div>
+
+
+          ${
+            issueUrl
+              ? `<p>Please review the resolved issue at this link once you have a moment.</p>
+                 <p><a href="${issueUrl}" class="button">Try again</a></p>`
+              : ""
+          }
+
+          <p>If you have any questions or if something still isn't working as expected, feel free to reply to this email or open a new issue from within Ignite.</p>
+
+          <p>Best regards,<br />The Ignite Team</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message from Ignite support.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+    Your issue report has been ${statusLabel}.
+
+    Issue ID: #${report.id}
+    Title: ${report.title}
+    Type: ${report.issueType}
+    Priority: ${report.priority}
+    Status: ${report.status}
+
+    ${
+      report.adminNotes
+        ? `Update from our team:\n${report.adminNotes}\n\n`
+        : ""
+    }${
+    issueUrl
+      ? `You can review the details of this issue here: ${issueUrl}\n\n`
+      : ""
+  }If you have any questions, feel free to reply to this email or open a new issue from within Ignite.
+
+    Best regards,
+    The Ignite Team
+  `;
+
+  return sendEmail({
+    to,
+    subject: `Your Ignite issue "${report.title}" has been updated`,
     html,
     text,
   });
