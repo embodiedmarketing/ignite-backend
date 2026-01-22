@@ -63,11 +63,3 @@ applyMigration()
     console.error("Migration script error:", error);
     process.exit(1);
   });
-
-
-
-
-
-
-
-
