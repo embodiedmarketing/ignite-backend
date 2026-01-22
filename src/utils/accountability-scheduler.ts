@@ -3,7 +3,8 @@ import { storage } from "../services/storage.service";
 import { format, startOfWeek, endOfWeek, addWeeks, isSameDay } from "date-fns";
 
 // System user ID for creating accountability threads (using platform admin)
-const SYSTEM_USER_ID = 119; // morgan@embodiedmarketing.com
+// const SYSTEM_USER_ID = 119; // morgan@embodiedmarketing.com
+const SYSTEM_USER_ID =217; // team@embodiedmarketing.com
 
 // Category slug for accountability threads
 const ACCOUNTABILITY_CATEGORY_SLUG = "general"; // Adjust based on your forum category structure
