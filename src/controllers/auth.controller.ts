@@ -99,9 +99,8 @@ export async function login(req: Request, res: Response) {
 
     // Check if user is active
     if (user.isActive === false) {
-      return res.status(200).json({ 
-        message: "Your account has been deactivated. Please contact support.",
-        user
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
       });
     }
 
@@ -168,14 +167,16 @@ export async function getCurrentUser(req: Request, res: Response) {
       return res.status(404).json({ message: "User not found" });
     }
 
-   
-    // if (user.isActive === false) {
-    //   req.session.destroy(() => {});
-    //   return res.status(403).json({ 
-    //     message: "Your account has been deactivated. Please contact support." 
-    //   });
-    // }
+    // Check if user is active
+    if (user.isActive === false) {
+      // Destroy session if user is inactive
+      req.session.destroy(() => {});
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact support." 
+      });
+    }
 
+    // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {

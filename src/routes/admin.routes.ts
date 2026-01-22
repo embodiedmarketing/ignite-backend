@@ -37,7 +37,7 @@ const router = Router();
 
 // Admin login (no middleware required)
 router.post("/login", adminLogin);
-
+router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
 // Admin routes (require isAdmin middleware)
 // Specific routes first (before generic :userId route)
 router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);

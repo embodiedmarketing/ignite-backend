@@ -779,7 +779,6 @@ export const forumPosts = pgTable("forum_posts", {
   parentIndex: index("forum_posts_parent_idx").on(table.parentId),
 }));
 
-// Weekly accountability threads tracking
 export const weeklyAccountabilityThreads = pgTable("weekly_accountability_threads", {
   id: serial("id").primaryKey(),
   threadId: integer("thread_id").references(() => forumThreads.id).notNull(),
@@ -792,7 +791,6 @@ export const weeklyAccountabilityThreads = pgTable("weekly_accountability_thread
   activeIndex: index("weekly_accountability_active_idx").on(table.isActive),
 }));
 
-// Track user participation in accountability threads
 export const accountabilityThreadParticipation = pgTable("accountability_thread_participation", {
   id: serial("id").primaryKey(),
   weeklyThreadId: integer("weekly_thread_id").references(() => weeklyAccountabilityThreads.id).notNull(),
