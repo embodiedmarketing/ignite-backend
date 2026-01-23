@@ -20,7 +20,6 @@ import { isAuthenticated } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// Forum routes
 router.get("/categories", getForumCategories);
 router.get("/recent-activity", getRecentForumActivity);
 router.get("/categories/:slug/threads", getThreadsByCategory);
