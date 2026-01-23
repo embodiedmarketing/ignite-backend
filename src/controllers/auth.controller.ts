@@ -99,8 +99,9 @@ export async function login(req: Request, res: Response) {
 
     // Check if user is active
     if (user.isActive === false) {
-      return res.status(403).json({ 
-        message: "Your account has been deactivated. Please contact support." 
+      return res.status(200).json({ 
+        message: "Your account has been deactivated. Please contact support.",
+        user: user
       });
     }
 
@@ -172,7 +173,8 @@ export async function getCurrentUser(req: Request, res: Response) {
       // Destroy session if user is inactive
       req.session.destroy(() => {});
       return res.status(403).json({ 
-        message: "Your account has been deactivated. Please contact support." 
+        message: "Your account has been deactivated. Please contact support.",
+        user: user
       });
     }
 

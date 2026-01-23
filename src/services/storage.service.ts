@@ -43,6 +43,7 @@ import {
   weeklyAccountabilityThreads,
   accountabilityThreadParticipation,
   userLogins,
+  deviceTokens,
   trainingVideos,
   platformResources,
   checklistStepDefinitions,
@@ -139,6 +140,8 @@ import {
   type InsertChecklistStepDefinition,
   type UserLogin,
   type InsertUserLogin,
+  type DeviceToken,
+  type InsertDeviceToken,
   type CoachingCallRecording,
   type InsertCoachingCallRecording,
   type CoachingCallSchedule,
@@ -167,6 +170,12 @@ export interface IStorage {
   recordUserLogin(data: InsertUserLogin): Promise<UserLogin>;
   getUserLoginHistory(userId: number, limit?: number): Promise<UserLogin[]>;
   getAllUserLogins(limit?: number): Promise<UserLogin[]>;
+
+  // Device tokens (FCM) management
+  registerDeviceToken(userId: number, token: string, deviceType?: string, deviceId?: string): Promise<DeviceToken>;
+  getDeviceTokensForUser(userId: number): Promise<DeviceToken[]>;
+  removeDeviceToken(userId: number, token: string): Promise<boolean>;
+  removeAllDeviceTokensForUser(userId: number): Promise<boolean>;
 
   // Section completions operations
   getSectionCompletions(userId: number): Promise<SectionCompletion[]>;
@@ -2380,6 +2389,78 @@ export class DatabaseStorage implements IStorage {
       .from(userLogins)
       .orderBy(desc(userLogins.loginAt))
       .limit(limit);
+  }
+
+  // Device tokens (FCM) management
+  async registerDeviceToken(
+    userId: number,
+    token: string,
+    deviceType?: string,
+    deviceId?: string
+  ): Promise<DeviceToken> {
+    // Check if token already exists for this user
+    const existing = await db
+      .select()
+      .from(deviceTokens)
+      .where(
+        and(
+          eq(deviceTokens.userId, userId),
+          eq(deviceTokens.token, token)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing token
+      const [updated] = await db
+        .update(deviceTokens)
+        .set({
+          deviceType: deviceType || existing[0].deviceType,
+          deviceId: deviceId || existing[0].deviceId,
+          updatedAt: new Date(),
+        })
+        .where(eq(deviceTokens.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+
+    // Create new token
+    const [newToken] = await db
+      .insert(deviceTokens)
+      .values({
+        userId,
+        token,
+        deviceType: deviceType || null,
+        deviceId: deviceId || null,
+      })
+      .returning();
+    return newToken;
+  }
+
+  async getDeviceTokensForUser(userId: number): Promise<DeviceToken[]> {
+    return await db
+      .select()
+      .from(deviceTokens)
+      .where(eq(deviceTokens.userId, userId));
+  }
+
+  async removeDeviceToken(userId: number, token: string): Promise<boolean> {
+    const result = await db
+      .delete(deviceTokens)
+      .where(
+        and(
+          eq(deviceTokens.userId, userId),
+          eq(deviceTokens.token, token)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async removeAllDeviceTokensForUser(userId: number): Promise<boolean> {
+    const result = await db
+      .delete(deviceTokens)
+      .where(eq(deviceTokens.userId, userId));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Section Completions operations

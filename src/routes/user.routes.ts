@@ -13,6 +13,8 @@ router.patch(
   userController.upload.single("profilePhoto"),
   userController.updateProfile
 );
+router.post("/fcm-token", userController.registerFCMToken);
+router.delete("/fcm-token", userController.removeFCMToken);
 
 export default router;
 

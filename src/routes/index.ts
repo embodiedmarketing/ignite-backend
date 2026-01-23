@@ -44,6 +44,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/health", healthRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/auth", userRoutes); // User routes under /api/auth (profile, last-visited)
+  app.use("/api/users", userRoutes); // User routes also under /api/users (for FCM token registration)
   app.use("/api", paymentRoutes); // Payment routes: /api/create-payment-intent, /api/stripe-webhook, /api/create-checkout-session
   app.use("/api/offers", offersRoutes);
   app.use("/api/activities", activitiesRoutes);

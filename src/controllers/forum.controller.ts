@@ -3,6 +3,11 @@ import { storage } from "../services/storage.service";
 import { insertForumThreadSchema, insertForumPostSchema } from "@backend/models";
 import { sendForumNotification } from "../services/email.service";
 import { isAuthenticated } from "../middlewares/auth.middleware";
+import {
+  sendForumThreadReplyNotification,
+  sendForumCommentReplyNotification,
+  sendForumMentionNotification,
+} from "../services/firebase-notification.service";
 import multer from "multer";
 
 // Configure multer for file uploads
@@ -198,40 +203,123 @@ export async function createPost(req: Request, res: Response) {
       `[FORUM] Post created: ${post.id} in thread ${threadId} by user ${userId}`
     );
 
-    // Create notifications for forum interactions
-    try {
+    // Send response immediately, then send notifications in background
+    res.status(201).json(post);
+
+    // Create notifications for forum interactions (non-blocking)
+    setImmediate(async () => {
+      try {
       const threadData = await storage.getThreadWithPosts(threadId);
 
       console.log(
         `[FORUM] Thread owner: ${threadData?.thread?.userId}, Post author: ${userId}, ParentId: ${parentId}`
       );
 
-      // 1. Notify thread owner when someone replies to their thread (if not replying to a specific post)
-      if (!parentId && threadData?.thread) {
-        console.log(
-          `[FORUM] Creating notification for thread owner ${threadData.thread.userId}`
-        );
-        await storage.createForumReplyNotification(
-          threadId,
-          threadData.thread.userId,
-          userId,
-          post.id
-        );
+      // Get reply author info for notifications
+      const replyAuthor = await storage.getUser(userId);
+      const replyAuthorName = replyAuthor
+        ? `${replyAuthor.firstName || ""} ${
+            replyAuthor.lastName || ""
+          }`.trim() || replyAuthor.email
+        : "Someone";
+
+      // First, extract all mentions to identify mentioned users
+      const mentionedUserIds = new Set<number>();
+      let hasEveryoneMention = false;
+      
+      try {
+        // Extract mentions from post body
+        const mentionRegex = /@([a-zA-Z0-9._'-]{2,30})/g;
+        const mentions: string[] = [];
+        let match;
+        
+        while ((match = mentionRegex.exec(validatedData.body)) !== null) {
+          mentions.push(match[1].toLowerCase());
+        }
+
+        hasEveryoneMention = mentions.includes("everyone");
+
+        if (mentions.length > 0) {
+          // Handle @everyone - get all users in the thread
+          if (hasEveryoneMention && threadData) {
+            // Get all unique user IDs from all posts in the thread
+            if (threadData.thread) {
+              mentionedUserIds.add(threadData.thread.userId);
+            }
+            threadData.posts.forEach((p: any) => {
+              mentionedUserIds.add(p.userId);
+            });
+          }
+
+          // Handle regular mentions (skip "everyone" as it's already handled)
+          const uniqueHandles = [...new Set(mentions)].filter(h => h !== "everyone");
+          
+          for (const handle of uniqueHandles) {
+            // Find users by firstName, lastName, or email username
+            const mentionedUsers = await storage.searchUsersForMentions(handle);
+            
+            for (const mentionedUser of mentionedUsers) {
+              // Check if the handle matches (case-insensitive)
+              const firstNameMatch = mentionedUser.firstName?.toLowerCase() === handle;
+              const lastNameMatch = mentionedUser.lastName?.toLowerCase() === handle;
+              const emailMatch = mentionedUser.email.split("@")[0].toLowerCase() === handle;
+
+              if (firstNameMatch || lastNameMatch || emailMatch) {
+                mentionedUserIds.add(mentionedUser.id);
+              }
+            }
+          }
+        }
+      } catch (mentionError) {
+        console.error("[FORUM] Error extracting mentions:", mentionError);
       }
 
-      // 2. If this is a reply to a specific post, notify the author of the parent post
+      // Level 1: Direct reply to Thread - Notify Thread Creator (only if NOT mentioned)
+      if (!parentId && threadData?.thread) {
+        const threadOwnerId = threadData.thread.userId;
+        
+        // Self-notification check: don't notify if replying to own thread
+        // Also skip if user is mentioned (they'll get mention notification instead)
+        if (threadOwnerId !== userId && !mentionedUserIds.has(threadOwnerId)) {
+          console.log(
+            `[FORUM] Level 1: Creating notification for thread owner ${threadOwnerId}`
+          );
+          
+          // Create database notification
+          await storage.createForumReplyNotification(
+            threadId,
+            threadOwnerId,
+            userId,
+            post.id
+          );
+
+          // Send Firebase push notification
+          try {
+            await sendForumThreadReplyNotification(
+              threadOwnerId,
+              replyAuthorName,
+              threadData.thread.title,
+              threadId,
+              post.id
+            );
+            console.log(`[FCM] Push notification sent to thread owner ${threadOwnerId}`);
+          } catch (fcmError) {
+            console.error(`[FCM] Error sending push notification to thread owner:`, fcmError);
+            // Don't fail if push notification fails
+          }
+        }
+      }
+
+      // Level 2+: Reply to a Comment - Notify Parent Comment Author (only if NOT mentioned)
       if (parentId && threadData) {
         const parentPost = threadData.posts.find(
           (p: any) => p.id === parentId
         );
-        if (parentPost && parentPost.userId !== userId) {
-          const replyAuthor = await storage.getUser(userId);
-          const replyAuthorName = replyAuthor
-            ? `${replyAuthor.firstName || ""} ${
-                replyAuthor.lastName || ""
-              }`.trim() || replyAuthor.email
-            : "Someone";
-
+        
+        // Self-notification check: don't notify if replying to own comment
+        // Also skip if user is mentioned (they'll get mention notification instead)
+        if (parentPost && parentPost.userId !== userId && !mentionedUserIds.has(parentPost.userId)) {
+          // Create database notification
           await storage.createNotification({
             userId: parentPost.userId,
             type: "forum_reply",
@@ -247,75 +335,139 @@ export async function createPost(req: Request, res: Response) {
               replyAuthorId: userId,
             },
           });
+
+          // Send Firebase push notification
+          try {
+            await sendForumCommentReplyNotification(
+              parentPost.userId,
+              replyAuthorName,
+              threadData.thread?.title || "a thread",
+              threadId,
+              post.id,
+              parentId
+            );
+            console.log(`[FCM] Push notification sent to comment author ${parentPost.userId}`);
+          } catch (fcmError) {
+            console.error(`[FCM] Error sending push notification to comment author:`, fcmError);
+            // Don't fail if push notification fails
+          }
         }
       }
 
-      // 3. Check for @mentions and create notifications
-      await storage.createForumMentionNotifications(
-        validatedData.body,
-        userId,
-        threadId,
-        post.id
-      );
-
-      console.log(`[FORUM] Notifications created for post ${post.id}`);
-    } catch (notifError) {
-      console.error("[FORUM] Error creating notifications:", notifError);
-      // Don't fail the post creation if notification fails
-    }
-
-    // Check if this is the active accountability thread and mark user as participated
-    const activeAccountabilityThread =
-      await storage.getActiveAccountabilityThread();
-    if (
-      activeAccountabilityThread &&
-      activeAccountabilityThread.threadId === threadId
-    ) {
+      // Send mention notifications to all mentioned users
       try {
-        await storage.markUserAsParticipated(
-          activeAccountabilityThread.id,
-          userId
-        );
-        console.log(
-          `[ACCOUNTABILITY] User ${userId} marked as participated in accountability thread ${threadId}`
-        );
-      } catch (error) {
-        console.error("Error marking user as participated:", error);
-        // Don't fail the post creation if marking participated fails
+        if (mentionedUserIds.size > 0) {
+          // Create database notifications for mentions
+          await storage.createForumMentionNotifications(
+            validatedData.body,
+            userId,
+            threadId,
+            post.id
+          );
+
+          // Send notifications to all mentioned users (excluding post author)
+          for (const mentionedUserId of mentionedUserIds) {
+            if (mentionedUserId !== userId) {
+              try {
+                // Create database notification
+                await storage.createNotification({
+                  userId: mentionedUserId,
+                  type: "forum_mention",
+                  title: "You were mentioned in a thread",
+                  message: hasEveryoneMention
+                    ? `${replyAuthorName} mentioned everyone in "${
+                        threadData?.thread?.title || "a thread"
+                      }"`
+                    : `${replyAuthorName} mentioned you in "${
+                        threadData?.thread?.title || "a thread"
+                      }"`,
+                  link: `/forum/thread/${threadId}#post-${post.id}`,
+                  metadata: {
+                    threadId,
+                    postId: post.id,
+                    mentionType: hasEveryoneMention ? "everyone" : "user",
+                    replyAuthorId: userId,
+                  },
+                });
+
+                // Send Firebase push notification
+                await sendForumMentionNotification(
+                  mentionedUserId,
+                  replyAuthorName,
+                  threadData?.thread?.title || "a thread",
+                  threadId,
+                  post.id
+                );
+                console.log(`[FCM] Push notification sent to mentioned user ${mentionedUserId}`);
+              } catch (fcmError) {
+                console.error(`[FCM] Error sending push notification to mentioned user ${mentionedUserId}:`, fcmError);
+                // Don't fail if push notification fails
+              }
+            }
+          }
+        }
+      } catch (mentionError) {
+        console.error("[FORUM] Error handling mentions:", mentionError);
+        // Don't fail if mention handling fails
       }
-    }
 
-    // Send email notification for posts in tech category (Funnel Tech Questions & Support)
-    try {
-      const threadData = await storage.getThreadWithPosts(threadId);
-      if (threadData && threadData.category.slug === "tech") {
-        const user = await storage.getUser(userId);
-        const authorName = user
-          ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-          : "A user";
-
-        await sendForumNotification({
-          categoryName: "Funnel Tech Questions & Support",
-          categorySlug: threadData.category.slug,
-          threadTitle: threadData.thread.title || "Thread",
-          threadId: threadId,
-          authorName: authorName || "Unknown User",
-          contentPreview: validatedData.body || "",
-          isNewThread: false,
-        });
-        console.log(
-          `[FORUM] Email notification sent for new comment in tech thread ${threadId}`
-        );
+        console.log(`[FORUM] Notifications created for post ${post.id}`);
+      } catch (notifError) {
+        console.error("[FORUM] Error creating notifications:", notifError);
+        // Don't fail the post creation if notification fails
       }
-    } catch (emailError) {
-      console.error(
-        "[FORUM] Error sending email notification:",
-        emailError
-      );
-      // Don't fail the post creation if email fails
-    }
 
-    res.status(201).json(post);
+      // Check if this is the active accountability thread and mark user as participated
+      const activeAccountabilityThread =
+        await storage.getActiveAccountabilityThread();
+      if (
+        activeAccountabilityThread &&
+        activeAccountabilityThread.threadId === threadId
+      ) {
+        try {
+          await storage.markUserAsParticipated(
+            activeAccountabilityThread.id,
+            userId
+          );
+          console.log(
+            `[ACCOUNTABILITY] User ${userId} marked as participated in accountability thread ${threadId}`
+          );
+        } catch (error) {
+          console.error("Error marking user as participated:", error);
+          // Don't fail the post creation if marking participated fails
+        }
+      }
+
+      // Send email notification for posts in tech category (Funnel Tech Questions & Support)
+      try {
+        const threadData = await storage.getThreadWithPosts(threadId);
+        if (threadData && threadData.category.slug === "tech") {
+          const user = await storage.getUser(userId);
+          const authorName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+            : "A user";
+
+          await sendForumNotification({
+            categoryName: "Funnel Tech Questions & Support",
+            categorySlug: threadData.category.slug,
+            threadTitle: threadData.thread.title || "Thread",
+            threadId: threadId,
+            authorName: authorName || "Unknown User",
+            contentPreview: validatedData.body || "",
+            isNewThread: false,
+          });
+          console.log(
+            `[FORUM] Email notification sent for new comment in tech thread ${threadId}`
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          "[FORUM] Error sending email notification:",
+          emailError
+        );
+        // Don't fail the post creation if email fails
+      }
+    });
   } catch (error) {
     console.error("Error creating post:", error);
     res.status(500).json({ message: "Failed to create post" });
@@ -381,13 +533,306 @@ export async function updatePost(req: Request, res: Response) {
     // Validate updates (only body can be updated)
     const validatedData = insertForumPostSchema.partial().parse(req.body);
 
+    // Store original body for mention extraction (before HTML wrapping)
+    let originalBody: string | undefined;
+
+    // If body is being updated, process mentions
+    if (validatedData.body) {
+      // Store original body for mention extraction (before HTML wrapping)
+      originalBody = validatedData.body;
+
+      // Wrap @ mentions in HTML spans for blue styling
+      const mentionRegex = /@([a-zA-Z0-9._'-]{2,30})/g;
+      const bodyWithStyledMentions = originalBody.replace(
+        mentionRegex,
+        '<span class="mention">@$1</span>'
+      );
+
+      // Update validatedData with styled mentions
+      validatedData.body = bodyWithStyledMentions;
+    }
+
     const updatedPost = await storage.updatePost(
       postId,
       userId,
       validatedData
     );
 
+    console.log(
+      `[FORUM] Post updated: ${updatedPost.id} in thread ${updatedPost.threadId} by user ${userId}`
+    );
+
+    // Send response immediately, then send notifications in background
     res.json(updatedPost);
+
+    // Create notifications for forum interactions (same as createPost) - non-blocking
+    if (validatedData.body) {
+      setImmediate(async () => {
+        try {
+        const threadId = updatedPost.threadId;
+        const parentId = updatedPost.parentId || undefined;
+        const threadData = await storage.getThreadWithPosts(threadId);
+
+        console.log(
+          `[FORUM] Thread owner: ${threadData?.thread?.userId}, Post author: ${userId}, ParentId: ${parentId}`
+        );
+
+        // Get reply author info for notifications
+        const replyAuthor = await storage.getUser(userId);
+        const replyAuthorName = replyAuthor
+          ? `${replyAuthor.firstName || ""} ${
+              replyAuthor.lastName || ""
+            }`.trim() || replyAuthor.email
+          : "Someone";
+
+        // First, extract all mentions to identify mentioned users
+        const mentionedUserIds = new Set<number>();
+        let hasEveryoneMention = false;
+        
+        try {
+          // Extract mentions from original body (before HTML wrapping)
+          if (originalBody) {
+            const mentionRegex = /@([a-zA-Z0-9._'-]{2,30})/g;
+            const mentions: string[] = [];
+            let match;
+            
+            while ((match = mentionRegex.exec(originalBody)) !== null) {
+              mentions.push(match[1].toLowerCase());
+            }
+
+            hasEveryoneMention = mentions.includes("everyone");
+
+            if (mentions.length > 0) {
+              // Handle @everyone - get all users in the thread
+              if (hasEveryoneMention && threadData) {
+                // Get all unique user IDs from all posts in the thread
+                if (threadData.thread) {
+                  mentionedUserIds.add(threadData.thread.userId);
+                }
+                threadData.posts.forEach((p: any) => {
+                  mentionedUserIds.add(p.userId);
+                });
+              }
+
+              // Handle regular mentions (skip "everyone" as it's already handled)
+              const uniqueHandles = [...new Set(mentions)].filter(h => h !== "everyone");
+              
+              for (const handle of uniqueHandles) {
+                // Find users by firstName, lastName, or email username
+                const mentionedUsers = await storage.searchUsersForMentions(handle);
+                
+                for (const mentionedUser of mentionedUsers) {
+                  // Check if the handle matches (case-insensitive)
+                  const firstNameMatch = mentionedUser.firstName?.toLowerCase() === handle;
+                  const lastNameMatch = mentionedUser.lastName?.toLowerCase() === handle;
+                  const emailMatch = mentionedUser.email.split("@")[0].toLowerCase() === handle;
+
+                  if (firstNameMatch || lastNameMatch || emailMatch) {
+                    mentionedUserIds.add(mentionedUser.id);
+                  }
+                }
+              }
+            }
+          }
+        } catch (mentionError) {
+          console.error("[FORUM] Error extracting mentions:", mentionError);
+        }
+
+        // Level 1: Direct reply to Thread - Notify Thread Creator (only if NOT mentioned)
+        if (!parentId && threadData?.thread) {
+          const threadOwnerId = threadData.thread.userId;
+          
+          // Self-notification check: don't notify if replying to own thread
+          // Also skip if user is mentioned (they'll get mention notification instead)
+          if (threadOwnerId !== userId && !mentionedUserIds.has(threadOwnerId)) {
+            console.log(
+              `[FORUM] Level 1: Creating notification for thread owner ${threadOwnerId}`
+            );
+            
+            // Create database notification
+            await storage.createForumReplyNotification(
+              threadId,
+              threadOwnerId,
+              userId,
+              updatedPost.id
+            );
+
+            // Send Firebase push notification
+            try {
+              await sendForumThreadReplyNotification(
+                threadOwnerId,
+                replyAuthorName,
+                threadData.thread.title,
+                threadId,
+                updatedPost.id
+              );
+              console.log(`[FCM] Push notification sent to thread owner ${threadOwnerId}`);
+            } catch (fcmError) {
+              console.error(`[FCM] Error sending push notification to thread owner:`, fcmError);
+              // Don't fail if push notification fails
+            }
+          }
+        }
+
+        // Level 2+: Reply to a Comment - Notify Parent Comment Author (only if NOT mentioned)
+        if (parentId && threadData) {
+          const parentPost = threadData.posts.find(
+            (p: any) => p.id === parentId
+          );
+          
+          // Self-notification check: don't notify if replying to own comment
+          // Also skip if user is mentioned (they'll get mention notification instead)
+          if (parentPost && parentPost.userId !== userId && !mentionedUserIds.has(parentPost.userId)) {
+            // Create database notification
+            await storage.createNotification({
+              userId: parentPost.userId,
+              type: "forum_reply",
+              title: "New Reply to Your Comment",
+              message: `${replyAuthorName} replied to your comment in "${
+                threadData.thread?.title || "a thread"
+              }"`,
+              link: `/forum/thread/${threadId}#post-${updatedPost.id}`,
+              metadata: {
+                threadId,
+                postId: updatedPost.id,
+                parentPostId: parentId,
+                replyAuthorId: userId,
+              },
+            });
+
+            // Send Firebase push notification
+            try {
+              await sendForumCommentReplyNotification(
+                parentPost.userId,
+                replyAuthorName,
+                threadData.thread?.title || "a thread",
+                threadId,
+                updatedPost.id,
+                parentId
+              );
+              console.log(`[FCM] Push notification sent to comment author ${parentPost.userId}`);
+            } catch (fcmError) {
+              console.error(`[FCM] Error sending push notification to comment author:`, fcmError);
+              // Don't fail if push notification fails
+            }
+          }
+        }
+
+        // Send mention notifications to all mentioned users
+        try {
+          if (mentionedUserIds.size > 0 && originalBody) {
+            // Create database notifications for mentions
+            await storage.createForumMentionNotifications(
+              originalBody,
+              userId,
+              threadId,
+              updatedPost.id
+            );
+
+            // Send notifications to all mentioned users (excluding post author)
+            for (const mentionedUserId of mentionedUserIds) {
+              if (mentionedUserId !== userId) {
+                try {
+                  // Create database notification
+                  await storage.createNotification({
+                    userId: mentionedUserId,
+                    type: "forum_mention",
+                    title: "You were mentioned in a thread",
+                    message: hasEveryoneMention
+                      ? `${replyAuthorName} mentioned everyone in "${
+                          threadData?.thread?.title || "a thread"
+                        }"`
+                      : `${replyAuthorName} mentioned you in "${
+                          threadData?.thread?.title || "a thread"
+                        }"`,
+                    link: `/forum/thread/${threadId}#post-${updatedPost.id}`,
+                    metadata: {
+                      threadId,
+                      postId: updatedPost.id,
+                      mentionType: hasEveryoneMention ? "everyone" : "user",
+                      replyAuthorId: userId,
+                    },
+                  });
+
+                  // Send Firebase push notification
+                  await sendForumMentionNotification(
+                    mentionedUserId,
+                    replyAuthorName,
+                    threadData?.thread?.title || "a thread",
+                    threadId,
+                    updatedPost.id
+                  );
+                  console.log(`[FCM] Push notification sent to mentioned user ${mentionedUserId}`);
+                } catch (fcmError) {
+                  console.error(`[FCM] Error sending push notification to mentioned user ${mentionedUserId}:`, fcmError);
+                  // Don't fail if push notification fails
+                }
+              }
+            }
+          }
+        } catch (mentionError) {
+          console.error("[FORUM] Error handling mentions:", mentionError);
+          // Don't fail if mention handling fails
+        }
+
+          console.log(`[FORUM] Notifications created for updated post ${updatedPost.id}`);
+        } catch (notifError) {
+          console.error("[FORUM] Error creating notifications:", notifError);
+          // Don't fail the post update if notification fails
+        }
+
+        // Check if this is the active accountability thread and mark user as participated
+        const activeAccountabilityThread =
+          await storage.getActiveAccountabilityThread();
+        if (
+          activeAccountabilityThread &&
+          activeAccountabilityThread.threadId === updatedPost.threadId
+        ) {
+          try {
+            await storage.markUserAsParticipated(
+              activeAccountabilityThread.id,
+              userId
+            );
+            console.log(
+              `[ACCOUNTABILITY] User ${userId} marked as participated in accountability thread ${updatedPost.threadId}`
+            );
+          } catch (error) {
+            console.error("Error marking user as participated:", error);
+            // Don't fail the post update if marking participated fails
+          }
+        }
+
+        // Send email notification for posts in tech category (Funnel Tech Questions & Support)
+        try {
+          const threadData = await storage.getThreadWithPosts(updatedPost.threadId);
+          if (threadData && threadData.category.slug === "tech") {
+            const user = await storage.getUser(userId);
+            const authorName = user
+              ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+              : "A user";
+
+            await sendForumNotification({
+              categoryName: "Funnel Tech Questions & Support",
+              categorySlug: threadData.category.slug,
+              threadTitle: threadData.thread.title || "Thread",
+              threadId: updatedPost.threadId,
+              authorName: authorName || "Unknown User",
+              contentPreview: originalBody || "",
+              isNewThread: false,
+            });
+            console.log(
+              `[FORUM] Email notification sent for updated comment in tech thread ${updatedPost.threadId}`
+            );
+          }
+        } catch (emailError) {
+          console.error(
+            "[FORUM] Error sending email notification:",
+            emailError
+          );
+          // Don't fail the post update if email fails
+        }
+      });
+    }
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "Post not found") {

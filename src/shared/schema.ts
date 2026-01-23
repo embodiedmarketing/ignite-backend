@@ -52,6 +52,22 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+
+// Device tokens table for FCM push notifications
+export const deviceTokens = pgTable("device_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  token: varchar("token", { length: 500 }).notNull(), // FCM token can be long
+  deviceType: varchar("device_type", { length: 50 }), // "ios", "android", "web"
+  deviceId: varchar("device_id", { length: 255 }), // Optional device identifier
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_device_tokens_user_id").on(table.userId),
+  tokenIdx: index("idx_device_tokens_token").on(table.token),
+  userTokenUnique: index("idx_device_tokens_user_token").on(table.userId, table.token),
+}));
+
 // Password reset tokens table
 export const passwordResetTokens = pgTable(
   "password_reset_tokens",
