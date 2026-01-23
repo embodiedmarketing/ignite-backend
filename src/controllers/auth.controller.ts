@@ -144,12 +144,32 @@ export async function login(req: Request, res: Response) {
  * Log out a user
  */
 export async function logout(req: Request, res: Response) {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: "Failed to logout" });
+  try {
+    const userId = req.session?.userId;
+
+    // Remove all FCM tokens for the user before destroying session
+    if (userId) {
+      try {
+        await storage.removeAllDeviceTokensForUser(userId);
+        console.log(`[LOGOUT] Removed all FCM tokens for user ${userId}`);
+      } catch (tokenError) {
+        // Log error but don't fail logout if token removal fails
+        console.error(`[LOGOUT] Error removing FCM tokens for user ${userId}:`, tokenError);
+      }
     }
-    res.json({ message: "Logout successful" });
-  });
+
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logout successful" });
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Still try to destroy session even if there's an error
+    req.session.destroy(() => {});
+    res.status(500).json({ message: "Failed to logout" });
+  }
 }
 
 /**
