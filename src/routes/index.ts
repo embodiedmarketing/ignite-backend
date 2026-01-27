@@ -35,6 +35,7 @@ import utilityRoutes from "./utility.routes";
 import contentStrategyRoutes from "./content-strategy.routes";
 import userMonitoringRoutes from "./user-monitoring.routes";
 import coachingCallsRoutes from "./coaching-calls.routes";
+import onboardingStepsRoutes from "./onboarding-steps.routes";
 
 /**
  * Register all routes with the Express app
@@ -79,6 +80,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api", utilityRoutes); // Utility routes: /api/ontraport-webhook, /api/migration/*, etc.
   app.use("/api/user-monitoring", userMonitoringRoutes); // User monitoring routes
   app.use("/api/coaching-calls", coachingCallsRoutes); // Coaching call recordings routes
+  app.use("/api/onboarding-steps", onboardingStepsRoutes); // Onboarding steps routes
 
   // All routes have been extracted from server/routes.ts
 }

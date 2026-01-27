@@ -33,6 +33,8 @@ function getCurrentWeekSunday(): Date {
  * Checks if it's Monday and creates a new accountability thread if needed
  */
 export async function checkAndCreateWeeklyThread(): Promise<void> {
+  console.log('[ACCOUNTABILITY SCHEDULER] Checking and creating mintuesly thread' + new Date().toISOString());
+  
   try {
     const now = new Date();
     const dayOfWeek = now.getDay();
@@ -52,11 +54,23 @@ export async function checkAndCreateWeeklyThread(): Promise<void> {
       const activeThreadWeekStart = new Date(activeThread.weekStartDate);
       activeThreadWeekStart.setHours(0, 0, 0, 0);
       
-      // If the active thread is for the current week, don't create a new one
-      if (isSameDay(activeThreadWeekStart, weekMonday)) {
-        console.log('[ACCOUNTABILITY SCHEDULER] Thread already exists for this week');
+      // If the active thread is for the current week, check if it has the correct userId 
+      // if (isSameDay(activeThreadWeekStart, weekMonday)) {
+        // Get the forum thread to check its userId
+        const threadData = await storage.getThreadWithPosts(activeThread.threadId);
+        
+        if (threadData && threadData.thread.userId !== SYSTEM_USER_ID) {
+          // Update the thread's userId to the correct system user
+          await storage.updateAccountabilityThreadUserId(
+            activeThread.threadId,
+            SYSTEM_USER_ID
+          );
+          console.log(`[ACCOUNTABILITY SCHEDULER] Updated thread ${activeThread.threadId} userId to ${SYSTEM_USER_ID}`);
+        } else {
+          console.log('[ACCOUNTABILITY SCHEDULER] Thread already exists for this week');
+        }
         return;
-      }
+      // }
       
       // Mark previous threads as inactive
       await storage.markPreviousThreadsInactive();
@@ -122,6 +136,7 @@ export function startAccountabilityScheduler(): void {
   setInterval(() => {
     checkAndCreateWeeklyThread();
   }, 3600000);
+
   
   console.log('[ACCOUNTABILITY SCHEDULER] Scheduler started - checking every hour for Monday thread creation');
 }

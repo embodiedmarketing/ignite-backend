@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate:interview-notes": "node --import tsx/esm scripts/apply-interview-notes-migration.ts",
-    "db:migrate:device-tokens": "node --import tsx/esm scripts/apply-device-tokens-migration.ts"
+    "db:migrate:device-tokens": "node --import tsx/esm scripts/apply-device-tokens-migration.ts",
+    "db:migrate:onboarding-steps": "node --import tsx/esm scripts/update-onboarding-steps-schema.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
