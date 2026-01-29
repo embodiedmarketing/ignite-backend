@@ -150,6 +150,10 @@ import {
   type OnboardingStep,
   type InsertOnboardingStep,
   type UpdateOnboardingStep,
+  teamMembers,
+  type TeamMember,
+  type InsertTeamMember,
+  type UpdateTeamMember,
 } from "../models";
 import { db } from "../config/db";
 import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
@@ -808,6 +812,16 @@ export interface IStorage {
     updates: Partial<UpdateOnboardingStep>
   ): Promise<OnboardingStep | undefined>;
   deleteOnboardingStep(id: number): Promise<boolean>;
+
+  // Team Members operations
+  getAllTeamMembers(): Promise<TeamMember[]>;
+  getTeamMember(id: number): Promise<TeamMember | undefined>;
+  createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
+  updateTeamMember(
+    id: number,
+    updates: Partial<UpdateTeamMember>
+  ): Promise<TeamMember | undefined>;
+  deleteTeamMember(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3806,62 +3820,119 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async searchUsersForMentions(query: string): Promise<
-    Array<{
-      id: number;
-      firstName: string | null;
-      lastName: string | null;
-      email: string;
-    }>
-  > {
-    const searchTerm = query.toLowerCase().trim();
+  // async searchUsersForMentions(query: string): Promise<
+  //   Array<{
+  //     id: number;
+  //     firstName: string | null;
+  //     lastName: string | null;
+  //     email: string;
+  //   }>
+  // > {
+  //   const searchTerm = query.toLowerCase().trim();
 
-    // If no query, return all users (limited to 10 for performance)
-    if (!searchTerm) {
-      const results = await db
-        .select({
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        })
-        .from(users)
-        .orderBy(sql`COALESCE(${users.firstName}, ${users.email})`)
-        .limit(10);
+  //   // If no query, return all users (limited to 10 for performance)
+  //   if (!searchTerm) {
+  //     const results = await db
+  //       .select({
+  //         id: users.id,
+  //         firstName: users.firstName,
+  //         lastName: users.lastName,
+  //         email: users.email,
+  //       })
+  //       .from(users)
+  //       .orderBy(sql`COALESCE(${users.firstName}, ${users.email})`)
+  //       .limit(10);
 
-      return results;
-    }
+  //     return results;
+  //   }
 
-    // Search users by firstName, lastName, or email username
-    // Limit to 10 results for performance
-    const results = await db
-      .select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        email: users.email,
-      })
-      .from(users)
-      .where(
+  //   // Search users by firstName, lastName, or email username
+  //   // Limit to 10 results for performance
+  //   const results = await db
+  //     .select({
+  //       id: users.id,
+  //       firstName: users.firstName,
+  //       lastName: users.lastName,
+  //       email: users.email,
+  //     })
+  //     .from(users)
+  //     .where(
+  //       or(
+  //         // Match firstName (case-insensitive, starts with)
+  //         sql`LOWER(${users.firstName}) LIKE ${searchTerm + "%"}`,
+  //         // Match lastName (case-insensitive, starts with)
+  //         sql`LOWER(${users.lastName}) LIKE ${searchTerm + "%"}`,
+  //         // Match email username (part before @, case-insensitive, starts with)
+  //         sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) LIKE ${
+  //           searchTerm + "%"
+  //         }`,
+  //         // Match full name (case-insensitive, starts with)
+  //         sql`LOWER(${users.firstName} || ' ' || ${users.lastName}) LIKE ${
+  //           searchTerm + "%"
+  //         }`
+  //       )
+  //     )
+  //     .limit(10);
+
+  //   return results;
+  // }
+
+
+////////////////// Exclude Emily
+
+async searchUsersForMentions(query: string): Promise<
+  Array<{
+    id: number;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  }>
+> {
+  const searchTerm = query.toLowerCase().trim();
+
+  // 1. Base Query Configuration
+  const baseQuery = db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+    })
+    .from(users);
+
+  // 2. Exclude Emily condition
+  // Use ilike or LOWER if you want to be case-insensitive with the exclusion
+  const notEmily = sql`LOWER(${users.firstName}) != 'emily'`;
+
+  if (!searchTerm) {
+    return await baseQuery
+      .where(notEmily) // Exclude Emily even when listing all
+      .orderBy(sql`COALESCE(${users.firstName}, ${users.email})`)
+      .limit(10);
+  }
+
+  // 3. Search with Exclusion
+  const results = await baseQuery
+    .where(
+      and(
+        notEmily, // Ensure the user is NOT Emily
         or(
-          // Match firstName (case-insensitive, starts with)
           sql`LOWER(${users.firstName}) LIKE ${searchTerm + "%"}`,
-          // Match lastName (case-insensitive, starts with)
           sql`LOWER(${users.lastName}) LIKE ${searchTerm + "%"}`,
-          // Match email username (part before @, case-insensitive, starts with)
-          sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) LIKE ${
-            searchTerm + "%"
-          }`,
-          // Match full name (case-insensitive, starts with)
-          sql`LOWER(${users.firstName} || ' ' || ${users.lastName}) LIKE ${
-            searchTerm + "%"
-          }`
+          sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) LIKE ${searchTerm + "%"}`,
+          sql`LOWER(${users.firstName} || ' ' || ${users.lastName}) LIKE ${searchTerm + "%"}`
         )
       )
-      .limit(10);
+    )
+    .limit(10);
 
-    return results;
-  }
+  return results;
+}
+
+
+
+
+
 
   async getRecentForumActivity(limit: number = 10): Promise<any[]> {
     // Get recent threads (new posts)
@@ -4326,6 +4397,51 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(onboardingSteps)
       .where(eq(onboardingSteps.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Team Members operations
+  async getAllTeamMembers(): Promise<TeamMember[]> {
+    const members = await db
+      .select()
+      .from(teamMembers)
+      .orderBy(teamMembers.order);
+    return members;
+  }
+
+  async getTeamMember(id: number): Promise<TeamMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.id, id))
+      .limit(1);
+    return member;
+  }
+
+  async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    const [newMember] = await db
+      .insert(teamMembers)
+      .values(member)
+      .returning();
+    return newMember;
+  }
+
+  async updateTeamMember(
+    id: number,
+    updates: Partial<UpdateTeamMember>
+  ): Promise<TeamMember | undefined> {
+    const [updated] = await db
+      .update(teamMembers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(teamMembers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTeamMember(id: number): Promise<boolean> {
+    const result = await db
+      .delete(teamMembers)
+      .where(eq(teamMembers.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

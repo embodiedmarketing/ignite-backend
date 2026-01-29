@@ -1,57 +1,47 @@
 import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import {
-  insertOnboardingStepSchema,
-  updateOnboardingStepSchema,
+  insertTeamMemberSchema,
+  updateTeamMemberSchema,
 } from "../models";
 
 /**
- * Get all onboarding steps
+ * Get all team members
  */
-export async function getAllOnboardingSteps(
+export async function getAllTeamMembers(
   req: Request,
   res: Response
 ): Promise<void> {
   try {
-    const steps = await storage.getAllOnboardingSteps();
-    res.json(steps);
+    const members = await storage.getAllTeamMembers();
+    res.json(members);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error fetching onboarding steps:", {
+    console.error("Error fetching team members:", {
       name: errorName,
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
-    res.status(500).json({ message: "Failed to fetch onboarding steps" });
+    res.status(500).json({ message: "Failed to fetch team members" });
   }
 }
 
 /**
- * Create a new onboarding step
+ * Create a new team member
  */
-export async function createOnboardingStep(
+export async function createTeamMember(
   req: Request,
   res: Response
 ): Promise<void> {
   try {
-    const validatedData = insertOnboardingStepSchema.parse(req.body);
-    
-    // Set buttonAction default to "link" if buttonText is provided but buttonAction is not
-    const stepData = {
-      ...validatedData,
-      buttonAction: validatedData.buttonText && !validatedData.buttonAction 
-        ? "link" 
-        : validatedData.buttonAction || null,
-    };
-    
-    const step = await storage.createOnboardingStep(stepData);
-    res.status(201).json(step);
+    const validatedData = insertTeamMemberSchema.parse(req.body);
+    const member = await storage.createTeamMember(validatedData);
+    res.status(201).json(member);
   } catch (error) {
-    // Safely serialize error for logging
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error creating onboarding step:", {
+    console.error("Error creating team member:", {
       name: errorName,
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
@@ -69,19 +59,19 @@ export async function createOnboardingStep(
     // Check for duplicate key error (PostgreSQL unique constraint violation)
     if (error instanceof Error && error.message.includes("duplicate key")) {
       res.status(400).json({
-        message: "An onboarding step with this ID already exists",
+        message: "A team member with this ID already exists",
       });
       return;
     }
 
-    res.status(500).json({ message: "Failed to create onboarding step" });
+    res.status(500).json({ message: "Failed to create team member" });
   }
 }
 
 /**
- * Update an onboarding step
+ * Update a team member
  */
-export async function updateOnboardingStep(
+export async function updateTeamMember(
   req: Request,
   res: Response
 ): Promise<void> {
@@ -89,33 +79,22 @@ export async function updateOnboardingStep(
     const { id } = req.params;
     
     if (!id) {
-      res.status(400).json({ message: "Step ID is required" });
+      res.status(400).json({ message: "Team member ID is required" });
       return;
     }
 
     const idNum = parseInt(id, 10);
     if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid step ID format" });
+      res.status(400).json({ message: "Invalid team member ID format" });
       return;
     }
 
-    const validatedData = updateOnboardingStepSchema.parse({
-      ...req.body,
-      id: idNum,
-    });
+    const validatedData = updateTeamMemberSchema.parse(req.body);
 
-    // Remove id from update data
-    const { id: _, ...updateData } = validatedData;
-    
-    // Set buttonAction default to "link" if buttonText is provided but buttonAction is not
-    if (updateData.buttonText && !updateData.buttonAction) {
-      updateData.buttonAction = "link";
-    }
-
-    const updated = await storage.updateOnboardingStep(idNum, updateData);
+    const updated = await storage.updateTeamMember(idNum, validatedData);
 
     if (!updated) {
-      res.status(404).json({ message: "Onboarding step not found" });
+      res.status(404).json({ message: "Team member not found" });
       return;
     }
 
@@ -123,7 +102,7 @@ export async function updateOnboardingStep(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error updating onboarding step:", {
+    console.error("Error updating team member:", {
       name: errorName,
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
@@ -138,14 +117,14 @@ export async function updateOnboardingStep(
       return;
     }
 
-    res.status(500).json({ message: "Failed to update onboarding step" });
+    res.status(500).json({ message: "Failed to update team member" });
   }
 }
 
 /**
- * Delete an onboarding step
+ * Delete a team member
  */
-export async function deleteOnboardingStep(
+export async function deleteTeamMember(
   req: Request,
   res: Response
 ): Promise<void> {
@@ -153,36 +132,36 @@ export async function deleteOnboardingStep(
     const { id } = req.params;
 
     if (!id) {
-      res.status(400).json({ message: "Step ID is required" });
+      res.status(400).json({ message: "Team member ID is required" });
       return;
     }
 
     const idNum = parseInt(id, 10);
     if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid step ID format" });
+      res.status(400).json({ message: "Invalid team member ID format" });
       return;
     }
 
-    const deleted = await storage.deleteOnboardingStep(idNum);
+    const deleted = await storage.deleteTeamMember(idNum);
 
     if (!deleted) {
-      res.status(404).json({ message: "Onboarding step not found" });
+      res.status(404).json({ message: "Team member not found" });
       return;
     }
 
     res.json({
-      message: "Onboarding step deleted successfully",
+      message: "Team member deleted successfully",
       id: idNum,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error deleting onboarding step:", {
+    console.error("Error deleting team member:", {
       name: errorName,
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
-    res.status(500).json({ message: "Failed to delete onboarding step" });
+    res.status(500).json({ message: "Failed to delete team member" });
   }
 }
 
