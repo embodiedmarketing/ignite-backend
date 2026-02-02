@@ -15,7 +15,11 @@
     "db:migrate:device-tokens": "node --import tsx/esm scripts/apply-device-tokens-migration.ts",
     "db:migrate:onboarding-steps": "node --import tsx/esm scripts/update-onboarding-steps-schema.ts",
     "db:migrate:team-members": "node --import tsx/esm scripts/apply-team-members-migration.ts",
-    "db:migrate:team-members-serial": "node --import tsx/esm scripts/update-team-members-id-to-serial.ts"
+    "db:migrate:team-members-serial": "node --import tsx/esm scripts/update-team-members-id-to-serial.ts",
+    "db:migrate:faqs": "node --import tsx/esm scripts/apply-faqs-migration.ts",
+    "db:migrate:faqs-serial": "node --import tsx/esm scripts/update-faqs-id-to-serial.ts",
+    "db:migrate:journey-steps": "node --import tsx/esm scripts/apply-journey-steps-migration.ts",
+    "db:migrate:orientation-video": "node --import tsx/esm scripts/apply-orientation-video-migration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -154,6 +154,18 @@ import {
   type TeamMember,
   type InsertTeamMember,
   type UpdateTeamMember,
+  faqs,
+  type Faq,
+  type InsertFaq,
+  type UpdateFaq,
+  journeySteps,
+  type JourneyStep,
+  type InsertJourneyStep,
+  type UpdateJourneyStep,
+  orientationVideos,
+  type OrientationVideo,
+  type InsertOrientationVideo,
+  type UpdateOrientationVideo,
 } from "../models";
 import { db } from "../config/db";
 import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
@@ -822,6 +834,36 @@ export interface IStorage {
     updates: Partial<UpdateTeamMember>
   ): Promise<TeamMember | undefined>;
   deleteTeamMember(id: number): Promise<boolean>;
+
+  // FAQs operations
+  getAllFaqs(): Promise<Faq[]>;
+  getFaq(id: number): Promise<Faq | undefined>;
+  createFaq(faq: InsertFaq): Promise<Faq>;
+  updateFaq(
+    id: number,
+    updates: Partial<UpdateFaq>
+  ): Promise<Faq | undefined>;
+  deleteFaq(id: number): Promise<boolean>;
+
+  // Journey Steps operations
+  getAllJourneySteps(): Promise<JourneyStep[]>;
+  getJourneyStep(id: number): Promise<JourneyStep | undefined>;
+  createJourneyStep(step: InsertJourneyStep): Promise<JourneyStep>;
+  updateJourneyStep(
+    id: number,
+    updates: Partial<UpdateJourneyStep>
+  ): Promise<JourneyStep | undefined>;
+  deleteJourneyStep(id: number): Promise<boolean>;
+
+  // Orientation Video operations
+  getOrientationVideo(): Promise<OrientationVideo | undefined>;
+  getOrientationVideoById(id: number): Promise<OrientationVideo | undefined>;
+  createOrientationVideo(video: InsertOrientationVideo): Promise<OrientationVideo>;
+  updateOrientationVideo(
+    id: number,
+    updates: Partial<UpdateOrientationVideo>
+  ): Promise<OrientationVideo | undefined>;
+  deleteOrientationVideo(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4442,6 +4484,165 @@ async searchUsersForMentions(query: string): Promise<
     const result = await db
       .delete(teamMembers)
       .where(eq(teamMembers.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // FAQs operations
+  async getAllFaqs(): Promise<Faq[]> {
+    const faqsList = await db
+      .select()
+      .from(faqs)
+      .orderBy(faqs.order);
+    return faqsList;
+  }
+
+  async getFaq(id: number): Promise<Faq | undefined> {
+    const [faq] = await db
+      .select()
+      .from(faqs)
+      .where(eq(faqs.id, id))
+      .limit(1);
+    return faq;
+  }
+
+  async createFaq(faq: InsertFaq): Promise<Faq> {
+    const [newFaq] = await db
+      .insert(faqs)
+      .values(faq)
+      .returning();
+    return newFaq;
+  }
+
+  async updateFaq(
+    id: number,
+    updates: Partial<UpdateFaq>
+  ): Promise<Faq | undefined> {
+    const [updated] = await db
+      .update(faqs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(faqs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFaq(id: number): Promise<boolean> {
+    const result = await db
+      .delete(faqs)
+      .where(eq(faqs.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Journey Steps operations
+  async getAllJourneySteps(): Promise<JourneyStep[]> {
+    const steps = await db
+      .select()
+      .from(journeySteps)
+      .orderBy(journeySteps.order);
+    return steps;
+  }
+
+  async getJourneyStep(id: number): Promise<JourneyStep | undefined> {
+    const [step] = await db
+      .select()
+      .from(journeySteps)
+      .where(eq(journeySteps.id, id))
+      .limit(1);
+    return step;
+  }
+
+  async createJourneyStep(step: InsertJourneyStep): Promise<JourneyStep> {
+    // If order is not provided, set it to the max order + 1
+    if (step.order === undefined || step.order === null) {
+      const allSteps = await this.getAllJourneySteps();
+      const maxOrder = allSteps.length > 0 
+        ? Math.max(...allSteps.map(s => s.order)) 
+        : -1;
+      step.order = maxOrder + 1;
+    }
+
+    const [newStep] = await db
+      .insert(journeySteps)
+      .values(step)
+      .returning();
+    return newStep;
+  }
+
+  async updateJourneyStep(
+    id: number,
+    updates: Partial<UpdateJourneyStep>
+  ): Promise<JourneyStep | undefined> {
+    const [updated] = await db
+      .update(journeySteps)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(journeySteps.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteJourneyStep(id: number): Promise<boolean> {
+    const result = await db
+      .delete(journeySteps)
+      .where(eq(journeySteps.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Orientation Video operations
+  async getOrientationVideo(): Promise<OrientationVideo | undefined> {
+    // Get the first orientation video (there should only be one)
+    const [video] = await db
+      .select()
+      .from(orientationVideos)
+      .where(eq(orientationVideos.stepNumber, 0))
+      .orderBy(orientationVideos.createdAt)
+      .limit(1);
+    return video;
+  }
+
+  async getOrientationVideoById(id: number): Promise<OrientationVideo | undefined> {
+    const [video] = await db
+      .select()
+      .from(orientationVideos)
+      .where(eq(orientationVideos.id, id))
+      .limit(1);
+    return video;
+  }
+
+  async createOrientationVideo(video: InsertOrientationVideo): Promise<OrientationVideo> {
+    // Ensure stepNumber is 0
+    const videoData = {
+      ...video,
+      stepNumber: 0,
+    };
+
+    const [newVideo] = await db
+      .insert(orientationVideos)
+      .values(videoData)
+      .returning();
+    return newVideo;
+  }
+
+  async updateOrientationVideo(
+    id: number,
+    updates: Partial<UpdateOrientationVideo>
+  ): Promise<OrientationVideo | undefined> {
+    // Ensure stepNumber remains 0 if provided
+    const updateData = {
+      ...updates,
+      stepNumber: updates.stepNumber !== undefined ? 0 : undefined,
+    };
+
+    const [updated] = await db
+      .update(orientationVideos)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(orientationVideos.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteOrientationVideo(id: number): Promise<boolean> {
+    const result = await db
+      .delete(orientationVideos)
+      .where(eq(orientationVideos.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

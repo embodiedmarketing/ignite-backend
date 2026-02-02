@@ -37,6 +37,9 @@ import userMonitoringRoutes from "./user-monitoring.routes";
 import coachingCallsRoutes from "./coaching-calls.routes";
 import onboardingStepsRoutes from "./onboarding-steps.routes";
 import teamMembersRoutes from "./team-members.routes";
+import faqsRoutes from "./faqs.routes";
+import journeyStepsRoutes from "./journey-steps.routes";
+import orientationVideoRoutes from "./orientation-video.routes";
 
 /**
  * Register all routes with the Express app
@@ -83,6 +86,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/coaching-calls", coachingCallsRoutes); // Coaching call recordings routes
   app.use("/api/onboarding-steps", onboardingStepsRoutes); // Onboarding steps routes
   app.use("/api/team-members", teamMembersRoutes); // Team members routes
+  app.use("/api/faqs", faqsRoutes); // FAQs routes
+  app.use("/api/journey-steps", journeyStepsRoutes); // Journey steps routes
+  app.use("/api/orientation-video", orientationVideoRoutes); // Orientation video routes
 
   // All routes have been extracted from server/routes.ts
 }
