@@ -9,7 +9,6 @@ import { isAuthenticated } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// All routes require authentication
 router.use(isAuthenticated);
 
 router.get("/", getAllTeamMembers);
