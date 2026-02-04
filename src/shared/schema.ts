@@ -1809,6 +1809,7 @@ export const coachingCallRecordings = pgTable("coaching_call_recordings", {
   vimeoId: varchar("vimeo_id", { length: 255 }),
   description: text("description"),
   transcript: text("transcript"),
+  timestamps: text("timestamps"), // short summary lines: [HH:MM:SS] Name - topic
   category: varchar("category", { length: 100 }), // e.g., "strategy", "technical", etc.
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
