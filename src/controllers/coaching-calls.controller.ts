@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import { insertCoachingCallRecordingSchema, insertCoachingCallScheduleSchema } from "@backend/models";
-import { isAuthenticated } from "../middlewares/auth.middleware";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 import { z } from "zod";
 
 /**
@@ -17,8 +17,10 @@ export async function getCoachingCallRecordings(req: Request, res: Response) {
     const recordings = await storage.getAllCoachingCallRecordings();
     res.json(recordings);
   } catch (error) {
-    console.error("Error fetching coaching call recordings:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "fetching coaching call recordings",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -32,10 +34,8 @@ export async function getCoachingCallRecording(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid recording ID" });
-    }
+    const id = parseIdParam(req.params.id, res, { paramName: "Recording ID" });
+    if (id === undefined) return;
 
     const recording = await storage.getCoachingCallRecording(id);
     if (!recording) {
@@ -44,8 +44,10 @@ export async function getCoachingCallRecording(req: Request, res: Response) {
 
     res.json(recording);
   } catch (error) {
-    console.error("Error fetching coaching call recording:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "fetching coaching call recording",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -64,15 +66,11 @@ export async function createCoachingCallRecording(req: Request, res: Response) {
 
     const recording = await storage.createCoachingCallRecording(validated);
     res.status(201).json(recording);
-  } catch (error: any) {
-    console.error("Error creating coaching call recording:", error);
-    if (error.name === "ZodError") {
-      return res.status(400).json({
-        message: "Validation error",
-        errors: error.errors,
-      });
-    }
-    res.status(500).json({ message: "Internal server error" });
+  } catch (error) {
+    handleControllerError(error, res, {
+      logLabel: "creating coaching call recording",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -86,10 +84,8 @@ export async function updateCoachingCallRecording(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid recording ID" });
-    }
+    const id = parseIdParam(req.params.id, res, { paramName: "Recording ID" });
+    if (id === undefined) return;
 
     // Check if recording exists
     const existingRecording = await storage.getCoachingCallRecording(id);
@@ -106,15 +102,11 @@ export async function updateCoachingCallRecording(req: Request, res: Response) {
     }
 
     res.json(updated);
-  } catch (error: any) {
-    console.error("Error updating coaching call recording:", error);
-    if (error.name === "ZodError") {
-      return res.status(400).json({
-        message: "Validation error",
-        errors: error.errors,
-      });
-    }
-    res.status(500).json({ message: "Internal server error" });
+  } catch (error) {
+    handleControllerError(error, res, {
+      logLabel: "updating coaching call recording",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -128,10 +120,8 @@ export async function deleteCoachingCallRecording(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid recording ID" });
-    }
+    const id = parseIdParam(req.params.id, res, { paramName: "Recording ID" });
+    if (id === undefined) return;
 
     // Check if recording exists
     const existingRecording = await storage.getCoachingCallRecording(id);
@@ -146,8 +136,10 @@ export async function deleteCoachingCallRecording(req: Request, res: Response) {
 
     res.status(204).send();
   } catch (error) {
-    console.error("Error deleting coaching call recording:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "deleting coaching call recording",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -168,8 +160,10 @@ export async function getCoachingCallsSchedule(req: Request, res: Response) {
     const calls = await storage.getAllCoachingCallsSchedule();
     res.json(calls);
   } catch (error) {
-    console.error("Error fetching coaching calls schedule:", error);
-    res.status(500).json({ message: "Failed to fetch calls", error: error instanceof Error ? error.message : "Unknown error" });
+    handleControllerError(error, res, {
+      logLabel: "fetching coaching calls schedule",
+      defaultMessage: "Failed to fetch calls",
+    });
   }
 }
 
@@ -207,16 +201,11 @@ export async function createCoachingCallSchedule(req: Request, res: Response) {
       const call = await storage.createCoachingCallSchedule(validated);
       res.status(201).json(call);
     }
-  } catch (error: any) {
-    console.error("Error creating coaching call schedule:", error instanceof Error ? error.message : String(error));
-    if (error?.name === "ZodError") {
-      return res.status(400).json({
-        message: "Failed to add call",
-        error: "Validation error",
-        errors: error.errors,
-      });
-    }
-    res.status(500).json({ message: "Failed to add call", error: error?.message || "Internal server error" });
+  } catch (error) {
+    handleControllerError(error, res, {
+      logLabel: "creating coaching call schedule",
+      defaultMessage: "Failed to add call",
+    });
   }
 }
 
@@ -230,10 +219,8 @@ export async function updateCoachingCallSchedule(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid call ID" });
-    }
+    const id = parseIdParam(req.params.id, res, { paramName: "Call ID" });
+    if (id === undefined) return;
 
     // Check if call exists
     const existingCall = await storage.getCoachingCallSchedule(id);
@@ -250,16 +237,11 @@ export async function updateCoachingCallSchedule(req: Request, res: Response) {
     }
 
     res.json(updated);
-  } catch (error: any) {
-    console.error("Error updating coaching call schedule:", error);
-    if (error.name === "ZodError") {
-      return res.status(400).json({
-        message: "Failed to update call",
-        error: "Validation error",
-        errors: error.errors,
-      });
-    }
-    res.status(500).json({ message: "Failed to update call", error: error.message || "Internal server error" });
+  } catch (error) {
+    handleControllerError(error, res, {
+      logLabel: "updating coaching call schedule",
+      defaultMessage: "Failed to update call",
+    });
   }
 }
 
@@ -273,10 +255,8 @@ export async function deleteCoachingCallSchedule(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid call ID" });
-    }
+    const id = parseIdParam(req.params.id, res, { paramName: "Call ID" });
+    if (id === undefined) return;
 
     // Check if call exists
     const existingCall = await storage.getCoachingCallSchedule(id);
@@ -291,8 +271,10 @@ export async function deleteCoachingCallSchedule(req: Request, res: Response) {
 
     res.json({ message: "Call deleted successfully", id: id.toString() });
   } catch (error) {
-    console.error("Error deleting coaching call schedule:", error);
-    res.status(500).json({ message: "Failed to delete call", error: error instanceof Error ? error.message : "Unknown error" });
+    handleControllerError(error, res, {
+      logLabel: "deleting coaching call schedule",
+      defaultMessage: "Failed to delete call",
+    });
   }
 }
 

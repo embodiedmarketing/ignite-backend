@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import { insertWorkbookResponseSchema } from "../models";
+import { handleControllerError } from "../utils/controller-error";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import { getUserId } from "../middlewares/auth.middleware";
 
@@ -132,23 +133,9 @@ export async function upsertWorkbookResponse(req: Request, res: Response) {
 
     res.status(201).json(response);
   } catch (error) {
-    console.error("Error upserting workbook response:", error);
-
-    if (error instanceof Error && error.name === "ZodError") {
-      return res.status(400).json({
-        message: "Invalid request data",
-        details: (error as any).errors || error.message,
-      });
-    }
-
-    res.status(500).json({
-      message: "Internal server error",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error instanceof Error
-            ? error.message
-            : "Unknown error"
-          : undefined,
+    handleControllerError(error, res, {
+      logLabel: "upserting workbook response",
+      defaultMessage: "Internal server error",
     });
   }
 }

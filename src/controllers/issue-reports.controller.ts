@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { storage } from "../services/storage.service";
 import { insertIssueReportSchema } from "@backend/models";
 import { sendIssueReportUpdateEmail } from "../services/email.service";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 
 /**
  * Get all issue reports
@@ -11,8 +12,10 @@ export async function getAllIssueReports(req: Request, res: Response) {
     const reports = await storage.getAllIssueReports();
     res.json(reports);
   } catch (error) {
-    console.error("Error fetching issue reports:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "fetching issue reports",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -40,15 +43,10 @@ export async function createIssueReport(req: Request, res: Response) {
 
     res.status(201).json(report);
   } catch (error) {
-    console.error("Error creating issue report:", error);
-    if (error instanceof Error && error.name === "ZodError") {
-      res.status(400).json({
-        message: "Invalid issue report data",
-        details: error.message,
-      });
-    } else {
-      res.status(500).json({ message: "Internal server error" });
-    }
+    handleControllerError(error, res, {
+      logLabel: "creating issue report",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -57,10 +55,10 @@ export async function createIssueReport(req: Request, res: Response) {
  */
 export async function updateIssueReport(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid issue report ID" });
-    }
+    const id = parseIdParam(req.params.id, res, {
+      paramName: "Issue report ID",
+    });
+    if (id === undefined) return;
 
     const updated = await storage.updateIssueReport(id, req.body);
     if (!updated) {
@@ -120,8 +118,10 @@ export async function updateIssueReport(req: Request, res: Response) {
 
     res.json(updated);
   } catch (error) {
-    console.error("Error updating issue report:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "updating issue report",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 
@@ -130,10 +130,10 @@ export async function updateIssueReport(req: Request, res: Response) {
  */
 export async function deleteIssueReport(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid issue report ID" });
-    }
+    const id = parseIdParam(req.params.id, res, {
+      paramName: "Issue report ID",
+    });
+    if (id === undefined) return;
 
     const deleted = await storage.deleteIssueReport(id);
     if (!deleted) {
@@ -141,8 +141,10 @@ export async function deleteIssueReport(req: Request, res: Response) {
     }
     res.status(204).send();
   } catch (error) {
-    console.error("Error deleting issue report:", error);
-    res.status(500).json({ message: "Internal server error" });
+    handleControllerError(error, res, {
+      logLabel: "deleting issue report",
+      defaultMessage: "Internal server error",
+    });
   }
 }
 

@@ -4,6 +4,7 @@ import {
   insertJourneyStepSchema,
   updateJourneyStepSchema,
 } from "../models";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 
 /**
  * Get all journey steps (public endpoint)
@@ -16,14 +17,10 @@ export async function getAllJourneySteps(
     const steps = await storage.getAllJourneySteps();
     res.json(steps);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error fetching journey steps:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "fetching journey steps",
+      defaultMessage: "Failed to fetch journey steps",
     });
-    res.status(500).json({ message: "Failed to fetch journey steps" });
   }
 }
 
@@ -39,24 +36,10 @@ export async function createJourneyStep(
     const step = await storage.createJourneyStep(validatedData);
     res.status(201).json(step);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error creating journey step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "creating journey step",
+      defaultMessage: "Failed to create journey step",
     });
-    
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to create journey step" });
   }
 }
 
@@ -68,18 +51,10 @@ export async function updateJourneyStep(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ message: "Journey step ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid journey step ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, {
+      paramName: "Journey step ID",
+    });
+    if (idNum === undefined) return;
 
     const validatedData = updateJourneyStepSchema.parse(req.body);
 
@@ -92,24 +67,10 @@ export async function updateJourneyStep(
 
     res.json(updated);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error updating journey step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "updating journey step",
+      defaultMessage: "Failed to update journey step",
     });
-
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to update journey step" });
   }
 }
 
@@ -121,18 +82,10 @@ export async function deleteJourneyStep(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ message: "Journey step ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid journey step ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, {
+      paramName: "Journey step ID",
+    });
+    if (idNum === undefined) return;
 
     const deleted = await storage.deleteJourneyStep(idNum);
 
@@ -145,14 +98,10 @@ export async function deleteJourneyStep(
       message: "Journey step deleted successfully",
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error deleting journey step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "deleting journey step",
+      defaultMessage: "Failed to delete journey step",
     });
-    res.status(500).json({ message: "Failed to delete journey step" });
   }
 }
 

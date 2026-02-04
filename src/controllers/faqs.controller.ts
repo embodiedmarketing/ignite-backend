@@ -4,6 +4,7 @@ import {
   insertFaqSchema,
   updateFaqSchema,
 } from "../models";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 
 /**
  * Get all FAQs
@@ -16,14 +17,10 @@ export async function getAllFaqs(
     const faqsList = await storage.getAllFaqs();
     res.json(faqsList);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error fetching FAQs:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "fetching FAQs",
+      defaultMessage: "Failed to fetch FAQs",
     });
-    res.status(500).json({ message: "Failed to fetch FAQs" });
   }
 }
 
@@ -39,32 +36,11 @@ export async function createFaq(
     const faq = await storage.createFaq(validatedData);
     res.status(201).json(faq);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error creating FAQ:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "creating FAQ",
+      duplicateKeyMessage: "A FAQ with this ID already exists",
+      defaultMessage: "Failed to create FAQ",
     });
-    
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    // Check for duplicate key error (PostgreSQL unique constraint violation)
-    if (error instanceof Error && error.message.includes("duplicate key")) {
-      res.status(400).json({
-        message: "A FAQ with this ID already exists",
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to create FAQ" });
   }
 }
 
@@ -76,21 +52,10 @@ export async function updateFaq(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ message: "FAQ ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid FAQ ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, { paramName: "FAQ ID" });
+    if (idNum === undefined) return;
 
     const validatedData = updateFaqSchema.parse(req.body);
-
     const updated = await storage.updateFaq(idNum, validatedData);
 
     if (!updated) {
@@ -100,24 +65,10 @@ export async function updateFaq(
 
     res.json(updated);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error updating FAQ:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "updating FAQ",
+      defaultMessage: "Failed to update FAQ",
     });
-
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to update FAQ" });
   }
 }
 
@@ -129,18 +80,8 @@ export async function deleteFaq(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ message: "FAQ ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid FAQ ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, { paramName: "FAQ ID" });
+    if (idNum === undefined) return;
 
     const deleted = await storage.deleteFaq(idNum);
 
@@ -154,14 +95,9 @@ export async function deleteFaq(
       id: idNum,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error deleting FAQ:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "deleting FAQ",
+      defaultMessage: "Failed to delete FAQ",
     });
-    res.status(500).json({ message: "Failed to delete FAQ" });
   }
 }
-

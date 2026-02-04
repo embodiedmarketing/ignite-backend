@@ -4,6 +4,7 @@ import {
   insertOnboardingStepSchema,
   updateOnboardingStepSchema,
 } from "../models";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 
 /**
  * Get all onboarding steps
@@ -16,14 +17,10 @@ export async function getAllOnboardingSteps(
     const steps = await storage.getAllOnboardingSteps();
     res.json(steps);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error fetching onboarding steps:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "fetching onboarding steps",
+      defaultMessage: "Failed to fetch onboarding steps",
     });
-    res.status(500).json({ message: "Failed to fetch onboarding steps" });
   }
 }
 
@@ -48,33 +45,11 @@ export async function createOnboardingStep(
     const step = await storage.createOnboardingStep(stepData);
     res.status(201).json(step);
   } catch (error) {
-    // Safely serialize error for logging
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error creating onboarding step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "creating onboarding step",
+      duplicateKeyMessage: "An onboarding step with this ID already exists",
+      defaultMessage: "Failed to create onboarding step",
     });
-    
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    // Check for duplicate key error (PostgreSQL unique constraint violation)
-    if (error instanceof Error && error.message.includes("duplicate key")) {
-      res.status(400).json({
-        message: "An onboarding step with this ID already exists",
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to create onboarding step" });
   }
 }
 
@@ -86,18 +61,8 @@ export async function updateOnboardingStep(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ message: "Step ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid step ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, { paramName: "Step ID" });
+    if (idNum === undefined) return;
 
     const validatedData = updateOnboardingStepSchema.parse({
       ...req.body,
@@ -121,24 +86,10 @@ export async function updateOnboardingStep(
 
     res.json(updated);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error updating onboarding step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "updating onboarding step",
+      defaultMessage: "Failed to update onboarding step",
     });
-
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to update onboarding step" });
   }
 }
 
@@ -150,18 +101,8 @@ export async function deleteOnboardingStep(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ message: "Step ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid step ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, { paramName: "Step ID" });
+    if (idNum === undefined) return;
 
     const deleted = await storage.deleteOnboardingStep(idNum);
 
@@ -175,14 +116,10 @@ export async function deleteOnboardingStep(
       id: idNum,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error deleting onboarding step:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "deleting onboarding step",
+      defaultMessage: "Failed to delete onboarding step",
     });
-    res.status(500).json({ message: "Failed to delete onboarding step" });
   }
 }
 

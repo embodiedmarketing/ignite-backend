@@ -4,6 +4,7 @@ import {
   insertOrientationVideoSchema,
   updateOrientationVideoSchema,
 } from "../models";
+import { handleControllerError, parseIdParam } from "../utils/controller-error";
 
 /**
  * Get orientation video (public endpoint)
@@ -15,7 +16,7 @@ export async function getOrientationVideo(
 ): Promise<void> {
   try {
     const video = await storage.getOrientationVideo();
-    
+
     if (!video) {
       res.status(404).json({ message: "Orientation video not found" });
       return;
@@ -23,14 +24,10 @@ export async function getOrientationVideo(
 
     res.json(video);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error fetching orientation video:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "fetching orientation video",
+      defaultMessage: "Failed to fetch orientation video",
     });
-    res.status(500).json({ message: "Failed to fetch orientation video" });
   }
 }
 
@@ -53,24 +50,10 @@ export async function createOrientationVideo(
     const video = await storage.createOrientationVideo(videoData);
     res.status(201).json(video);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error creating orientation video:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "creating orientation video",
+      defaultMessage: "Failed to create orientation video",
     });
-    
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to create orientation video" });
   }
 }
 
@@ -82,18 +65,10 @@ export async function updateOrientationVideo(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ message: "Orientation video ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid orientation video ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, {
+      paramName: "Orientation video ID",
+    });
+    if (idNum === undefined) return;
 
     const validatedData = updateOrientationVideoSchema.parse(req.body);
 
@@ -112,24 +87,10 @@ export async function updateOrientationVideo(
 
     res.json(updated);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error updating orientation video:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "updating orientation video",
+      defaultMessage: "Failed to update orientation video",
     });
-
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as any;
-      res.status(400).json({
-        message: "Invalid request data",
-        details: zodError.errors || error.message,
-      });
-      return;
-    }
-
-    res.status(500).json({ message: "Failed to update orientation video" });
   }
 }
 
@@ -141,18 +102,10 @@ export async function deleteOrientationVideo(
   res: Response
 ): Promise<void> {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ message: "Orientation video ID is required" });
-      return;
-    }
-
-    const idNum = parseInt(id, 10);
-    if (isNaN(idNum)) {
-      res.status(400).json({ message: "Invalid orientation video ID format" });
-      return;
-    }
+    const idNum = parseIdParam(req.params.id, res, {
+      paramName: "Orientation video ID",
+    });
+    if (idNum === undefined) return;
 
     const deleted = await storage.deleteOrientationVideo(idNum);
 
@@ -165,14 +118,10 @@ export async function deleteOrientationVideo(
       message: "Orientation video deleted successfully",
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = error instanceof Error ? error.name : "UnknownError";
-    console.error("Error deleting orientation video:", {
-      name: errorName,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
+    handleControllerError(error, res, {
+      logLabel: "deleting orientation video",
+      defaultMessage: "Failed to delete orientation video",
     });
-    res.status(500).json({ message: "Failed to delete orientation video" });
   }
 }
 
