@@ -1582,8 +1582,28 @@ export async function generateLaunchEmailSequence(req: Request, res: Response) {
   }
 }
 
+const TRANSCRIPT_SUMMARIZER_PROMPT = ` You will receive a transcript where every line is "[HH:MM:SS] Speaker - text...". The word "Speaker" is generic; participant names appear inside the text (e.g. the host says "Sherry, did you wanna start", "Kara, you're up next", "Jordan, you are up next", "Cassandra, you're gonna take us home").
+
+Your job:
+1. Infer who is speaking from context: when the host addresses someone by name and that person responds, use that name for the segment. Identify the coach/host (e.g. Rena) and participants (Sherry, Kara, Jordan, Cassandra, etc.) from the dialogue.
+2. For each participant's turn or major topic, output ONE line with the timestamp when they start speaking and a brief 5–15 word description of the topic.
+3. Format every line exactly as: [HH:MM:SS] Name - brief topic description
+4. Output only 5–25 lines total. Never output the full transcript.
+
+Example output (use this style):
+[00:01:09] Sherry - quiz landing page review, tripwire messaging, email sequences
+[00:15:37] Kara - ads targeting strategy, offer transformation outcomes
+[00:29:41] Jordan - Built for Bigger sales page review, tangible outcomes
+[00:48:46] Cassandra - tripwire page CTA, launching ads
+
+Rules:
+- Use the FIRST timestamp of when that person starts speaking (from the transcript).
+- Use real names inferred from the text (Sherry, Kara, Jordan, Cassandra, Rena, etc.), not "Speaker".
+- One line per participant segment; group continuous back-and-forth under one topic line.
+- Output ONLY these summary lines. No preamble, no explanation.`;
+
 /**
- * Get Vimeo video transcript
+ * Get Vimeo video transcript and summarized timestamps with participant names
  */
 export async function getVimeoTranscript(req: Request, res: Response) {
   try {
@@ -1602,15 +1622,42 @@ export async function getVimeoTranscript(req: Request, res: Response) {
 
     const transcript = await getVimeoTranscriptUtil(videoUrl, vimeoAccessToken);
 
+    let timestamps:any = [];
+    try {
+      const completion = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        messages: [
+          {
+            role: "user",
+            content: `${TRANSCRIPT_SUMMARIZER_PROMPT}\n\n---\n\nTRANSCRIPT:\n\n${transcript}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      });
+
+      const text =
+        completion.content[0]?.type === "text"
+          ? completion.content[0].text
+          : "";
+       timestamps = text
+        
+    } catch (summarizeError: unknown) {
+      console.error("Error summarizing transcript:", summarizeError);
+    }
+
     res.json({
       success: true,
       transcript,
+      timestamps,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to get Vimeo transcript";
     console.error("Error getting Vimeo transcript:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to get Vimeo transcript",
+      message,
     });
   }
 }

@@ -51,7 +51,7 @@ export async function getVimeoTranscript(
       
       if (timestampMatch) {
         if (currentTimestamp && currentText) {
-          transcriptLines.push(`[${currentTimestamp}] Speaker - ${currentText.trim()}`);
+          transcriptLines.push(`[${currentTimestamp}] ${currentText.trim()}`);
           currentText = ""; 
         }
         currentTimestamp = timestampMatch[1];
@@ -65,7 +65,7 @@ export async function getVimeoTranscript(
     }
 
     if (currentTimestamp && currentText) {
-      transcriptLines.push(`[${currentTimestamp}] Speaker - ${currentText.trim()}`);
+      transcriptLines.push(`[${currentTimestamp}] ${currentText.trim()}`);
     }
     return transcriptLines.join("\n");
 

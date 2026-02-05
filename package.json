@@ -19,7 +19,8 @@
     "db:migrate:faqs": "node --import tsx/esm scripts/apply-faqs-migration.ts",
     "db:migrate:faqs-serial": "node --import tsx/esm scripts/update-faqs-id-to-serial.ts",
     "db:migrate:journey-steps": "node --import tsx/esm scripts/apply-journey-steps-migration.ts",
-    "db:migrate:orientation-video": "node --import tsx/esm scripts/apply-orientation-video-migration.ts"
+    "db:migrate:orientation-video": "node --import tsx/esm scripts/apply-orientation-video-migration.ts",
+    "db:migrate:coaching-recordings-timestamps": "node --import tsx/esm scripts/add-timestamps-to-coaching-call-recordings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
