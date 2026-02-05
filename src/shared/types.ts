@@ -2,7 +2,7 @@
  * Shared TypeScript Types
  * 
  * Additional shared types that can be used by both frontend and backend.
- * Database-related types are in shared/schema.ts
+ * Database-related types are in models/schema.ts (exported via @backend/models).
  */
 
 // API Response types

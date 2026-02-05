@@ -1,4 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import {
+  coachingEvaluationSchema,
+  coreOfferRewriteResultSchema,
+  coreOfferFinalSummarySchema,
+} from "../utils/ai-response-schemas";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -108,7 +114,7 @@ export async function coachQuestionResponse(
     const prompt = buildCoachingPrompt(request);
     const sectionGuidance = SECTION_COACHING_PROMPTS[request.questionKey];
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -196,21 +202,14 @@ Return your evaluation in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const evaluation: CoachingEvaluation = JSON.parse(cleanedContent);
-    return evaluation;
-
+    const evaluation = parseAndValidateAiJson(contentText, coachingEvaluationSchema, {
+      context: "core offer evaluation",
+    });
+    return evaluation as CoachingEvaluation;
   } catch (error) {
     console.error("Core Offer coaching error:", error);
     throw new Error("Failed to evaluate question response");
@@ -224,7 +223,7 @@ export async function generateRewrite(
     console.log(`[CORE OFFER COACH] Generating rewrite for: ${request.questionKey}`);
 
     const prompt = buildRewritePrompt(request);
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -282,21 +281,14 @@ Return your rewrite in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const rewrite: RewriteResult = JSON.parse(cleanedContent);
-    return rewrite;
-
+    const rewrite = parseAndValidateAiJson(contentText, coreOfferRewriteResultSchema, {
+      context: "core offer rewrite",
+    });
+    return rewrite as RewriteResult;
   } catch (error) {
     console.error("Core Offer rewrite error:", error);
     throw new Error("Failed to generate rewrite");
@@ -310,7 +302,7 @@ export async function generateFinalSummary(
     console.log("[CORE OFFER COACH] Generating final summary");
 
     const prompt = buildSummaryPrompt(allResponses);
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -364,25 +356,14 @@ Return in JSON format:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const result = cleanedContent;
-    if (!result) {
-      throw new Error("No response from Anthropic");
-    }
-
-    const summary: FinalSummary = JSON.parse(result);
-    return summary;
-
+    const summary = parseAndValidateAiJson(contentText, coreOfferFinalSummarySchema, {
+      context: "core offer final summary",
+    });
+    return summary as FinalSummary;
   } catch (error) {
     console.error("Core Offer summary error:", error);
     throw new Error("Failed to generate final summary");

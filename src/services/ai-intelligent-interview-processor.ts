@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { jsonObjectSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, SYSTEM_CUSTOMER_RESEARCH_ANALYST, SYSTEM_MESSAGING_SYNTHESIS } from "../shared/prompts";
 import {
   DataSourceValidator,
   UserContextData,
@@ -181,34 +184,28 @@ Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitl
 }`;
 
   try {
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
       temperature: 0.1,
-      system: "You are a strict customer research analyst. CRITICAL RULES: 1) ONLY extract information EXPLICITLY stated in the transcript - DO NOT make up, infer, guess, or assume. 2) If information is NOT in the transcript, return \"N/A\" (never empty string or inferred info). 3) DO NOT add details that weren't mentioned (e.g., don't mention family details if not discussed). 4) Keep responses concise - 1-2 sentences maximum. 5) Convert first-person to third-person (I→they, my→their, me→them). 6) Use customer's exact words when possible. 7) If a question wasn't answered in the transcript, return \"N/A\". Return only valid JSON with \"N/A\" for missing information.",
+      system: SYSTEM_CUSTOMER_RESEARCH_ANALYST,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No content received from Anthropic");
     }
-    
-    const content = contentText;
-
-    console.log("Raw AI response:", content);
-    let cleanedResponse = content.trim();
-
+    let cleanedResponse = contentText.trim();
     if (cleanedResponse.startsWith("```")) {
       cleanedResponse = cleanedResponse
         .replace(/^```(json)?\s*/, "")
         .replace(/\s*```\s*$/, "");
     }
-
     let wasTruncated = false;
     if (!cleanedResponse.endsWith("}")) {
       wasTruncated = true;
@@ -218,9 +215,9 @@ Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitl
           cleanedResponse.substring(0, lastCompleteField + 1) + "\n}";
       }
     }
-
-    console.log("Cleaned response:", cleanedResponse);
-    const parsed = JSON.parse(cleanedResponse);
+    const parsed = parseAndValidateAiJson(cleanedResponse, jsonObjectSchema, {
+      context: "interview insights extraction",
+    }) as Record<string, unknown>;
 
     const flattened: InterviewInsights = {};
 
@@ -610,33 +607,31 @@ Return ONLY a JSON object with suggested messaging enhancements:
 VALIDATION CHECK: Ensure your suggestions sound like they come from the business owner about their approach, NOT like client testimonials or client quotes.`;
 
   try {
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1200,
       temperature: 0.4,
-      system: "You enhance business messaging based on client research patterns. Never copy client quotes directly. Focus on helping the business owner refine their approach based on client insights.",
+      system: SYSTEM_MESSAGING_SYNTHESIS,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No content received from Anthropic");
     }
-    
-    const content = contentText;
-
-    let cleanedResponse = content.trim();
+    let cleanedResponse = contentText.trim();
     if (cleanedResponse.startsWith("```")) {
       cleanedResponse = cleanedResponse
         .replace(/^```(json)?\s*/, "")
         .replace(/\s*```\s*$/, "");
     }
-
-    const parsed = JSON.parse(cleanedResponse);
+    const parsed = parseAndValidateAiJson(cleanedResponse, jsonObjectSchema, {
+      context: "messaging synthesis",
+    }) as Record<string, unknown>;
 
     const aiOutputText = JSON.stringify(parsed);
     const validationResult = DataSourceValidator.validateAIOutput(

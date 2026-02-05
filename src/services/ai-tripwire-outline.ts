@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -180,8 +181,7 @@ Generate the complete, comprehensive outline now:`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const outline = contentText || "";
+    const outline = getTextFromAnthropicContent(response.content) || "";
 
     // Validate content
     if (!outline || outline.trim().length < 100) {

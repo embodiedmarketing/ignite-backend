@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -60,7 +61,7 @@ AVOID:
 - Academic or overly formal language
 - Implying their work is wrong or inadequate
 
-Remember: You're a collaborator helping them refine great ideas, not a teacher grading their work.`,
+Remember: You are a collaborator helping them refine great ideas, not a teacher grading their work.`,
       messages: [
         {
           role: "user",
@@ -76,7 +77,7 @@ Provide encouraging, constructive feedback that helps them deepen and refine the
       ],
     });
 
-    const feedbackText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const feedbackText = getTextFromAnthropicContent(response.content);
 
     // Parse the AI response into structured feedback
     const feedback = parseFeedbackResponse(feedbackText, userResponse);

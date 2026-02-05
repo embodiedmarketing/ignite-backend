@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -89,12 +90,11 @@ Avoid generic business language. Use the customer's actual language and focus on
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const outline = contentText || "";
+    const outline = getTextFromAnthropicContent(response.content) || "";
 
     // Validate that we have substantial content
     if (!outline || outline.trim().length < 100) {
-      console.log("OpenAI returned insufficient content, using enhanced fallback");
+      console.log("Claude returned insufficient content, using enhanced fallback");
       const fallbackInsights = extractOfferInsights(offerResponses, messagingStrategy);
       const fallbackOutline = generateEnhancedFallbackOfferOutline(fallbackInsights, messagingStrategy);
       

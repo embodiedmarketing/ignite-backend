@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { avatarSynthesisSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -74,7 +77,7 @@ Guidelines:
 - Focus on emotional drivers, not just functional needs
 `;
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -83,15 +86,11 @@ Guidelines:
       max_tokens: 2000,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const result = JSON.parse(cleanedContent || '{}');
-    
+    const contentText = getTextFromAnthropicContent(response.content);
+    const result = parseAndValidateAiJson(contentText, avatarSynthesisSchema, {
+      context: "avatar synthesis",
+      fallback: {},
+    });
     return {
       frustration: result.frustration || "No interview data available yet",
       fears: result.fears || "No interview data available yet", 

@@ -16,6 +16,7 @@ import { insertStrategyInterviewLinkSchema } from "../models";
 import { insertSalesPageDraftSchema } from "../models";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 import DOMPurify from "isomorphic-dompurify";
 import { nanoid } from "nanoid";
 
@@ -665,7 +666,7 @@ export async function generateEmailSequence(req: Request, res: Response) {
     } else if (error?.message?.toLowerCase().includes("no content received")) {
       errorMessage =
         "We didn't receive a complete response from the AI service. Please try again.";
-    } else if (error?.message?.includes("OPENAI_API_KEY")) {
+    } else if (error?.message?.includes("ANTHROPIC_API_KEY")) {
       errorMessage =
         "There's a configuration issue with our AI service. Please contact support.";
     } else if (error?.status >= 500) {
@@ -978,7 +979,7 @@ export async function getImplementationCheckboxes(req: Request, res: Response) {
   }
 }
 
-// Initialize OpenAI
+// Initialize Claude (Anthropic) for all AI features
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -1104,7 +1105,7 @@ Please generate compelling, emotionally resonant copy that converts. IMPORTANT: 
       max_tokens: 3000,
     });
 
-      const generatedContent = completion.content[0]?.type === "text" ? completion.content[0].text : "";
+      const generatedContent = getTextFromAnthropicContent(completion.content);
 
     // Parse the response to separate Opt-In and Thank You page copy
     // Use positive lookahead to split without consuming the heading
@@ -1339,7 +1340,7 @@ Generate a compelling, emotionally resonant sales page that converts. Follow the
       max_tokens: 4000,
     });
 
-    const salesPageCopy = completion.content[0]?.type === "text" ? completion.content[0].text : "";
+    const salesPageCopy = getTextFromAnthropicContent(completion.content);
 
     console.log("[SALES PAGE] Sales page copy generated successfully");
     console.log("[SALES PAGE] Copy length:", salesPageCopy.length);
@@ -1636,12 +1637,7 @@ export async function getVimeoTranscript(req: Request, res: Response) {
         max_tokens: 2000,
       });
 
-      const text =
-        completion.content[0]?.type === "text"
-          ? completion.content[0].text
-          : "";
-       timestamps = text
-        
+      timestamps = getTextFromAnthropicContent(completion.content);
     } catch (summarizeError: unknown) {
       console.error("Error summarizing transcript:", summarizeError);
     }

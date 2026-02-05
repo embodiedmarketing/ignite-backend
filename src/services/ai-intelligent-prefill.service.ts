@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for high-quality prefill generation
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -53,7 +54,7 @@ Create the response now. Return ONLY the response text that should be placed in 
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     const prefillText = contentText.trim() || "";
     
     return {

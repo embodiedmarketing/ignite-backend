@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { parsedAnswersSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_STRUCTURE, SYSTEM_INTERVIEW_ANALYST } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -46,18 +49,17 @@ Return a JSON object with the extracted answers using the keys listed above.`;
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
       temperature: 0.3,
-      system: "You are an expert interview analyst who extracts specific customer responses from interview transcripts. Always return valid JSON with the requested structure.",
+      system: SYSTEM_INTERVIEW_ANALYST,
       messages: [
-        {
-          role: "user",
-          content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with the requested structure. Do not include any markdown formatting or code blocks.",
-        },
+        { role: "user", content: prompt + PROMPT_JSON_STRUCTURE },
       ],
     });
 
-    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
-    const result = JSON.parse(contentText || "{}");
-    return result;
+    const contentText = getTextFromAnthropicContent(response.content);
+    const result = parseAndValidateAiJson(contentText, parsedAnswersSchema, {
+      context: "interview transcript",
+    });
+    return result as ParsedAnswers;
   } catch (error) {
     console.error("Error parsing interview transcript:", error);
 

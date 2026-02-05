@@ -1,5 +1,5 @@
-// ChatGPT-style intelligent evaluators for all question types
-// Each evaluator acts like ChatGPT coaching someone to depth and emotional connection
+// Coaching-style evaluators for all question types.
+// Each evaluator provides depth and emotional-connection criteria (rule-based; no external AI).
 
 interface EvaluationResult {
   level: "needs-more-detail" | "good-start" | "excellent-depth";

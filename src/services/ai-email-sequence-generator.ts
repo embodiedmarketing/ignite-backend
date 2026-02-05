@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { emailSequenceResponseSchema } from "../utils/ai-response-schemas";
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -219,11 +222,6 @@ Remember:
     try {
       console.log(`[EMAIL SEQUENCE] Attempt ${attempt + 1}/${MAX_RETRIES + 1} for user ${input.userId}`);
       
-      // Use gpt-4o-mini as fallback after 4 failed attempts for better reliability
-      const modelToUse = attempt >= 4 ? "gpt-4o-mini" : "gpt-4o";
-      if (attempt >= 4) {
-        console.log(`[EMAIL SEQUENCE] Switching to ${modelToUse} for better reliability after ${attempt} failed attempts`);
-      }
       
       const completion = await anthropic.messages.create(
         {
@@ -237,45 +235,23 @@ Remember:
         }
       );
 
-      const content = completion.content[0]?.type === "text" ? completion.content[0].text : "";
+      const content = getTextFromAnthropicContent(completion.content);
       if (!content) {
         throw new Error("No content received from Anthropic");
       }
 
-      const result = JSON.parse(content);
-      
-      // Validate the response structure
-      if (!result.emails || !Array.isArray(result.emails)) {
-        throw new Error("Invalid response format: missing emails array");
-      }
-      
-      // Ensure exactly 5 emails
-      if (result.emails.length !== 5) {
-        console.warn(`[EMAIL SEQUENCE] Received ${result.emails.length} emails instead of 5, retrying...`);
-        throw new Error(`Invalid email count: expected 5, got ${result.emails.length}`);
-      }
-      
-      // Validate each email has required fields
-      result.emails.forEach((email: EmailContent, index: number) => {
-        if (!email.emailNumber || !email.subject || !email.body) {
-          throw new Error(`Email ${index + 1} is missing required fields (emailNumber, subject, or body)`);
-        }
-        
-        if (email.emailNumber < 1 || email.emailNumber > 5) {
-          throw new Error(`Email ${index + 1} has invalid emailNumber: ${email.emailNumber}`);
-        }
-        
-        // Ensure body has proper paragraph breaks (double newlines)
-        if (!email.body.includes('\n\n')) {
-          email.body = email.body.replace(/\n/g, '\n\n');
-        }
+      const result = parseAndValidateAiJson(content, emailSequenceResponseSchema, {
+        context: "email sequence",
       });
-      
-      // Sort by email number to ensure correct order
-      result.emails.sort((a: EmailContent, b: EmailContent) => a.emailNumber - b.emailNumber);
-      
+
+      const emails = result.emails.map((email) => ({
+        ...email,
+        body: email.body.includes("\n\n") ? email.body : email.body.replace(/\n/g, "\n\n"),
+      }));
+      emails.sort((a, b) => a.emailNumber - b.emailNumber);
+
       console.log(`[EMAIL SEQUENCE] Successfully generated email sequence for user ${input.userId}`);
-      return result.emails;
+      return emails;
       
     } catch (error: any) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -305,6 +281,8 @@ Remember:
         errorMessage.includes('no content received') || // AI returned empty response
         errorMessage.includes('unexpected token') || // JSON parse error
         errorMessage.includes('json') || // Other JSON parsing errors
+        errorMessage.includes('ai returned invalid json') || // parseAndValidateAiJson
+        errorMessage.includes('did not match expected shape') || // Zod validation
         error instanceof SyntaxError || // JSON.parse failed
         error instanceof TypeError; // Fetch/network type errors
       

@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { outlineEvaluationSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -91,8 +94,7 @@ You will analyze the user's inputs and create a structured, persuasive Core Offe
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const generatedOutline = contentText || "";
+    const generatedOutline = getTextFromAnthropicContent(response.content) || "";
 
     // Evaluate the generated outline
     const evaluation = await evaluateOutline(generatedOutline, responses);
@@ -341,7 +343,7 @@ Respond in valid JSON format:
   "coaching_feedback": "Detailed feedback with specific suggestions..."
 }`;
 
-    const userPromptWithJson = evaluationPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = evaluationPrompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -350,20 +352,16 @@ Respond in valid JSON format:
       temperature: 0.3,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const evaluation = JSON.parse(cleanedContent || "{}");
-    
+    const contentText = getTextFromAnthropicContent(response.content);
+    const evaluation = parseAndValidateAiJson(contentText, outlineEvaluationSchema, {
+      context: "outline evaluation",
+      fallback: {},
+    });
     return {
-      overall_score: evaluation.overall_score || 75,
-      strengths: evaluation.strengths || [],
-      improvements_needed: evaluation.improvements_needed || [],
-      coaching_feedback: evaluation.coaching_feedback || "Great work! The outline is cohesive and ready to launch."
+      overall_score: evaluation.overall_score ?? 75,
+      strengths: evaluation.strengths ?? [],
+      improvements_needed: evaluation.improvements_needed ?? [],
+      coaching_feedback: evaluation.coaching_feedback ?? "Great work! The outline is cohesive and ready to launch.",
     };
 
   } catch (error) {

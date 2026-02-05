@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -136,8 +137,8 @@ OUTPUT: A single, comprehensive response that intelligently combines all relevan
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    return contentText || existingResponse;
+    const contentText = getTextFromAnthropicContent(response.content);
+    return contentText.trim() || existingResponse;
   } catch (error) {
     console.error("Error synthesizing response:", error);
     return existingResponse;

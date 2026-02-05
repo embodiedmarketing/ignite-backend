@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent } from "../utils/ai-response";
 import { 
   evaluateUniquePositioning, 
   evaluateBrandVoice, 
@@ -12,12 +13,12 @@ import {
   evaluateOfferContentWithContext,
   evaluateOfferTransformationWithContext,
   evaluateGenericWithContext
-} from './chatgpt-style-evaluators';
+} from './coaching-evaluators';
 import { userMonitoring } from '../utils/user-monitoring';
 import { storage } from './storage.service';
 import { aiCoachingMonitor } from './ai-coaching-monitor';
 
-// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+// AI operations use a single provider (see config); all prompts use consistent expert-coach voice.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Enhanced rate limiting and caching for multi-user optimization
@@ -34,7 +35,7 @@ const CACHE_DURATION = 60 * 60 * 1000;
 // Force use of comprehensive evaluator for testing
 const FORCE_COMPREHENSIVE_EVALUATOR = true;
 
-// Comprehensive ChatGPT-style question-specific evaluation function
+// Question-specific evaluation (rule-based) mapped to section context.
 function getQuestionSpecificEvaluation(section: string, response: string) {
   const sectionLower = section.toLowerCase();
   
@@ -542,7 +543,7 @@ export async function expandAndDeepen(initialResponse: string, questionContext: 
     const bestPractices = trainingData?.bestPractices || [];
 
     const prompt = `
-You are an expert business coach helping entrepreneurs develop deeper, more compelling responses. Act like ChatGPT helping someone expand their thoughts with depth and emotion.
+You are an expert business coach helping entrepreneurs develop deeper, more compelling responses. Help them expand their thoughts with depth and emotion.
 
 Question: "${questionContext}"
 Section: "${questionType}"
@@ -583,8 +584,8 @@ Return only the expanded response, ready to use.
       temperature: 0.5,
     });
 
-    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
-    return contentText || initialResponse;
+    const contentText = getTextFromAnthropicContent(response.content);
+    return contentText.trim() || initialResponse;
   } catch (error) {
     console.error("Response expansion failed:", error);
     
@@ -632,8 +633,8 @@ Return only the cleaned-up text, ready to be used as their written response.
       temperature: 0.3,
     });
 
-    const contentText = response.content[0].type === "text" ? response.content[0].text : "";
-    return contentText || transcript;
+    const contentText = getTextFromAnthropicContent(response.content);
+    return contentText.trim() || transcript;
   } catch (error) {
     console.error("Audio transcript cleanup failed:", error);
     // Return cleaned transcript with basic cleanup

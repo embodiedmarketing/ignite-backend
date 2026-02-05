@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { topicIdeasResponseSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -142,18 +145,17 @@ Make each topic idea feel personal and specific to their exact customer avatar a
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
+      messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 2000,
       temperature: 0.8
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const result = JSON.parse(contentText || '{}');
-    
-    return {
-      topicIdeas: result.topicIdeas || [],
-      strategicInsights: result.strategicInsights || []
-    };
+    const contentText = getTextFromAnthropicContent(response.content);
+    const result = parseAndValidateAiJson(contentText, topicIdeasResponseSchema, {
+      context: "topic ideas",
+      fallback: { topicIdeas: [], strategicInsights: [] },
+    });
+    return result;
 
   } catch (error) {
     console.error('Error generating topic ideas:', error);

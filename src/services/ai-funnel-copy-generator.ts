@@ -1,4 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { funnelCopyPagesSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, SYSTEM_FUNNEL_JSON } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -405,13 +408,13 @@ Generate actual copy content based on the user's inputs, but maintain this EXACT
     try {
       console.log('[FUNNEL COPY] Starting Claude API call...');
       
-      const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+      const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
       
       const responseObj = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 8000,
         temperature: 0.8,
-        system: "You are an expert funnel copywriter. You MUST respond with valid JSON only. Do not include any text outside the JSON object.",
+        system: SYSTEM_FUNNEL_JSON,
         messages: [
           {
             role: "user",
@@ -420,41 +423,20 @@ Generate actual copy content based on the user's inputs, but maintain this EXACT
         ],
       });
 
-      const contentText = responseObj.content[0]?.type === "text" ? responseObj.content[0].text : "";
-      
+      const contentText = getTextFromAnthropicContent(responseObj.content);
       if (!contentText) {
         throw new Error("Empty response from Anthropic");
       }
-      
       let responseText = contentText.trim();
       if (responseText.includes('```json')) {
         responseText = responseText.replace(/```json\s*/, '').replace(/```\s*$/, '');
       } else if (responseText.includes('```')) {
         responseText = responseText.replace(/```.*?\n/, '').replace(/```\s*$/, '');
       }
-      
       console.log('[FUNNEL COPY] Received response, parsing JSON...');
-      
-      // Parse JSON response
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('[FUNNEL COPY] JSON parse error:', parseError);
-        console.error('[FUNNEL COPY] Response text:', responseText.substring(0, 500));
-        throw new Error("Failed to parse AI response as JSON");
-      }
-      
-      // Validate required fields
-      if (!result.optInPage || !result.tripwirePage || !result.checkoutPage || !result.confirmationPage) {
-        console.error('[FUNNEL COPY] Missing required fields:', {
-          hasOptIn: !!result.optInPage,
-          hasTripwire: !!result.tripwirePage,
-          hasCheckout: !!result.checkoutPage,
-          hasConfirmation: !!result.confirmationPage
-        });
-        throw new Error("AI response missing required pages");
-      }
+      const result = parseAndValidateAiJson(responseText, funnelCopyPagesSchema, {
+        context: "funnel copy pages",
+      });
       
       console.log('[FUNNEL COPY] Successfully generated all 4 pages');
       

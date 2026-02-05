@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { interactiveCoachingResponseSchema, improvedVersionsResponseSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, PROMPT_JSON_IMPROVED_VERSIONS } from "../shared/prompts";
 import { getQuestionSpecificCoaching, evaluateResponseAgainstCoaching } from './question-specific-coaching';
 
 // Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
@@ -116,27 +119,20 @@ Respond with ONLY valid JSON (no markdown):
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
+      messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 800,
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanContent = contentText;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
+    const parsed = parseAndValidateAiJson(contentText, interactiveCoachingResponseSchema, {
+      context: "general response analysis",
+      fallback: undefined,
+    });
     return parsed;
-
   } catch (error) {
     console.error("General response analysis error:", error);
     return createContextualFallback(questionContext, userResponse, messagingStrategy);
@@ -202,27 +198,20 @@ Respond with ONLY valid JSON (no markdown):
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
+      messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 800,
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanContent = contentText;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
+    const parsed = parseAndValidateAiJson(contentText, interactiveCoachingResponseSchema, {
+      context: "offer response analysis",
+      fallback: undefined,
+    });
     return parsed;
-
   } catch (error) {
     console.error("Offer analysis error:", error);
     
@@ -357,14 +346,16 @@ Return as a JSON object with an "improvedVersions" array containing the enhanced
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: prompt + "\n\nIMPORTANT: Return ONLY valid JSON with an 'improvedVersions' array. Do not include markdown formatting." }],
+      messages: [{ role: "user", content: prompt + PROMPT_JSON_IMPROVED_VERSIONS }],
       max_tokens: 500
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) return [];
-    const result = JSON.parse(contentText);
-    return result.improvedVersions || [];
+    return parseAndValidateAiJson(contentText as string, improvedVersionsResponseSchema as any, {
+      context: "improved versions",
+      fallback: [],
+    });
   } catch (error) {
     console.error('Error generating improved versions:', error);
     return [];
@@ -790,22 +781,15 @@ Focus on making this feel like a real coaching conversation, not generic advice.
       temperature: 0.7,
     });
 
-    const content = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const content = getTextFromAnthropicContent(response.content);
     if (!content) {
-      throw new Error("No response from OpenAI");
+      throw new Error("No response from Claude");
     }
+    const parsed = parseAndValidateAiJson(content, interactiveCoachingResponseSchema, {
+      context: "interactive coaching",
+      fallback: undefined,
+    });
 
-    // Clean up the response to handle markdown formatting
-    let cleanContent = content;
-    if (cleanContent.includes('```json')) {
-      cleanContent = cleanContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    }
-    if (cleanContent.includes('```')) {
-      cleanContent = cleanContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsed = JSON.parse(cleanContent.trim());
-    
     // Generate actual improved versions instead of generic suggestions
     if (parsed.interactivePrompts && parsed.interactivePrompts.length > 0) {
       const hasGenericSuggestions = parsed.interactivePrompts.some((prompt: string) => 
@@ -943,9 +927,8 @@ Return only the expanded response text, not additional commentary.`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    return contentText || originalResponse;
-
+    const contentText = getTextFromAnthropicContent(response.content);
+    return contentText ? contentText.trim() : originalResponse;
   } catch (error) {
     console.error("Response expansion error:", error);
     return originalResponse;

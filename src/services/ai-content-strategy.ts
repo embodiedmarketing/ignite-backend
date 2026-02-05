@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { contentIdeasResponseSchema } from "../utils/ai-response-schemas";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -201,8 +203,7 @@ Output the complete Content Strategy Plan now.`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const content = contentText || "";
+    const content = getTextFromAnthropicContent(response.content) || "";
     
     if (!content || content.trim().length < 100) {
       throw new Error("Generated content too short or empty");
@@ -777,54 +778,47 @@ Generate 10 content ideas that align with the strategy above. Each idea must inc
 ✅ Be authentic — reflect the brand's voice, not generic advice
 
 **OUTPUT FORMAT:**
-Return exactly 10 ideas in this JSON format:
-[
-  {
-    "title": "Title / Hook here",
-    "coreMessage": "Core message here",
-    "format": "Format suggestion here",
-    "emotionalIntention": "Emotional intention here",
-    "callToAction": "CTA here",
-    "category": "contrarian" | "emotional" | "practical" | "rooftop" | "objection"
-  }
-]
+Return exactly 10 ideas as a JSON object with an "ideas" key (array of idea objects):
+{
+  "ideas": [
+    {
+      "title": "Title / Hook here",
+      "coreMessage": "Core message here",
+      "format": "Format suggestion here",
+      "emotionalIntention": "Emotional intention here",
+      "callToAction": "CTA here",
+      "category": "contrarian"
+    }
+  ]
+}
 
-Make sure to label each idea with its category (contrarian, emotional, practical, rooftop, or objection) and ensure the distribution requirements are met.
+Category must be one of: "contrarian", "emotional", "practical", "rooftop", "objection".
+Ensure the distribution requirements are met.
 
-Return ONLY the JSON array, no additional text.`;
+Return ONLY the JSON object, no markdown or code blocks.`;
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON array with no markdown formatting or code blocks.";
-    
     const responseObj = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: userPromptWithJson }],
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.8,
       max_tokens: 4000,
     });
 
-    const contentText = responseObj.content[0]?.type === "text" ? responseObj.content[0].text : "";
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-    const responseContent = cleanedContent || "[]";
-    
-    // Try to extract JSON from the response
-    let jsonMatch = responseContent.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      // If no JSON found, try to parse the entire response
-      jsonMatch = [responseContent];
-    }
-    
-    const ideas: ContentIdea[] = JSON.parse(jsonMatch[0]);
-    
-    // Validate and ensure we have exactly 10 ideas
+    const contentText = getTextFromAnthropicContent(responseObj.content).trim();
+    const responseContent = contentText || "{}";
+    // Prefer object shape { "ideas": [...] }; fallback: extract first {...} from response
+    let jsonStr = responseContent;
+    const objectMatch = responseContent.match(/\{[\s\S]*\}/);
+    if (objectMatch) jsonStr = objectMatch[0];
+    const parsed = parseAndValidateAiJson(jsonStr, contentIdeasResponseSchema, {
+      context: "content ideas",
+    }) as { ideas: ContentIdea[] };
+    const ideas = parsed.ideas;
+
     if (ideas.length !== 10) {
       throw new Error("Expected 10 content ideas");
     }
-    
+
     return ideas;
     
   } catch (error) {

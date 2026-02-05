@@ -1,4 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { tripwireFunnelPagesSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, SYSTEM_FUNNEL_JSON } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -150,13 +153,12 @@ REQUIREMENTS:
 Return ONLY the JSON object, nothing else.`;
 
   try {
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
-    
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       temperature: 0.7,
-      system: 'You are an expert funnel copywriter. You generate conversion-focused sales copy in strict JSON format. Never include markdown formatting or explanations - only valid JSON.',
+      system: SYSTEM_FUNNEL_JSON,
       messages: [
         {
           role: 'user',
@@ -165,22 +167,14 @@ Return ONLY the JSON object, nothing else.`;
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const responseText = contentText.trim();
-    
-    if (!responseText) {
+    const contentText = getTextFromAnthropicContent(response.content).trim();
+    if (!contentText) {
       return generateFallbackPages(productName);
     }
-
-    const parsedResponse = JSON.parse(responseText);
-    
-    // Validate structure
-    if (!parsedResponse.thankyou || !parsedResponse.checkout || !parsedResponse.confirmation) {
-      console.warn('Invalid AI response structure, using fallback');
-      return generateFallbackPages(productName);
-    }
-
-    return parsedResponse as TripwireFunnelPages;
+    return parseAndValidateAiJson(contentText, tripwireFunnelPagesSchema, {
+      context: "tripwire funnel pages",
+      fallback: undefined,
+    }) as TripwireFunnelPages;
     
   } catch (error) {
     console.error('Error generating tripwire funnel pages:', error);

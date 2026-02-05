@@ -6,24 +6,44 @@ import { sql } from "drizzle-orm";
  * Get all interview notes for a user
  * Optionally filter by transcriptId if provided in query params
  */
+// export async function getInterviewNotes(req: Request, res: Response) {
+//   try {
+//     const userId = parseInt(req.params.userId);
+//     const transcriptId = req.query.transcriptId
+//       ? parseInt(req.query.transcriptId as string)
+//       : null;
+
+//     if (!userId) {
+//       return res.status(400).json({ error: "Valid user ID is required" });
+//     }
+
+//     const result = transcriptId
+//       ? await db.execute(
+//           sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptId} AND is_deleted = false ORDER BY note_key`
+//         )
+//       : await db.execute(
+//           sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND is_deleted = false ORDER BY transcript_id NULLS LAST, note_key`
+//         );
+
+//     res.json(result.rows);
+//   } catch (error) {
+//     console.error("Error fetching interview notes:", error);
+//     res.status(500).json({ error: "Failed to fetch interview notes" });
+//   }
+// }
+
+
+
 export async function getInterviewNotes(req: Request, res: Response) {
   try {
     const userId = parseInt(req.params.userId);
-    const transcriptId = req.query.transcriptId
-      ? parseInt(req.query.transcriptId as string)
-      : null;
-
     if (!userId) {
       return res.status(400).json({ error: "Valid user ID is required" });
     }
 
-    const result = transcriptId
-      ? await db.execute(
-          sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND transcript_id = ${transcriptId} AND is_deleted = false ORDER BY note_key`
-        )
-      : await db.execute(
-          sql`SELECT * FROM interview_notes WHERE user_id = ${userId} AND is_deleted = false ORDER BY transcript_id NULLS LAST, note_key`
-        );
+    const result = await db.execute(
+      sql`SELECT * FROM interview_notes WHERE user_id = ${userId} ORDER BY note_key`
+    );
 
     res.json(result.rows);
   } catch (error) {
@@ -31,6 +51,7 @@ export async function getInterviewNotes(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to fetch interview notes" });
   }
 }
+
 
 /**
  * Create or update interview note

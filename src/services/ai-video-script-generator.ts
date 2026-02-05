@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { IStorage } from "./storage.service";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { videoScriptOutputSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -25,7 +28,7 @@ interface VideoScriptOutput {
 }
 
 /**
- * Generate three video scripts using OpenAI GPT-4o-mini with messaging from Build Your Strategy
+ * Generate three video scripts using Claude with messaging from Build Your Strategy
  */
 export async function generateVideoScripts(input: VideoScriptInput): Promise<VideoScriptOutput> {
   // Fetch existing messaging from Build Your Strategy section
@@ -165,7 +168,7 @@ CRITICAL FORMATTING RULES:
   try {
     console.log("[VIDEO SCRIPT GENERATOR] Calling Claude Sonnet 4 for script generation");
     
-    const userPromptWithJson = userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = userPrompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -177,24 +180,15 @@ CRITICAL FORMATTING RULES:
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    // Clean up any markdown code blocks if present
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const parsedResponse = JSON.parse(cleanedContent) as VideoScriptOutput;
-    
+    const parsedResponse = parseAndValidateAiJson(contentText, videoScriptOutputSchema, {
+      context: "video scripts",
+    });
     console.log("[VIDEO SCRIPT GENERATOR] Successfully generated video scripts");
-    
-    return parsedResponse;
+    return parsedResponse as VideoScriptOutput;
   } catch (error) {
     console.error("[VIDEO SCRIPT GENERATOR] Error generating scripts:", error);
     throw new Error("Failed to generate video scripts. Please try again.");

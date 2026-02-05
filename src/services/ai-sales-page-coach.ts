@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { salesPageSectionAnalysisSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -143,22 +146,24 @@ Provide response in JSON format:
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      messages: [{ role: "user", content: coachingPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks." }],
+      messages: [{ role: "user", content: coachingPrompt + PROMPT_JSON_ONLY }],
       max_tokens: 600,
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const analysis = JSON.parse(contentText || "{}");
-    
+    const contentText = getTextFromAnthropicContent(response.content);
+    const analysis = parseAndValidateAiJson(contentText, salesPageSectionAnalysisSchema, {
+      context: "sales page section analysis",
+      fallback: {},
+    });
     return {
       level: analysis.level || "needs-more-depth",
       levelDescription: analysis.levelDescription || "Needs development",
       feedback: analysis.feedback || "Add more emotional depth and specific details.",
       suggestions: analysis.suggestions || getSectionSpecificGuidance(sectionType),
-      emotionalDepthScore: analysis.emotionalDepthScore || 3,
-      clarityScore: analysis.clarityScore || 3,
-      persuasionScore: analysis.persuasionScore || 3,
+      emotionalDepthScore: analysis.emotionalDepthScore ?? 3,
+      clarityScore: analysis.clarityScore ?? 3,
+      persuasionScore: analysis.persuasionScore ?? 3,
       improvements: analysis.improvements || [],
       examples: getExamplesForSection(sectionType)
     };
@@ -346,9 +351,8 @@ Return only the improved version, no explanation needed.`;
       temperature: 0.7,
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    return contentText || currentContent;
-
+    const contentText = getTextFromAnthropicContent(response.content);
+    return contentText.trim() || currentContent;
   } catch (error) {
     console.error('AI improvement error:', error);
     return currentContent;

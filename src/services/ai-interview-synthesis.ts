@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, validateAiText } from "../utils/ai-response";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -199,9 +200,10 @@ Return ONLY the merged content, no explanations or meta-commentary.`;
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const mergedContent = contentText.trim();
-
+    const mergedContent = validateAiText(getTextFromAnthropicContent(response.content), {
+      context: "interview synthesis merge",
+      fallback: "",
+    }).trim();
     if (!mergedContent) {
       throw new Error("No merged content received from AI");
     }

@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { sectionEvaluationSchema, sectionRewriteResultSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, SYSTEM_CORE_OFFER_SECTION_EVALUATE, SYSTEM_CORE_OFFER_SECTION_REWRITE } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -101,33 +104,26 @@ Return in JSON format:
   "alignmentIssues": ["issue 1"] or []
 }`;
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       temperature: 0.7,
-      system: `You are a confident, warm business coach evaluating Core Offer sections. Provide honest, constructive feedback with a mentor's tone - encouraging yet direct about improvements needed.`,
+      system: SYSTEM_CORE_OFFER_SECTION_EVALUATE,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const evaluation: SectionEvaluation = JSON.parse(cleanedContent);
-    return evaluation;
-
+    const evaluation = parseAndValidateAiJson(contentText, sectionEvaluationSchema, {
+      context: "section evaluation",
+    });
+    return evaluation as SectionEvaluation;
   } catch (error) {
     console.error("Section coaching error:", error);
     throw new Error("Failed to evaluate section");
@@ -184,33 +180,26 @@ Return in JSON format:
   "improvements": ["improvement 1", "improvement 2", "improvement 3"]
 }`;
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       temperature: 0.7,
-      system: `You are a skilled marketing strategist rewriting Core Offer sections. Your specialty is enhancing content with clarity and emotional impact while keeping it concise. For each paragraph, expand by 2-3 sentences to add expert insight and emotional depth. Keep the authentic voice while improving specificity and connection.`,
+      system: SYSTEM_CORE_OFFER_SECTION_REWRITE,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const rewrite: SectionRewriteResult = JSON.parse(cleanedContent);
-    return rewrite;
-
+    const rewrite = parseAndValidateAiJson(contentText, sectionRewriteResultSchema, {
+      context: "section rewrite",
+    });
+    return rewrite as SectionRewriteResult;
   } catch (error) {
     console.error("Section rewrite error:", error);
     throw new Error("Failed to rewrite section");

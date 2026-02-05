@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { jsonObjectSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY } from "../shared/prompts";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -112,7 +115,7 @@ Create a detailed onboarding plan with:
 
 Focus on making buyers feel confident and clear about what to expect. Return as JSON.`;
 
-  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -121,20 +124,16 @@ Focus on making buyers feel confident and clear about what to expect. Return as 
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
-  
+  const contentText = getTextFromAnthropicContent(response.content);
+  const result = parseAndValidateAiJson(contentText, jsonObjectSchema, {
+    context: "onboarding plan",
+    fallback: {},
+  }) as Record<string, unknown>;
   return {
-    welcomeSequence: result.welcomeSequence || [],
-    clearNextSteps: result.clearNextSteps || [],
-    avoidOverwhelm: result.avoidOverwhelm || [],
-    keyInformation: result.keyInformation || []
+    welcomeSequence: (result.welcomeSequence as string[]) || [],
+    clearNextSteps: (result.clearNextSteps as string[]) || [],
+    avoidOverwhelm: (result.avoidOverwhelm as string[]) || [],
+    keyInformation: (result.keyInformation as string[]) || []
   };
 }
 
@@ -156,7 +155,7 @@ Create a detailed delivery plan with:
 
 Focus on breaking down EXACTLY what content needs to be created for this offer to be complete. Return as JSON.`;
 
-  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -165,20 +164,16 @@ Focus on breaking down EXACTLY what content needs to be created for this offer t
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
-  
+  const contentText = getTextFromAnthropicContent(response.content);
+  const result = parseAndValidateAiJson(contentText, jsonObjectSchema, {
+    context: "delivery plan",
+    fallback: {},
+  }) as Record<string, unknown>;
   return {
-    contentList: result.contentList || [],
-    creationTimeline: result.creationTimeline || [],
-    deliveryMethods: result.deliveryMethods || [],
-    qualityStandards: result.qualityStandards || []
+    contentList: (result.contentList as string[]) || [],
+    creationTimeline: (result.creationTimeline as string[]) || [],
+    deliveryMethods: (result.deliveryMethods as string[]) || [],
+    qualityStandards: (result.qualityStandards as string[]) || []
   };
 }
 
@@ -202,7 +197,7 @@ Create a detailed communication plan with:
 
 Focus on maintaining engagement and providing ongoing value. Return as JSON.`;
 
-  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -211,20 +206,16 @@ Focus on maintaining engagement and providing ongoing value. Return as JSON.`;
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
-  
+  const contentText = getTextFromAnthropicContent(response.content);
+  const result = parseAndValidateAiJson(contentText, jsonObjectSchema, {
+    context: "communication plan",
+    fallback: {},
+  }) as Record<string, unknown>;
   return {
-    emailSchedule: result.emailSchedule || [],
-    checkInCadence: result.checkInCadence || [],
-    valueAdds: result.valueAdds || [],
-    retentionStrategy: result.retentionStrategy || []
+    emailSchedule: (result.emailSchedule as string[]) || [],
+    checkInCadence: (result.checkInCadence as string[]) || [],
+    valueAdds: (result.valueAdds as string[]) || [],
+    retentionStrategy: (result.retentionStrategy as string[]) || []
   };
 }
 
@@ -246,7 +237,7 @@ Create a detailed feedback plan with:
 
 Focus on gathering actionable feedback that improves the offer and creates testimonials. Return as JSON.`;
 
-  const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+  const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -255,20 +246,16 @@ Focus on gathering actionable feedback that improves the offer and creates testi
     temperature: 0.7,
   });
 
-  const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
-  let cleanedContent = contentText.trim();
-  if (cleanedContent.includes('```json')) {
-    cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-  } else if (cleanedContent.includes('```')) {
-    cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-  }
-  const result = JSON.parse(cleanedContent || '{}');
-  
+  const contentText = getTextFromAnthropicContent(response.content);
+  const result = parseAndValidateAiJson(contentText, jsonObjectSchema, {
+    context: "feedback plan",
+    fallback: {},
+  }) as Record<string, unknown>;
   return {
-    collectionMethods: result.collectionMethods || [],
-    timing: result.timing || [],
-    questions: result.questions || [],
-    implementation: result.implementation || []
+    collectionMethods: (result.collectionMethods as string[]) || [],
+    timing: (result.timing as string[]) || [],
+    questions: (result.questions as string[]) || [],
+    implementation: (result.implementation as string[]) || []
   };
 }
 

@@ -1,4 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { recordOrObjectSchema } from "../utils/ai-response-schemas";
+import { PROMPT_JSON_ONLY, SYSTEM_CUSTOMER_LOCATIONS } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -76,30 +79,25 @@ Respond in JSON format:
   "nextSteps": ["actionable next steps"]
 }`;
 
-    const userPromptWithJson = prompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting or code blocks.";
+    const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
-      system: "You are an expert at finding specific, real communities where target customers naturally gather. Always suggest actual, existing communities, influencers, and platforms - never make up fake names.",
+      system: SYSTEM_CUSTOMER_LOCATIONS,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     });
 
-    const contentText = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const contentText = getTextFromAnthropicContent(response.content);
     if (!contentText) {
       throw new Error("No response from Anthropic");
     }
-
-    let cleanedContent = contentText.trim();
-    if (cleanedContent.includes('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleanedContent.includes('```')) {
-      cleanedContent = cleanedContent.replace(/```.*?\n/, '').replace(/```\s*$/, '');
-    }
-
-    const result = JSON.parse(cleanedContent || '{}');
+    const result = parseAndValidateAiJson(contentText, recordOrObjectSchema, {
+      context: "customer locations",
+      fallback: {},
+    });
     return result;
     
   } catch (error) {

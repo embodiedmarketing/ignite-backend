@@ -1,4 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { jsonObjectSchema } from "../utils/ai-response-schemas";
+import {
+  PROMPT_JSON_ESCAPED,
+  SYSTEM_EMAIL_COPYWRITER_BASE,
+  SYSTEM_EMAIL_WARM,
+  SYSTEM_EMAIL_NURTURE,
+  SYSTEM_EMAIL_REMINDER,
+  SYSTEM_EMAIL_SALES,
+} from "../shared/prompts";
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error("[LAUNCH EMAILS] ANTHROPIC_API_KEY is not set in environment variables");
@@ -13,26 +23,11 @@ async function sleep(ms: number): Promise<void> {
 }
 
 function parseAnthropicResponse(responseObj: any): any {
-  // Handle response content
-  let contentText = "";
-  if (!responseObj.content || responseObj.content.length === 0) {
-    console.error(`[LAUNCH EMAILS] Empty content array in Anthropic response. Full response:`, JSON.stringify(responseObj, null, 2));
-    throw new Error("No content received from Anthropic - empty content array");
-  }
-  
-  const firstContent = responseObj.content[0];
-  if (firstContent.type === "text") {
-    contentText = firstContent.text || "";
-  } else {
-    console.error(`[LAUNCH EMAILS] Unexpected content type: ${firstContent.type}. Full response:`, JSON.stringify(responseObj, null, 2));
-    throw new Error(`Unexpected content type from Anthropic: ${firstContent.type}`);
-  }
-  
+  const contentText = getTextFromAnthropicContent(responseObj.content);
   if (!contentText) {
     console.error(`[LAUNCH EMAILS] No text content in Anthropic response. Response structure:`, JSON.stringify(responseObj, null, 2));
     throw new Error("No content received from Anthropic");
   }
-  
   // Clean up any markdown code blocks and extract JSON
   let cleanedContent = contentText.trim();
   
@@ -151,12 +146,13 @@ function parseAnthropicResponse(responseObj: any): any {
     console.warn(`[LAUNCH EMAILS] JSON appeared incomplete, attempted to fix by adding ${missingBrackets} closing bracket(s) and ${missingBraces} closing brace(s)`);
   }
   
-  // Try to parse - if it fails, log more details
+  // Try to parse and validate as JSON object - if it fails, log more details
   try {
-    return JSON.parse(cleanedContent);
-  } catch (parseError: any) {
+    return parseAndValidateAiJson(cleanedContent, jsonObjectSchema, { context: "launch email" }) as Record<string, unknown>;
+  } catch (parseError: unknown) {
+    const err = parseError instanceof Error ? parseError : new Error(String(parseError));
     // Log more context around the error position if available
-    const errorMatch = parseError.message.match(/position (\d+)/);
+    const errorMatch = err.message.match(/position (\d+)/);
     if (errorMatch) {
       const errorPos = parseInt(errorMatch[1]);
       const startPos = Math.max(0, errorPos - 100);
@@ -167,10 +163,10 @@ function parseAnthropicResponse(responseObj: any): any {
     
     console.error(`[LAUNCH EMAILS] JSON parse error. First 500 chars:`, cleanedContent.substring(0, 500));
     console.error(`[LAUNCH EMAILS] Last 500 chars:`, cleanedContent.substring(Math.max(0, cleanedContent.length - 500)));
-    console.error(`[LAUNCH EMAILS] Parse error:`, parseError.message);
+    console.error(`[LAUNCH EMAILS] Parse error:`, err.message);
     console.error(`[LAUNCH EMAILS] Full cleaned content length:`, cleanedContent.length);
     
-    throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+    throw new Error(`Failed to parse JSON response: ${err.message}`);
   }
 }
 
@@ -457,8 +453,6 @@ export async function generateLaunchEmailSequence(inputData: LaunchEmailInputDat
 async function generateRegistrationInviteEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 5 registration invite emails');
   
-  const systemPrompt = `You are an expert email copywriter who writes compelling, conversion-focused emails for live launch experiences. You write in a conversational, human tone with short sentences and natural rhythm. You lead with emotion and close with logic.`;
-  
   const userPrompt = `Generate 5 unique registration invite emails to promote the user's upcoming live launch experience.
 
 MESSAGING STRATEGY:
@@ -510,14 +504,13 @@ IMPORTANT JSON RULES:
 
 Make copy skimmable with short paragraphs. Avoid corporate or templated formatting.`;
 
-  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
-  
+  const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // Increased to handle 5 longer sales emails
+      max_tokens: 4000,
       temperature: 0.8,
-      system: systemPrompt,
+      system: SYSTEM_EMAIL_COPYWRITER_BASE,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
@@ -537,8 +530,6 @@ Make copy skimmable with short paragraphs. Avoid corporate or templated formatti
 
 async function generateConfirmationEmail(inputData: any): Promise<GeneratedEmail> {
   console.log('[LAUNCH EMAILS] Generating confirmation email');
-  
-  const systemPrompt = `You are an expert email copywriter who writes warm, welcoming confirmation emails that get people excited to show up.`;
   
   const userPrompt = `Write a friendly confirmation email for registrants of the live launch experience.
 
@@ -573,26 +564,22 @@ IMPORTANT JSON RULES:
 - No trailing commas
 - Close all braces properly`;
 
-  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
-  
+  const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
   }
-  
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       temperature: 0.7,
-      system: systemPrompt,
+      system: SYSTEM_EMAIL_WARM,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     })
   );
-  
   const response = parseAnthropicResponse(responseObj);
-  
   return {
     emailType: 'confirmation',
     emailNumber: 1,
@@ -603,9 +590,6 @@ IMPORTANT JSON RULES:
 
 async function generateNurtureEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 3 nurture emails');
-  
-  const systemPrompt = `You are an expert email copywriter who writes warm, story-driven nurture emails that build trust and excitement.`;
-  
   const userPrompt = `Write 3 nurture emails for registrants leading up to the live launch.
 
 LIVE LAUNCH DETAILS:
@@ -647,8 +631,7 @@ IMPORTANT JSON RULES:
 - No trailing commas
 - Close all brackets and braces properly`;
 
-  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
-  
+  const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
   }
@@ -658,16 +641,14 @@ IMPORTANT JSON RULES:
       model: "claude-sonnet-4-20250514",
       max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.8,
-      system: systemPrompt,
+      system: SYSTEM_EMAIL_NURTURE,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     })
   );
-  
   const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
-  
   return emailsArray.slice(0, 3).map((email: any, index: number) => ({
     emailType: 'nurture' as const,
     emailNumber: index + 1,
@@ -678,8 +659,6 @@ IMPORTANT JSON RULES:
 
 async function generateReminderEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 3 reminder emails');
-  
-  const systemPrompt = `You are an expert email copywriter who writes short, urgent, energetic reminder emails.`;
   
   const userPrompt = `Write 3 reminder emails for the live launch experience at these intervals:
 1. 24 hours before
@@ -715,8 +694,7 @@ IMPORTANT JSON RULES:
 - No trailing commas
 - Close all brackets and braces properly`;
 
-  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Just the JSON object.";
-  
+  const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
   }
@@ -726,7 +704,7 @@ IMPORTANT JSON RULES:
       model: "claude-sonnet-4-20250514",
       max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
-      system: systemPrompt,
+      system: SYSTEM_EMAIL_REMINDER,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
@@ -746,8 +724,6 @@ IMPORTANT JSON RULES:
 
 async function generateSalesEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 5 sales emails');
-  
-  const systemPrompt = `You are an expert sales email copywriter who converts attendees into buyers using emotion, proof, and urgency.`;
   
   const userPrompt = `Write 5 sales emails to promote the user's core offer after the live launch.
 
@@ -789,8 +765,7 @@ OUTPUT FORMAT (JSON):
   ]
 }`;
 
-  const userPromptWithJson = userPrompt + "\n\nCRITICAL: Return ONLY valid, properly escaped JSON. No markdown, no code blocks, no explanatory text. Ensure the response is COMPLETE with all 5 emails and properly closed JSON structure.";
-  
+  const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment variables.");
   }
@@ -800,16 +775,14 @@ OUTPUT FORMAT (JSON):
       model: "claude-sonnet-4-20250514",
       max_tokens: 4000, // Increased to handle 5 longer sales emails
       temperature: 0.8,
-      system: systemPrompt,
+      system: SYSTEM_EMAIL_SALES,
       messages: [
         { role: "user", content: userPromptWithJson }
       ],
     })
   );
-  
   const response = parseAnthropicResponse(responseObj);
   const emailsArray = response.emails || [];
-  
   return emailsArray.slice(0, 5).map((email: any, index: number) => ({
     emailType: 'sales' as const,
     emailNumber: index + 1,
