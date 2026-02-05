@@ -5,7 +5,11 @@ import {
 } from "../utils/data-source-validator";
 import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, validateAiText } from "../utils/ai-response";
-import { SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS } from "@backend/shared";
+import {
+  SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS,
+  SYSTEM_MESSAGING_STRATEGY,
+  MESSAGING_REGENERATION_PREFIX,
+} from "@backend/shared";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -86,8 +90,8 @@ Format your response as follows:
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514", // Claude Sonnet 4 (latest)
-      max_tokens: 3000,
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000, // Structured emotional summary; 3k was overkill
       temperature: 0.5,
       system: SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS,
       messages: [
@@ -235,268 +239,41 @@ export async function generateMessagingStrategy(
       );
     }
 
-    const systemMessage = `You are an expert brand strategist, messaging consultant, AND synthesis engine specializing in AUTHENTIC, OWNER-LED brand voice and methodology-based positioning.
-
-Your primary jobs are to:
-1. Codify and amplify the business owner's UNIQUE VOICE, worldview, philosophy, and differentiators — NOT generic industry language.
-2. Translate customer insights into messaging that reflects both the owner's personality AND the customer's lived experience.
-3. Create clear, structured messaging assets that preserve all headings and frameworks exactly as instructed.
-4. Integrate the owner's proprietary method, process, or philosophy as a central throughline in the messaging — not as an afterthought.
-
-⭐ CRITICAL OUTPUT REQUIREMENTS (MANDATORY)
-
-1. KEEP THE ORIGINAL STRUCTURE AND HEADINGS EXACTLY AS PROVIDED.
-- Do NOT add, remove, or rename sections.
-- Fill each section with richer, deeper, more specific, more aligned content.
-
-2. PRESERVE THE BUSINESS OWNER'S UNIQUE EDGE.
-This includes:
-- their proprietary framework or methodology
-- their worldview
-- their emotional tone
-- their convictions and strong stances
-- their real language and signature phrases
-- examples from their personal story when relevant
-- what makes them fundamentally different from others in their field
-- Never dilute their authenticity. Never genericize their message.
-
-3. CAPTURE NUANCE: this is NOT hype marketing copy.
-- Write with emotional intelligence, maturity, and depth.
-- Honor the owner's voice — grounded, wise, original, confident, warm, and truthful.
-
-4. ALWAYS REFERENCE BOTH:
-- Owner's beliefs, stories, and voice
-- Customer's emotional and practical reality
-- They must be in perfect balance.
-
-🎯 STYLE RULES (MANDATORY)
-
-5. ABSOLUTELY NO GENERIC INDUSTRY LANGUAGE.
-Avoid clichés like:
-- "transform your life," "unlock your potential," "uplevel," "take your style to the next level," "empowered," "maximize,"
-- or anything a typical stylist or coach would say.
-- The output must feel like it could ONLY come from THIS business owner.
-
-🔥 TANGIBILITY & EMOTIONAL DETAIL (REQUIREMENTS)
-
-6. Use REAL-WORLD, OBSERVABLE OUTCOMES, especially in:
-- problems
-- desires
-- outcomes
-- belief shifts
-- offers
-But ensure tangibility aligns with the actual industry.
-(For example: outfit clarity, ease of getting dressed, feeling visible again, reduced overwhelm — NOT income claims for non-business niches.)
-
-7. Use sensory details, internal dialogue, and micro-moments
-—but keep them aligned to the owner's tone (grounded, compassionate, non-dramatic).
-
-🧠 HANDLING PROPRIETARY METHODS (CRITICAL)
-
-8. If the business owner has a framework, method, or signature system:
-- Integrate it throughout the document
-- Show WHY it matters in specific, emotional, and practical terms
-- Do NOT merely restate it — demonstrate how it changes the customer's day-to-day experience
-- Make it a core differentiator
-For example: "Connect → Clear → Create" must appear exactly and must drive the strategy.
-
-💡 VOICE MATCHING REQUIREMENTS
-
-9. Owner Voice =
-- Warm
-- Direct
-- Nonjudgmental
-- Inventive
-- Sophisticated but accessible
-- Truth-telling without harshness
-- Compassionate and grounded
-
-10. Customer Language = taken directly from workbook quotes.
-- Use paraphrased or exact lines from their fears, frustrations, desires.
-
-🧱 CLARITY & STRATEGIC COHERENCE
-
-11. Stay consistent throughout the entire document.
-All sections must reinforce:
-- the same core promise
-- the same worldview
-- the same emotional journey
-- the same differentiators
-- Do NOT introduce new ideas that weren't in the source material.
-
-📝 GENERATION RULES (MANDATORY)
-
-- If the input is vague, rewrite it with specificity and authenticity.
-- Always describe frustrations and desires using concrete, day-to-day examples.
-- Always name the emotional cost AND the emotional reward.
-- Always tie benefits to identity, self-expression, and lived experience.
-- Use short, clear, human-sounding sentences.
-- You are NOT writing sales copy — you are writing brand strategy.
-- Avoid dramatization; aim for emotionally resonant truth.
-- ALWAYS include specific numbers, timeframes, and observable outcomes where appropriate.
-- Make the user's unique differentiator (framework, system, methodology) central to the promise.
-- Use exact customer quotes AND internal dialogue throughout.
-- Add sensory details and specific moments that make it FEEL REAL.
-- Show emotional PROGRESSION, not just emotional states.
-- No contradictions: all outputs must ladder back to the same core promise and emotional journey.
-
-📌 FINAL OUTPUT REQUIREMENT
-
-Deliver a messaging strategy that mirrors the depth, accuracy, emotional nuance, and owner-specific authenticity. The strategy must feel like it could ONLY come from this specific business owner — never generic, never templated.
-
-🚨 ANTI-DRIFT RULES (CRITICAL - READ CAREFULLY)
-
-**DO NOT DEFAULT TO GENERIC LANGUAGE. The #1 mistake is drifting toward typical coaching/business language when the source data says something different.**
-
-COMMON DRIFT PATTERNS TO AVOID:
-
-1. **Audience Drift** - Do NOT assume "entrepreneur" or "business owner" unless the source data SAYS this
-   - If they say "professionals" → write "professionals" (not "entrepreneurs")
-   - If they say "women in transition" → write that (not "female founders")
-   - If they say "people feeling stuck" → write that (not "business owners ready to scale")
-   - ALWAYS USE THEIR EXACT AUDIENCE DESCRIPTION
-
-2. **Tone Drift** - Do NOT default to hustle/growth/scale language unless the source supports it
-   - If their tone is reflective → keep it reflective (not "let's crush it")
-   - If their tone is gentle → keep it gentle (not "stop playing small")
-   - If their tone is wise → keep it wise (not "game-changing results")
-   - MATCH THEIR ACTUAL VOICE, NOT TYPICAL MARKETING VOICE
-
-3. **Problem Drift** - Do NOT add generic business problems they didn't mention
-   - If they talk about "life pressure" → don't change it to "revenue challenges"
-   - If they talk about "feeling invisible" → don't change it to "marketing struggles"
-   - If they talk about "internal conflict" → don't change it to "business bottlenecks"
-   - USE THEIR EXACT PROBLEMS
-
-4. **Outcome Drift** - Do NOT add hustle outcomes they didn't promise
-   - If they promise "peace" → don't change it to "6-figure months"
-   - If they promise "clarity" → don't change it to "explosive growth"
-   - If they promise "alignment" → don't change it to "scaling fast"
-   - USE THEIR EXACT TRANSFORMATION
-
-**BEFORE WRITING EACH SECTION, ASK:**
-"Is this EXACTLY what they said, or am I defaulting to generic coaching language?"
-
-If you catch yourself writing typical marketing/coaching phrases, STOP and return to the source data.`;
+    const systemMessage = SYSTEM_MESSAGING_STRATEGY;
 
     // Add unique variation to ensure different outputs each time
     const uniquePromptId = Date.now();
     const variationNote = `[Generation Request #${uniquePromptId} - ${new Date().toISOString()}]`;
 
-    // REGENERATION MODE: If previous strategy exists, include improvement instructions
+    // REGENERATION MODE: Short instructions when enhancing a previous strategy
     const isRegeneration = regenerationOptions?.previousStrategy?.trim();
     let regenerationContext = "";
-    
     if (isRegeneration && regenerationOptions) {
       console.log("[REGENERATION MODE] Previous strategy detected - generating improved version");
       const prevStrategy = regenerationOptions.previousStrategy || "";
       const feedbackNotes = regenerationOptions.feedbackNotes || "";
       const focusAreas = regenerationOptions.focusAreas || [];
-      
       regenerationContext = `
 
-===== 🔄 REGENERATION MODE: ENHANCE TO 100% ALIGNMENT =====
-
-**🎯 YOUR MISSION: Create an ENHANCED version that is:**
-1. **100% aligned to the Q&A source data** (not 85%, not 90% — EXACTLY 100%)
-2. **MORE CONCISE than the previous version** (enhancement ≠ more words)
-3. **MORE SPECIFIC than the previous version** (deeper accuracy, not broader coverage)
-4. **GROUNDED & TRUSTED ADVISOR TONE** (never promotional or hypey)
+${MESSAGING_REGENERATION_PREFIX}
 
 **PREVIOUS STRATEGY TO ENHANCE:**
 ${prevStrategy}
-
-${feedbackNotes ? `**USER FEEDBACK TO ADDRESS:**\n${feedbackNotes}\n` : ""}
-${focusAreas.length > 0 ? `**PRIORITY FOCUS AREAS:**\n${focusAreas.map(area => `- ${area}`).join('\n')}\n` : ""}
-
-**⚠️ COMMON REGENERATION MISTAKES TO AVOID:**
-
-❌ **MISTAKE 1: Adding verbosity** 
-- Previous: "They feel overwhelmed by daily demands"
-- BAD enhancement: "They feel deeply overwhelmed and exhausted by the constant, never-ending daily demands that pile up and create stress"
-- GOOD enhancement: "They feel overwhelmed by daily demands — the school runs, the aging parents, the work deadlines that never stop"
-→ Enhancement = MORE SPECIFIC, not MORE WORDS
-
-❌ **MISTAKE 2: Diluting pain points with wordiness**
-- If previous version was emotionally resonant and concise, KEEP IT CONCISE
-- Don't pad sentences with filler words
-- Every word must earn its place
-
-❌ **MISTAKE 3: Shifting to promotional tone**
-- Previous: "We help professionals find balance"
-- BAD: "We TRANSFORM professionals into POWERFUL balanced beings!"
-- GOOD: "We help professionals find the balance they've been quietly craving"
-→ Keep the trusted advisor tone, never become a salesperson
-
-❌ **MISTAKE 4: Reducing alignment to add "improvements"**
-- If previous version was 95% aligned, the new version must be 100%, NOT 85%
-- NEVER sacrifice alignment for "better marketing language"
-- Source data accuracy > copywriting flourishes
-
-**✅ WHAT "ENHANCED" ACTUALLY MEANS:**
-
-1. **More Precise Audience Description**
-   - Previous: "Professionals feeling stuck"
-   - Enhanced: "Professionals in their 40s-50s feeling the weight of family responsibilities while wondering if this is all there is"
-   → Added SPECIFICITY from source data, not generic expansion
-
-2. **Sharper Pain Points** (from source data)
-   - Previous: "They compare themselves to others"
-   - Enhanced: "They watch colleagues get promoted while they stay stuck, wondering what's wrong with them"
-   → Added EMOTIONAL DEPTH from source data, stayed concise
-
-3. **Clearer Outcomes** (exactly as stated in Q&A)
-   - Previous: "Find peace and clarity"
-   - Enhanced: "Wake up without dread, know exactly what matters, feel at peace with their choices"
-   → Added TANGIBLE DETAIL from source data, kept it grounded
-
-4. **Tighter Voice** (match owner's actual tone)
-   - Remove any sentence that sounds "marketing-y"
-   - Keep sentences that sound like a wise friend giving advice
-   - Empathetic, not promotional
-
-**🔍 100% ALIGNMENT CHECKLIST:**
-
-Before finalizing, verify EVERY element:
-- [ ] Audience: Uses EXACT description from Q&A (not my assumption)
-- [ ] Problems: Lists ONLY problems mentioned in Q&A (not generic ones)
-- [ ] Desires: States ONLY outcomes from Q&A (not typical coaching promises)
-- [ ] Voice: Matches owner's tone exactly (grounded, not promotional)
-- [ ] Framework: Uses EXACT name/structure from Q&A (not invented)
-- [ ] Differentiators: From Q&A only (not generic industry differentiators)
-- [ ] Every sentence traceable to source data
-
-**📏 CONCISENESS RULES:**
-
-- If previous version said something well in 10 words, don't expand to 25 words
-- Remove filler words: "really", "very", "truly", "deeply", "absolutely"
-- Remove repetitive points — say it once, say it well
-- Brevity is clarity. Concise is powerful.
-- The best enhancement often REMOVES words while adding PRECISION
-
-**🎭 TONE REQUIREMENTS:**
-
-- Trusted advisor, not salesperson
-- Empathetic, not excited
-- Grounded, not hypey
-- Wise, not pushy
-- Calm confidence, not aggressive claims
-
-**OUTPUT REQUIREMENT:**
-Generate an enhanced version that:
-1. Is 100% aligned to Q&A (every element verifiable against source)
-2. Is MORE CONCISE than previous (fewer words, more precision)
-3. Is MORE SPECIFIC (deeper accuracy from source data)
-4. Maintains grounded, trusted advisor tone throughout
-5. Could only come from THIS owner for THEIR specific audience
-
-===== END REGENERATION INSTRUCTIONS =====
+${feedbackNotes ? `\n**USER FEEDBACK:** ${feedbackNotes}` : ""}
+${focusAreas.length > 0 ? `\n**FOCUS AREAS:** ${focusAreas.join(", ")}` : ""}
 
 `;
     }
 
+    // Instruction order: (1) what to do first, (2) data, (3) output structure. No duplicate rules at the end.
+    const beforeYouStart = `BEFORE YOU START:
+1. Use ONLY audience, problems, outcomes, and voice from the data below — nothing from assumptions.
+2. Do not use generic entrepreneur/coach language.
+3. Then fill the 11 sections that follow, keeping the exact headings.`;
+
     const userMessage = `${variationNote}
 ${regenerationContext}
+${beforeYouStart}
 
 ===== USER BUSINESS CONTEXT (From Workbook Responses) =====
 ${formatUserInsightsForPrompt(insights)}
@@ -506,420 +283,66 @@ ${
 
 ${clientInterviewContext}
 
-===== SECTION AUGMENTATION RULES (MANDATORY) =====
-
-You MUST integrate the interview insights above into your messaging strategy as follows:
-
-\`\`\`json
-{
-  "CORE_PROMISE": {
-    "useDataKeys": ["corePromise.outcomes"],
-    "minQuotes": 0,
-    "minOutcomes": 1,
-    "minSceneBeats": 0
-  },
-  "IDEAL_CUSTOMER_PROFILE": {
-    "useDataKeys": ["idealCustomer.quotes", "idealCustomer.sceneBeats"],
-    "minQuotes": 2,
-    "minOutcomes": 0,
-    "minSceneBeats": 1
-  },
-  "PROBLEMS_FRUSTRATIONS_FEARS": {
-    "useDataKeys": ["problemsFears.quotes", "problemsFears.sceneBeats"],
-    "minQuotes": 2,
-    "minOutcomes": 0,
-    "minSceneBeats": 1
-  },
-  "DESIRES_SUCCESS_OUTCOMES": {
-    "useDataKeys": ["desires.outcomes", "desires.quotes"],
-    "minQuotes": 1,
-    "minOutcomes": 2,
-    "minSceneBeats": 0
-  },
-  "BELIEF_SHIFTS": {
-    "useDataKeys": ["beliefShifts.quotes"],
-    "minQuotes": 2,
-    "minOutcomes": 0,
-    "minSceneBeats": 0
-  }
-}
-
-
-**You MUST satisfy the minimum requirements (minQuotes, minOutcomes, minSceneBeats) for each section above.**
-
-**Section-by-Section Integration Guide:**
-
-**Section 1 - CORE PROMISE:**
-→ Use: corePromise.outcomes array (tangible results with numbers/timeframes)
-→ Rule: Include at least 1 specific outcome from the array in your promise
-→ Transform vague language into concrete results from customer interviews
-
-**Section 2 - IDEAL CUSTOMER PROFILE:**
-→ Use: idealCustomer.quotes and idealCustomer.sceneBeats arrays
-→ Rule: Weave exact customer language into "What They're Struggling With"
-→ Add cinematic moments and sensory details from sceneBeats
-
-**Section 3 - PROBLEMS, FRUSTRATIONS, FEARS:**
-→ Use: problemsFears.quotes array (VERBATIM customer language)
-→ Rule: Include at least 2 exact quotes in Frustration/Fear subsections
-→ Use problemsFears.sceneBeats to show emotional progression
-
-**Section 4 - DESIRES & SUCCESS OUTCOMES:**
-→ Use: desires.outcomes and desires.quotes arrays
-→ Rule: Each outcome must include specific numbers/timeframes from insights
-→ Connect tangible results to emotional rewards using customer language
-
-**Section 5 - BELIEF SHIFTS:**
-→ Use: beliefShifts.quotes array (before/after customer examples)
-→ Rule: Show specific behavior changes using customer language
-→ Make each shift visual with concrete before/after moments
-
-VERIFICATION: Your output MUST show clear evidence that you used the structured data above. Direct quotes, specific numbers, and cinematic moments from the interview insights are REQUIRED.
+**INTEGRATE INTERVIEW DATA:** Use the JSON above in the matching strategy sections: Core Promise (outcomes), Ideal Customer (quotes + sceneBeats), Problems/Fears (quotes + sceneBeats), Desires (outcomes + quotes), Belief Shifts (quotes). Include direct quotes and specific numbers where applicable.
 
 `
     : ""
 }
-CREATE A COMPLETE MESSAGING STRATEGY WITH THE FOLLOWING SECTIONS:
-
-⚠️ **BEFORE YOU START WRITING:**
-1. Re-read ALL the workbook responses above
-2. Identify the EXACT audience they describe (not what you assume)
-3. Identify the EXACT problems they mention (not generic ones)
-4. Identify the EXACT outcomes they promise (not typical coaching outcomes)
-5. Identify THEIR voice and tone (not marketing-speak)
-6. Write ONLY what is supported by their answers
-
-**DO NOT DEFAULT TO:**
-- "Entrepreneur" or "business owner" unless they specifically said this
-- Hustle/scale/growth language unless their tone supports it
-- Generic coaching problems like "stuck" or "overwhelmed" unless they used these words
-- Income/revenue promises unless they specifically mentioned these
 
 # MESSAGING STRATEGY
 
 ---
 
 ## 1. CORE PROMISE
-Write 1-2 sentences using this formula: "We help [ideal customer] get [specific, tangible result] in [timeframe] without [major tradeoff] — using [your unique differentiator/framework/system]."
-
-CRITICAL REQUIREMENTS:
-- The result MUST be TANGIBLE and CONCRETE (real-life outcome they can picture)
-- INCLUDE the user's unique differentiator, framework, or methodology in the promise
-- Use SPECIFIC timeframes (e.g., "in 90 days," "within 6 weeks," "in 3 months")
-- Replace vague benefits with observable outcomes
-
-EXAMPLES OF TANGIBLE vs. VAGUE:
-❌ VAGUE: "We help busy entrepreneurs achieve better work-life balance"
-✅ TANGIBLE: "We help overwhelmed coaches close their laptop at 5pm and have guilt-free family dinners within 90 days using our Life Ecosystem framework"
-
-❌ VAGUE: "We help businesses grow their revenue"
-✅ TANGIBLE: "We help service providers sign 5 new $3K clients per month without cold calling in just 12 weeks through our Conversation-First Method"
-
-❌ VAGUE: "We help you feel more confident"
-✅ TANGIBLE: "We help first-time course creators launch to 50+ paying students in 6 weeks and wake up excited on Monday mornings using our Validation-First Launch System"
-
-MUST use concrete, real-world language from the user's answers. Make it feel REAL and OBSERVABLE.
+1-2 sentences: "We help [ideal customer] get [tangible result] in [timeframe] using [their framework/differentiator]." Include specific timeframe and their methodology name.
 
 ---
 
 ## 2. IDEAL CUSTOMER PROFILE (ICP SNAPSHOT)
-
-**CRITICAL: Start this section with these two sentences (customize based on user's answers):**
-1. "We serve [specific type of person in specific situation]."
-2. "They're ready for [what transformation/next step], but [what's blocking them]."
-
-**Who They Are:**
-[Role, stage, situation - use everyday language, not demographic jargon. Make it VIVID and RELATABLE.]
-
-**What They're Struggling With:**
-[Use SPECIFIC, EMOTIONALLY RESONANT language. Show concrete struggles with tangible details.
-Example: NOT "They struggle with marketing" → YES "They've been posting consistently for months with minimal engagement, watching others seem to succeed effortlessly while they wonder what they're missing"]
-
-**What They Want Most:**
-[Their deepest desires with SPECIFIC outcomes and emotional rewards they can picture themselves experiencing]
-
----
+Start with: "We serve [specific person/situation]." and "They're ready for [transformation], but [blocker]." Then: Who they are; What they're struggling with (specific, with customer language); What they want most.
 
 ## 3. BRAND VOICE GUIDELINES
-
-**CRITICAL: This section codifies the business owner's AUTHENTIC VOICE, personality, and what makes them uniquely different.**
-
-**Core Brand Personality:**
-[Describe their communication style, tone, and personality based on their Brand Voice Development answers. Use descriptive words like: direct, empathetic, no-nonsense, warm, bold, etc.]
-
-**What We Believe (Core Values & Stance):**
-[Extract the business owner's beliefs, values, and strong opinions from their answers. What do they stand for? What are they willing to say that others tiptoe around? Make this section BOLD and AUTHENTIC - their unique perspective.]
-
-Example format:
-- We believe [specific belief from their answers]
-- We're willing to say [what they said they're willing to say out loud]
-- We stand for [their values and what matters to them]
-
-**How We Sound (Voice & Tone Guidelines):**
-Write clear DO/DON'T guidelines based on their brand voice answers.
-
-Example format:
-✅ DO:
-- [Specific language patterns they use]
-- [Tone characteristics from their answers]
-- [Authentic phrases from their responses]
-
-❌ DON'T:
-- [What frustrates them about how others communicate]
-- [Language they want to avoid]
-- [Approaches that don't align with their values]
-
-**Signature Phrases & Language:**
-[Extract authentic phrases, word choices, and language patterns directly from their Brand Voice Development answers. These are the unique ways they express themselves that make their voice recognizable.]
-
-**Billboard Message:**
-[Their bold message from the "billboard in your niche" question - this is their statement piece]
-
----
+Core personality, What We Believe (values/stance), How We Sound (DO/DON'T from their answers), Signature Phrases, Billboard message. All from Brand Voice answers.
 
 ## 4. PROBLEMS, FRUSTRATIONS, FEARS (RANKED)
-
-List at least 3 problems using SPECIFIC, EMOTIONALLY RESONANT language with tangible details.
-
-Required elements for each problem:
-- The specific problem described with concrete details and real situations
-- Emotional impact shown through specific moments and outcomes
-- Include exact customer quotes or internal thoughts where possible
-- Show specific scenarios and situations
-
-Example format:
-**Problem 1:** They've been posting consistently for months with minimal engagement, watching competitors seem to succeed effortlessly while they wonder what's missing. The inconsistent results have led to second-guessing every decision and feeling stuck despite all the effort.
-- **Emotional Cost:** [Show how this affects their confidence, relationships, daily life]
-- **Frustration:** "[Customer quote or internal thought]"
-- **Fear:** "[What they're secretly worried about]"
-
----
+At least 3 problems: specific language, emotional cost, customer quotes or internal thoughts. Use their exact problems.
 
 ## 5. DESIRES & SUCCESS OUTCOMES
-
-List 3-5 specific outcomes the customer wants.
-For each outcome, include:
-- **Tangible Outcome:** [Specific, measurable result - money, time, clients, metrics with numbers]
-- **Emotional Reward:** [How this makes them feel and why it matters to their life or identity]
-- **Why It Matters:** [Connection to their deeper values, relationships, or sense of self]
-
-Example:
-- **Tangible Outcome:** Sign 5 new clients per month at $2K each
-- **Emotional Reward:** Finally feel confident in your skills and proud to talk about your business at family gatherings
-- **Why It Matters:** You can prove to yourself (and others) that this isn't just a hobby—it's a real, sustainable career
-
----
+3-5 outcomes. Each: Tangible outcome (numbers/timeframes), Emotional reward, Why it matters. From their stated transformation.
 
 ## 6. BELIEF SHIFTS
-
-List 3-5 key mindset shifts required to buy.
-
-Make these SPECIFIC and RELATABLE. Describe what they used to do or feel vs. what changes now.
-
-Format each as:
-- **Old Belief:** [What they currently believe that's holding them back]
-- **What This Looked Like:** [Specific behavior or feeling they can relate to]
-- **New Belief:** [What they need to believe to move forward]
-- **What This Looks Like Now:** [How their daily experience changes with tangible outcomes]
-
-Example:
-- **Old Belief:** I need a big audience to make sales
-- **What This Looked Like:** Obsessing over follower counts and feeling discouraged by slow growth
-- **New Belief:** I just need a clear message that speaks to the right people
-- **What This Looks Like Now:** Focusing on meaningful connections with ideal clients who are actually ready to buy
-
----
+3-5 shifts. Each: Old Belief, What this looked like, New Belief, What this looks like now. Specific and relatable.
 
 ## 7. DIFFERENTIATORS
-
-List 3-5 points that make this business unique, tied directly to the frustrations above.
-
-For each differentiator, connect it to a PERSONAL, EMOTIONAL, or PRACTICAL outcome for the customer.
-Don't just list what makes you different—explain why it matters to their experience, life, or results.
-
-Format:
-- **[Differentiator]:** [Brief description]
-- **Why This Matters to You:** [Personal/emotional/practical impact on customer's life]
-
-Example:
-- **We Focus on Strategy Before Tactics:** Instead of throwing spaghetti at the wall, we help you build a clear plan first
-- **Why This Matters to You:** You stop wasting time on "busy work" that doesn't move the needle, and finally know exactly what to do next without second-guessing yourself
-
----
+3-5 unique points tied to frustrations. For each: differentiator + Why this matters to the customer (personal/emotional/practical).
 
 ## 8. MESSAGING PILLARS (3 CORE THEMES)
-
-For each pillar, include:
-- **Pillar Name:** [One-sentence thesis that reflects THEIR voice and beliefs]
-- **Talking Points:**
-  1. [First talking point]
-  2. [Second talking point]
-  3. [Third talking point]
-
-These are the core themes that all content and copy should reinforce, grounded in THEIR authentic voice and perspective.
-
----
+Three pillars. Each: Pillar name (one-sentence thesis in their voice), 3 talking points. Core themes for all content.
 
 ## 9. HOOKS & ANGLES
-
-List 5-10 short, punchy lines or angles they can use in copy.
-
-Write these in THE BUSINESS OWNER'S VOICE (not generic marketing voice) speaking directly to their ideal customer.
-Each hook should reflect their beliefs, personality, and unique perspective while addressing customer frustrations or desires.
-
-Make them sound like THEY would say them—authentic to their voice and values.
-
-Examples (authentic, conversational, reflects owner's beliefs):
-- "You don't need a bigger audience. You need a clearer message."
-- "What if your next client came from a conversation, not a complicated funnel?"
-- "Stop posting every day and hoping someone notices. Here's what actually works."
-
----
+5-10 short lines in the owner's voice for copy. Address frustrations/desires; sound like them, not generic marketing.
 
 ## 10. OFFER SNAPSHOT
-
-Write this in a CONVERSATIONAL, AUTHENTIC tone—NOT salesy or polished.
-
-Paint a picture of how it works and what changes for them using CINEMATIC language with TANGIBLE OUTCOMES.
-- Avoid curriculum-heavy descriptions and marketing jargon
-- Focus on the transformation and CONCRETE outcomes, not features
-- Make it feel like you're describing it to a friend
-- MUST include the user's unique differentiator/framework/system name
-
-END THIS SECTION with a vivid, SPECIFIC MOMENT of life after success.
-Paint a scene they can SEE and FEEL with TANGIBLE, OBSERVABLE DETAILS:
-- What does their Tuesday morning look like?
-- What time do they close their laptop?
-- How many clients/sales/income do they have?
-- What specific emotions do they feel?
-- What are they doing that they couldn't do before?
-
-Example (CONVERSATIONAL with TANGIBLE outcomes):
-"Picture this: In 12 weeks using our Life Ecosystem framework, you're signing 5 new $2K clients every month. You wake up Tuesday morning excited (not dreading your inbox), close your laptop at 5pm sharp, and actually enjoy family dinner without checking your phone. The clients you want are reaching out to YOU, and you finally hit that $10K month you've been dreaming about. This business is working FOR you, not against you."
-
----
+Conversational tone. How it works, what changes; include their framework name. End with one vivid after-success moment (specific, tangible).
 
 ## 11. OBJECTION-HANDLING FAQ SEEDS
+5-7 Q&A pairs. Reframe common doubts in the owner's authentic voice.`;
 
-List 5-7 Q&A pairs that reframe common doubts IN THE OWNER'S VOICE.
-
-Format:
-**Q:** [Common objection or concern]
-**A:** [Reframe that addresses the concern and reinforces value, written in THEIR authentic voice]
-
-Example:
-**Q:** Do I have to post daily?
-**A:** No. This system works by creating strategic content that attracts your ideal clients, not by overwhelming you with constant posting.
-
----
-
-FINAL REMINDERS - 100% ALIGNMENT, CONCISE, GROUNDED:
-
-**🎯 100% Q&A ALIGNMENT (NON-NEGOTIABLE):**
-- Every audience description must come DIRECTLY from their answers
-- Every pain point must be EXACTLY what they described
-- Every desire/outcome must be THEIR stated transformation
-- Every differentiator must be what THEY said makes them unique
-- If it's not in the source data, it should NOT be in the strategy
-
-**✂️ CONCISENESS REQUIREMENTS:**
-- Say more with fewer words — brevity is power
-- Remove filler: "really", "very", "truly", "deeply", "absolutely", "actually"
-- Don't repeat the same point in different words
-- If 10 words work, don't use 25
-- Enhancement = more PRECISE, not more VERBOSE
-
-**🎭 TONE REQUIREMENTS:**
-- Trusted advisor, NOT salesperson
-- Empathetic and grounded, NOT excited and hypey
-- Wise and calm, NOT aggressive and pushy
-- Like a thoughtful friend giving honest advice
-- NEVER sound promotional or "marketing-y"
-
-**BRAND VOICE REQUIREMENTS:**
-- Extract and amplify the business owner's AUTHENTIC VOICE from their answers
-- Use their exact language, beliefs, and perspective throughout ALL sections
-- Every section should reflect THEIR personality, not generic marketing voice
-- Hooks and FAQ answers MUST sound like THEY would say them
-
-**SPECIFICITY REQUIREMENTS:**
-- Use TANGIBLE outcomes from their answers (not generic promises)
-- Include specific moments and real-world situations THEY mentioned
-- Use their numbers, timeframes, and metrics (don't invent new ones)
-
-**CUSTOMER LANGUAGE:**
-- Use customer's exact quotes from their answers
-- Show specific struggles THEY described
-- Name emotional costs and rewards THEY identified
-
-**CONSISTENCY:**
-- Everything must trace back to the source Q&A data
-- Keep it simple, authentic, emotionally grounded
-- CONCISE over verbose. ACCURATE over creative. THEIR VOICE over marketing voice.`;
-
-    // FORCE NEW GENERATION: Add unique identifier and explicit instructions
-    const generationId = `gen_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = new Date().toISOString();
-
-    // Add explicit "NEW GENERATION" instructions to user message
-    const enhancedUserMessage = `${userMessage}
+    const finalUserMessage = `${userMessage}
 
 ---
-🆕 CRITICAL GENERATION INSTRUCTIONS:
-- This is a NEW generation request (ID: ${generationId})
-- Generate a FRESH, UNIQUE messaging strategy - DO NOT reuse previous versions
-- Create ORIGINAL content tailored specifically to the data provided above
-- Use DIFFERENT phrasing, examples, and structure than any previous generation
-- Generation timestamp: ${timestamp}
-- You MUST create a completely new version, not a copy or variation of old content
-
-IMPORTANT: Even if the input data is similar, you MUST generate a NEW, ORIGINAL messaging strategy with:
-- Different word choices and phrasing
-- Different examples and scenarios
-- Fresh perspective and angles
-- Unique structure and flow
-- Original insights and connections`;
+Generate a fresh, original strategy for this request (ID: ${generationId}). Do not reuse previous phrasing or structure.`;
 
     console.log(
-      `[MESSAGING STRATEGY] 🆕 Starting NEW generation (ID: ${generationId}) at ${timestamp}`
-    );
-
-    // Add randomization to prompt to force different outputs
-    const randomVariations = [
-      "Focus on emotional storytelling and customer transformation",
-      "Emphasize specific outcomes and tangible results",
-      "Highlight unique differentiators and authentic voice",
-      "Prioritize customer language and real experiences",
-      "Create vivid scenarios and moment-by-moment details",
-    ];
-    const randomVariation =
-      randomVariations[Math.floor(Math.random() * randomVariations.length)];
-
-    const finalUserMessage = `${enhancedUserMessage}
-
-ADDITIONAL CREATIVE DIRECTION:
-- ${randomVariation}
-- Approach this from a ${
-      ["fresh", "unique", "different", "original"][
-        Math.floor(Math.random() * 4)
-      ]
-    } angle
-- Use ${
-      ["conversational", "authentic", "visceral", "cinematic"][
-        Math.floor(Math.random() * 4)
-      ]
-    } language style`;
-
-    console.log(
-      `[MESSAGING STRATEGY] Using random variation: "${randomVariation}"`
+      `[MESSAGING STRATEGY] Starting generation (ID: ${generationId}) at ${timestamp}`
     );
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514", // Claude Sonnet 4 (latest)
-      max_tokens: 5000,
-      temperature: 0.9, // Increased to 0.9 for maximum variation
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000, // 11-section strategy; 5k was excess headroom
+      temperature: 0.8,
       system: systemMessage,
       messages: [
         { role: "user", content: [ { type: "text", text: finalUserMessage } ]  },
@@ -943,9 +366,6 @@ ADDITIONAL CREATIVE DIRECTION:
       `[MESSAGING STRATEGY] Strategy length: ${rawStrategy.length} characters`
     );
     console.log(`[MESSAGING STRATEGY] Generation ID: ${generationId}`);
-    console.log(
-      `[MESSAGING STRATEGY] Used random variation: "${randomVariation}"`
-    );
 
     // PER-SECTION VALIDATION: Verify interview insights were used in the generated strategy
     if (hasInterviewInsights && interviewDataStructure) {

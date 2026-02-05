@@ -94,7 +94,9 @@ PRIORITIZE these interview-enhanced fields over generic messaging. Use the custo
 USER'S OFFER OUTLINE:
 ${JSON.stringify(offer, null, 2)}
 
-WRITE A SALES PAGE WITH THESE 5 SECTIONS using this EXACT TEXT FORMAT (write actual compelling copy, not templates):
+WRITE A SALES PAGE WITH THESE 5 SECTIONS using this EXACT TEXT FORMAT (write actual compelling copy, not templates).
+
+PRIORITY: Cover each required element below clearly. Keep each section tight (~300–400 words per section) so the full page is scannable and all 5 sections fit without bloat.
 
 <strong>📄 STRUCTURE & WRITING RULES</strong>
 

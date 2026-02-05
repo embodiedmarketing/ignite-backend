@@ -74,8 +74,10 @@ export interface ParseAndValidateOptions {
 
 /**
  * Parse raw AI text as JSON (with markdown stripping) and validate with Zod.
- * On success returns the parsed value. On failure: if options.fallback is set,
- * returns fallback; otherwise throws with a clear message and logs.
+ * Use this for ALL AI responses that expect JSON — never raw JSON.parse on
+ * response content (avoids crashes from markdown fences, missing fields, or
+ * unexpected shape). On success returns the parsed value. On failure: if
+ * options.fallback is set, returns fallback; otherwise throws and logs.
  */
 export function parseAndValidateAiJson<T>(
   rawText: string,
