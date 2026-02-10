@@ -95,38 +95,53 @@ export async function generateTopicIdeas(
     const transformation = extractTransformation(messagingStrategy);
     const positioning = extractPositioning(messagingStrategy);
 
-    const prompt = `You are an expert content strategist helping entrepreneurs create strategic content that connects with their ideal customers.
-
-Based on this messaging strategy, generate 6 highly specific, emotionally-driven content topic ideas:
-
-CUSTOMER AVATAR:
+    const prompt = `<prompt>
+  <task>Generate 6 highly specific, emotionally-driven content topic ideas based on messaging strategy.</task>
+  
+  <inputs>
+    <customer_avatar>
+      <![CDATA[
 ${customerAvatar}
-
-PAIN POINTS & EMOTIONS:
+      ]]>
+    </customer_avatar>
+    <pain_points_emotions>
+      <![CDATA[
 ${painPoints}
-
-TRANSFORMATION & OUTCOMES:
+      ]]>
+    </pain_points_emotions>
+    <transformation_outcomes>
+      <![CDATA[
 ${transformation}
-
-UNIQUE POSITIONING:
+      ]]>
+    </transformation_outcomes>
+    <unique_positioning>
+      <![CDATA[
 ${positioning}
-
-CONTENT STRATEGY FRAMEWORK:
-1. Focus on the emotional journey from pain → hope → transformation
-2. Address specific fears, frustrations, and secret worries
-3. Provide actionable value that builds trust and authority
-4. Create content that feels like it was written specifically for them
-5. Mix educational, inspirational, and behind-the-scenes content
-
-For each topic idea, create:
-- Compelling title that hooks their attention
-- Description of the content focus and value
-- Specific emotional hook that connects to their pain/desire
-- Content type (blog post, video, social post, email, etc.)
-- 3-4 key points to cover
-- 3-4 specific reel/short video ideas that bring this topic to life
-
-Respond in JSON format:
+      ]]>
+    </unique_positioning>
+  </inputs>
+  
+  <content_strategy_framework>
+    <principle number="1">Focus on the emotional journey from pain → hope → transformation</principle>
+    <principle number="2">Address specific fears, frustrations, and secret worries</principle>
+    <principle number="3">Provide actionable value that builds trust and authority</principle>
+    <principle number="4">Create content that feels like it was written specifically for them</principle>
+    <principle number="5">Mix educational, inspirational, and behind-the-scenes content</principle>
+  </content_strategy_framework>
+  
+  <topic_requirements>
+    <requirement>Compelling title that hooks their attention</requirement>
+    <requirement>Description of the content focus and value</requirement>
+    <requirement>Specific emotional hook that connects to their pain/desire</requirement>
+    <requirement>Content type (blog post, video, social post, email, etc.)</requirement>
+    <requirement>3-4 key points to cover</requirement>
+    <requirement>3-4 specific reel/short video ideas that bring this topic to life</requirement>
+  </topic_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "topicIdeas": [
     {
@@ -140,8 +155,13 @@ Respond in JSON format:
   ],
   "strategicInsights": ["insight about their content strategy"]
 }
-
-Make each topic idea feel personal and specific to their exact customer avatar and emotional landscape. Avoid generic advice - make it feel like you understand their customer deeply.`;
+      ]]>
+    </schema>
+    <requirement>Generate 6 topic ideas</requirement>
+    <requirement>Make each topic idea feel personal and specific to their exact customer avatar and emotional landscape</requirement>
+    <requirement>Avoid generic advice - make it feel like you understand their customer deeply</requirement>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

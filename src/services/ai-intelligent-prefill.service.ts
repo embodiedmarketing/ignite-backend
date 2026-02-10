@@ -19,33 +19,48 @@ export async function generateIntelligentPrefill(
     // Analyze the question type to determine the appropriate prefill approach
     const questionType = analyzeQuestionType(questionText);
     
-    const prompt = `You are an expert business coach helping an entrepreneur create perfect offer foundation responses. 
-
-USER'S COMPLETED MESSAGING STRATEGY:
+    const prompt = `<prompt>
+  <task>Create a perfect, ready-to-use response for an offer foundation question using the user's messaging strategy data.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${messagingStrategy}
-
-CURRENT QUESTION: "${questionText}"
-
-QUESTION TYPE ANALYSIS: ${questionType.type}
-REQUIRED FORMAT: ${questionType.format}
-KEY ELEMENTS: ${questionType.elements.join(", ")}
-
-YOUR TASK:
-Create a PERFECT, READY-TO-USE response for this specific question using their messaging strategy data. Follow these critical guidelines:
-
+      ]]>
+    </messaging_strategy>
+    <current_question>${questionText}</current_question>
+    <question_type_analysis>
+      <type>${questionType.type}</type>
+      <required_format>${questionType.format}</required_format>
+      <key_elements>${questionType.elements.join(", ")}</key_elements>
+    </question_type_analysis>
+  </inputs>
+  
+  <guidelines>
+    <![CDATA[
 ${questionType.instructions}
-
-CRITICAL REQUIREMENTS:
-1. Extract relevant information from their messaging strategy above
-2. Format it exactly as the question requires (${questionType.format})
-3. Use their customer's language and perspective when appropriate
-4. Make it specific, compelling, and conversion-focused
-5. Ensure it flows naturally and feels authentic to their voice
-
-EXAMPLES OF PERFECT RESPONSES:
+    ]]>
+  </guidelines>
+  
+  <critical_requirements>
+    <requirement number="1">Extract relevant information from their messaging strategy above</requirement>
+    <requirement number="2">Format it exactly as the question requires (${questionType.format})</requirement>
+    <requirement number="3">Use their customer's language and perspective when appropriate</requirement>
+    <requirement number="4">Make it specific, compelling, and conversion-focused</requirement>
+    <requirement number="5">Ensure it flows naturally and feels authentic to their voice</requirement>
+  </critical_requirements>
+  
+  <examples>
+    <![CDATA[
 ${questionType.examples}
-
-Create the response now. Return ONLY the response text that should be placed in the text area - no additional commentary, explanations, or quotation marks.`;
+    ]]>
+  </examples>
+  
+  <output>
+    <instruction>Create the response now</instruction>
+    <format>Return ONLY the response text that should be placed in the text area - no additional commentary, explanations, or quotation marks</format>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

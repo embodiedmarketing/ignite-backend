@@ -65,14 +65,26 @@ Remember: You are a collaborator helping them refine great ideas, not a teacher 
       messages: [
         {
           role: "user",
-          content: `Question Context: ${sectionContext}
-
-Question: ${question}
-
-User's Response:
+          content: `<prompt>
+  <task>Provide encouraging, constructive feedback that helps deepen and refine a user's response.</task>
+  
+  <inputs>
+    <question_context>${sectionContext}</question_context>
+    <question>${question}</question>
+    <user_response>
+      <![CDATA[
 ${userResponse}
-
-Provide encouraging, constructive feedback that helps them deepen and refine their response. Include specific examples, rewording suggestions, and explain your reasoning. Make it feel collaborative, not corrective.`,
+      ]]>
+    </user_response>
+  </inputs>
+  
+  <feedback_requirements>
+    <requirement>Include specific examples</requirement>
+    <requirement>Provide rewording suggestions</requirement>
+    <requirement>Explain your reasoning</requirement>
+    <requirement>Make it feel collaborative, not corrective</requirement>
+  </feedback_requirements>
+</prompt>`,
         },
       ],
     });

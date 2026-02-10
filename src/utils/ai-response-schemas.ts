@@ -216,3 +216,41 @@ export const outlineEvaluationSchema = z.object({
   improvements_needed: z.array(z.string()).optional(),
   coaching_feedback: z.string().optional(),
 });
+
+/** Messaging strategy output validation - validates structure has required sections */
+export const messagingStrategyOutputSchema = z.object({
+  strategy: z.string().min(100, "Strategy must be at least 100 characters"),
+  sections: z.object({
+    corePromise: z.string().optional(),
+    idealCustomer: z.string().optional(),
+    brandVoice: z.string().optional(),
+    problems: z.string().optional(),
+    desires: z.string().optional(),
+    beliefShifts: z.string().optional(),
+    differentiators: z.string().optional(),
+    messagingPillars: z.string().optional(),
+    hooks: z.string().optional(),
+    offerSnapshot: z.string().optional(),
+    objections: z.string().optional(),
+  }).optional(),
+}).passthrough(); // Allow additional fields but validate core structure
+
+/** Sales page output validation - validates HTML/text output has required sections */
+export const salesPageOutputSchema = z.string()
+  .min(500, "Sales page must be at least 500 characters")
+  .refine(
+    (content) => {
+      const lower = content.toLowerCase();
+      // Check for key sections (flexible matching)
+      const hasHeadline = /<strong>.*headline|#\s+\w+|headline/i.test(content);
+      const hasSolution = /solution|offer|program|course|system/i.test(lower);
+      const hasAuthority = /testimonial|about|story|credentials|experience/i.test(lower);
+      const hasPricing = /\$|price|investment|cost|pricing/i.test(lower);
+      const hasCTA = /click|button|join|enroll|get started|sign up|buy now/i.test(lower);
+      
+      return hasHeadline && hasSolution && (hasAuthority || hasPricing || hasCTA);
+    },
+    {
+      message: "Sales page must contain headline, solution/offer, and call-to-action sections"
+    }
+  );

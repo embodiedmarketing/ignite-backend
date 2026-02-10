@@ -374,80 +374,112 @@ Return in JSON format:
 function buildCoachingPrompt(request: QuestionCoachingRequest): string {
   const sectionGuidance = SECTION_COACHING_PROMPTS[request.questionKey];
   
-  return `Evaluate this Core Offer question response using the AI Writing Rules and Scoring System:
-
-**Question:** ${request.questionText}
-
-**User's Response:** ${request.userResponse}
-
-**Main Transformation Promise:** ${request.mainTransformation || "Not yet defined"}
-
-${sectionGuidance ? `
-**Section-Specific Guidance:**
-- Key Checks: ${sectionGuidance.keyChecks}
-- If Weak: ${sectionGuidance.weakPrompt}
-` : ''}
-
-${request.allResponses ? `
-**Context - Other Responses:**
-${Object.entries(request.allResponses).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
-` : ''}
-
-Provide your coaching evaluation in JSON format with:
-1. Category scores (1-5 for each of the 6 categories)
-2. Total score out of 30
-3. Quick diagnostic (Strong points & Needs Work)
-4. Warm, specific coaching feedback
-5. Rewrite recommendation if needed`;
+  return `<prompt>
+  <task>Evaluate a Core Offer question response using the AI Writing Rules and Scoring System.</task>
+  
+  <inputs>
+    <question>${request.questionText}</question>
+    <user_response>
+      <![CDATA[
+${request.userResponse}
+      ]]>
+    </user_response>
+    <main_transformation_promise>${request.mainTransformation || "Not yet defined"}</main_transformation_promise>
+    ${sectionGuidance ? `<section_specific_guidance>
+      <key_checks>${sectionGuidance.keyChecks}</key_checks>
+      <weak_prompt>${sectionGuidance.weakPrompt}</weak_prompt>
+    </section_specific_guidance>` : ''}
+    ${request.allResponses ? `<context_other_responses>
+      ${Object.entries(request.allResponses).map(([key, value]) => `<response key="${key}">
+        <![CDATA[
+${value}
+        ]]>
+      </response>`).join('\n      ')}
+    </context_other_responses>` : ''}
+  </inputs>
+  
+  <evaluation_requirements>
+    <requirement number="1">Category scores (1-5 for each of the 6 categories)</requirement>
+    <requirement number="2">Total score out of 30</requirement>
+    <requirement number="3">Quick diagnostic (Strong points & Needs Work)</requirement>
+    <requirement number="4">Warm, specific coaching feedback</requirement>
+    <requirement number="5">Rewrite recommendation if needed</requirement>
+  </evaluation_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+  </output_format>
+</prompt>`;
 }
 
 // Helper function to build rewrite prompt
 function buildRewritePrompt(request: RewriteRequest): string {
-  return `Rewrite this Core Offer response for clarity and impact using the AI Writing Rules:
-
-**Question:** ${request.questionText}
-
-**Original Response:** ${request.originalResponse}
-
-**Main Transformation Promise:** ${request.mainTransformation || "Not yet defined"}
-
-${request.specificIssues && request.specificIssues.length > 0 ? `
-**Specific Issues to Address:**
-${request.specificIssues.map(issue => `- ${issue}`).join('\n')}
-` : ''}
-
-Apply the Writing Rules:
-- Clarity & Focus: One core promise
-- Specificity: "Looks like / feels like" rule
-- Emotional Resonance: Logical + emotional benefits
-- Differentiation: What can't be found for free
-- Flow & Alignment: Cohesive messaging
-
-Provide your rewrite in JSON format with rationale explaining why the new version works better.`;
+  return `<prompt>
+  <task>Rewrite a Core Offer response for clarity and impact using the AI Writing Rules.</task>
+  
+  <inputs>
+    <question>${request.questionText}</question>
+    <original_response>
+      <![CDATA[
+${request.originalResponse}
+      ]]>
+    </original_response>
+    <main_transformation_promise>${request.mainTransformation || "Not yet defined"}</main_transformation_promise>
+    ${request.specificIssues && request.specificIssues.length > 0 ? `<specific_issues_to_address>
+      ${request.specificIssues.map(issue => `<issue>${issue}</issue>`).join('\n      ')}
+    </specific_issues_to_address>` : ''}
+  </inputs>
+  
+  <writing_rules>
+    <rule name="Clarity & Focus">One core promise</rule>
+    <rule name="Specificity">"Looks like / feels like" rule</rule>
+    <rule name="Emotional Resonance">Logical + emotional benefits</rule>
+    <rule name="Differentiation">What can't be found for free</rule>
+    <rule name="Flow & Alignment">Cohesive messaging</rule>
+  </writing_rules>
+  
+  <output_format>
+    <format>JSON</format>
+    <requirement>Provide your rewrite with rationale explaining why the new version works better</requirement>
+  </output_format>
+</prompt>`;
 }
 
 // Helper function to build summary prompt
 function buildSummaryPrompt(allResponses: Record<string, string>): string {
-  return `Review this completed Core Offer and provide a final strategic summary with scoring:
-
-**CORE OFFER RESPONSES:**
-
-${Object.entries(allResponses).map(([key, value]) => `**${key}:** ${value}`).join('\n\n')}
-
-Evaluate against the AI Writing Rules:
-✅ Clarity & Focus
-✅ Specificity
-✅ Emotional Resonance
-✅ Differentiation
-✅ Flow & Alignment
-
-Provide:
-1. Overall diagnostic summary (Strong & Needs Work)
-2. Total score (X/30) across the 6 categories
-3. Key strengths (2-3)
-4. Next steps (2-3)
-5. Encouraging wrap-up in mentor tone
-
-Format as a strategy call wrap-up in JSON format.`;
+  return `<prompt>
+  <task>Review a completed Core Offer and provide a final strategic summary with scoring.</task>
+  
+  <inputs>
+    <core_offer_responses>
+      ${Object.entries(allResponses).map(([key, value]) => `<response key="${key}">
+        <![CDATA[
+${value}
+        ]]>
+      </response>`).join('\n      ')}
+    </core_offer_responses>
+  </inputs>
+  
+  <evaluation_criteria>
+    <criterion>Clarity & Focus</criterion>
+    <criterion>Specificity</criterion>
+    <criterion>Emotional Resonance</criterion>
+    <criterion>Differentiation</criterion>
+    <criterion>Flow & Alignment</criterion>
+  </evaluation_criteria>
+  
+  <summary_requirements>
+    <requirement number="1">Overall diagnostic summary (Strong & Needs Work)</requirement>
+    <requirement number="2">Total score (X/30) across the 6 categories</requirement>
+    <requirement number="3">Key strengths (2-3)</requirement>
+    <requirement number="4">Next steps (2-3)</requirement>
+    <requirement number="5">Encouraging wrap-up in mentor tone</requirement>
+  </summary_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <style>Format as a strategy call wrap-up</style>
+  </output_format>
+</prompt>`;
 }
 

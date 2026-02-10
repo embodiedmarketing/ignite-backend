@@ -119,187 +119,156 @@ function buildCoreOfferPrompt(responses: CoreOfferResponses, messagingStrategy?:
     ? `\n\n📋 USER'S MESSAGING STRATEGY (Use this voice, tone, and positioning):\n${messagingStrategy}\n\nIMPORTANT: Align your Core Offer Outline with the voice, tone, positioning, and messaging style from the above strategy. Use similar language patterns, emotional hooks, and brand voice to maintain consistency.\n`
     : '';
 
-  return `As a marketing strategist and business coach, create a comprehensive Core Offer Outline based on the user's inputs below.
-${messagingStrategyContext}
-USER'S CORE OFFER INPUTS:
-
-**Offer Name:** ${responses.offerName || "Not provided"}
-
-**Core Transformation & Messaging:**
-- Headline Transformation: ${responses.headlineTransformation || "Not provided"}
-- Clear Statement: ${responses.clearStatement || "Not provided"}  
-- Unique Difference: ${responses.uniqueDifference || "Not provided"}
-
-**Ideal Customer & Pain Points:**
-- Problems/Frustrations: ${responses.problemsFrustrations || "Not provided"}
-- NOT For: ${responses.notFor || "Not provided"}
-- Already Tried: ${responses.alreadyTried || "Not provided"}
-- Stakes (What happens if they don't solve this): ${responses.stakes || "Not provided"}
-- Objections: ${responses.objections || "Not provided"}
-
-**Features & Benefits:**
-- How It Works: ${responses.howItWorks || "Not provided"}
-- All Components: ${responses.allComponents || "Not provided"}
-- Component Benefits: ${responses.componentBenefits || "Not provided"}
-- Ultimate Emotional Benefit: ${responses.emotionalBenefit || "Not provided"}
-
-**Proof & Authority:**
-- Industry Differentiation: ${responses.offerDifference || "Not provided"}
-- Personal Story: ${responses.personalStoryCore || "Not provided"}
-- Qualifications: ${responses.qualifications || "Not provided"}
-- Testimonials: ${responses.testimonialsCore || "Not provided"}
-- Evidence: ${responses.evidence || "Not provided"}
-
-**Pricing & Value:**
-- Investment: ${responses.investment || "Not provided"}
-- Bonuses: ${responses.bonuses || "Not provided"}
-- Price Framing: ${responses.framePricing || "Not provided"}
-- Guarantee: ${responses.guarantee || "Not provided"}
-
-**Delivery Method & Structure:**
-- Delivery Method: ${responses.deliveryMethod || "Not provided"}
-- Support Type: ${responses.supportType || "Not provided"}
-- Timeline: ${responses.timeline || "Not provided"}
-
----
-
-CRITICAL INSTRUCTIONS:
-
-1. **Act as a marketing strategist + coach**, not a template filler
-2. **Analyze** the inputs for clarity, emotional resonance, and alignment
-3. **Synthesize** them into a cohesive, persuasive offer outline
-4. **Coach** by rewriting vague inputs with specificity and emotional hooks
-5. **Ensure logical flow**: Problem → Promise → Proof → Price → Payoff
-
-GENERATION RULES:
-- If input is vague: rewrite it with specificity (e.g., "help clients" → "help busy executives reclaim 15+ hours weekly")
-- If jargon appears: replace with plain, emotional language
-- Always tie back to the MAIN transformation from headline
-- Use exact customer phrases when provided
-- No contradictions: everything ladders to one core promise
-- Add emotional depth where missing
-
-DEPTH RULES - APPLY TO EVERY SECTION:
-- Use ALL details from user responses - never omit key information
-- EXPAND on ideas with expert-level insight, emotional context, and practical examples
-- Each section should be SUBSTANTIAL and value-packed with rich storytelling
-- Match or EXCEED the combined word length of user's original responses for completeness
-- Prioritize clarity, story, and emotional resonance over brevity
-- DO NOT SUMMARIZE — synthesize and expand with depth and nuance
-
----
-
-CREATE THE CORE OFFER OUTLINE USING THIS EXACT STRUCTURE:
-
-# CORE OFFER OUTLINE
-
----
-
-## 1️⃣ OFFER OVERVIEW
-
-**Offer Name:** [Use the provided name or refine it if vague]
-
-**Core Transformation (Main Promise):** 
-[One concise, specific result this offer delivers - rewrite for clarity and emotional impact if needed]
-
-**One-Sentence Desire Fulfilled:**
-"You'll [clear outcome] so you can [emotional benefit]."
-
----
-
-## 2️⃣ PURPOSE & POSITIONING
-
-**Problem This Solves:**
-[Summarize 2-3 key frustrations or desires from user's inputs - make them emotionally resonant]
-
-**What Makes It Different:**
-[Explain how this offer stands out - use their unique method, story, or approach]
-
-**Why It's Urgent Now:**
-[Describe what's at stake - use consequences from their "stakes" input]
-
----
-
-## 3️⃣ TARGET AUDIENCE
-
-**Ideal Customer:**
-[Describe who this is for and what stage they're in - be specific]
-
-**What They've Tried (and Why It Didn't Work):**
-"They've tried [solution] but still struggle because [reason]."
-
-**False Beliefs / Objections (and Reframes):**
-[Transform their objections into belief shifts]
-- **Old Belief:** [What holds them back]
-- **New Belief:** [Truth that moves them forward]
-
----
-
-## 4️⃣ STRUCTURE & COMPONENTS
-
-**Phases or Roadmap:**
-[Break down "how it works" into 3-5 clear phases with outcomes]
-- **[Phase Name]** – [Outcome they achieve]
-- **[Phase Name]** – [Outcome they achieve]
-
-**Core Components:**
-[List key components from their inputs with direct benefits]
-- **[Component Name]** → [Direct benefit]
-- **[Component Name]** → [Direct benefit]
-
-**Bonuses:**
-[List bonuses with added value]
-- **[Bonus Name]** → [Added value or quick win]
-
-**Ultimate Emotional Benefit:**
-"They'll feel [emotion], finally able to [new reality]."
-
----
-
-## 5️⃣ PROOF & AUTHORITY
-
-**Personal Story / Connection:**
-[Use their personal story - make it relatable and authentic]
-
-**Expertise / Credentials:**
-[Include qualifications and experience - position as credible authority]
-
-**Testimonials / Social Proof:**
-[Use provided testimonials or evidence - format as specific outcomes]
-"Before I joined, I [pain]. After [time], I [result]." — [Name or generic]
-
----
-
-## 6️⃣ PRICING & VALUE
-
-**Investment:**
-[State price clearly with comparison if provided]
-
-**Value Framing:**
-"Less than the cost of [painful alternative], for the result of [promise]."
-
-**Guarantee / Risk Reversal:**
-[Use their guarantee or create one if missing]
-"If you [take action] and don't get [result], you'll receive [risk reversal]."
-
----
-
-## 7️⃣ DELIVERY & SUPPORT
-
-**Format + Duration:**
-"Delivered as [format] over [timeframe]."
-
-**Support Included:**
-[List coaching, community, tools, or access points]
-
-**Tools / Access Points:**
-[Platforms or systems needed to deliver]
-
----
-
-## 8️⃣ OFFER SUMMARY (CLOSING SNAPSHOT)
-
-"[Offer Name] is a [format/type] for [ideal audience] who want to [main transformation]. Through [core components], it helps them [achieve key result] without [major pain]. Backed by [proof/credibility] and [guarantee], it gives them [emotional payoff] in [timeframe]."`;
+  return `<prompt>
+  <task>Create a comprehensive Core Offer Outline based on the user's inputs as a marketing strategist and business coach.</task>
+  
+  <inputs>
+    ${messagingStrategyContext ? `<messaging_strategy>
+      <![CDATA[
+${messagingStrategyContext.replace(/^[\s\n]*📋 USER'S MESSAGING STRATEGY \(Use this voice, tone, and positioning\):[\s\n]*/, '').replace(/[\s\n]*IMPORTANT:.*$/s, '')}
+      ]]>
+      <instruction>Align your Core Offer Outline with the voice, tone, positioning, and messaging style from the above strategy. Use similar language patterns, emotional hooks, and brand voice to maintain consistency.</instruction>
+    </messaging_strategy>` : ''}
+    <core_offer_inputs>
+      <offer_name>${responses.offerName || "Not provided"}</offer_name>
+      <core_transformation_messaging>
+        <headline_transformation>${responses.headlineTransformation || "Not provided"}</headline_transformation>
+        <clear_statement>${responses.clearStatement || "Not provided"}</clear_statement>
+        <unique_difference>${responses.uniqueDifference || "Not provided"}</unique_difference>
+      </core_transformation_messaging>
+      <ideal_customer_pain_points>
+        <problems_frustrations>${responses.problemsFrustrations || "Not provided"}</problems_frustrations>
+        <not_for>${responses.notFor || "Not provided"}</not_for>
+        <already_tried>${responses.alreadyTried || "Not provided"}</already_tried>
+        <stakes>${responses.stakes || "Not provided"}</stakes>
+        <objections>${responses.objections || "Not provided"}</objections>
+      </ideal_customer_pain_points>
+      <features_benefits>
+        <how_it_works>${responses.howItWorks || "Not provided"}</how_it_works>
+        <all_components>${responses.allComponents || "Not provided"}</all_components>
+        <component_benefits>${responses.componentBenefits || "Not provided"}</component_benefits>
+        <ultimate_emotional_benefit>${responses.emotionalBenefit || "Not provided"}</ultimate_emotional_benefit>
+      </features_benefits>
+      <proof_authority>
+        <industry_differentiation>${responses.offerDifference || "Not provided"}</industry_differentiation>
+        <personal_story>${responses.personalStoryCore || "Not provided"}</personal_story>
+        <qualifications>${responses.qualifications || "Not provided"}</qualifications>
+        <testimonials>${responses.testimonialsCore || "Not provided"}</testimonials>
+        <evidence>${responses.evidence || "Not provided"}</evidence>
+      </proof_authority>
+      <pricing_value>
+        <investment>${responses.investment || "Not provided"}</investment>
+        <bonuses>${responses.bonuses || "Not provided"}</bonuses>
+        <price_framing>${responses.framePricing || "Not provided"}</price_framing>
+        <guarantee>${responses.guarantee || "Not provided"}</guarantee>
+      </pricing_value>
+      <delivery_method_structure>
+        <delivery_method>${responses.deliveryMethod || "Not provided"}</delivery_method>
+        <support_type>${responses.supportType || "Not provided"}</support_type>
+        <timeline>${responses.timeline || "Not provided"}</timeline>
+      </delivery_method_structure>
+    </core_offer_inputs>
+  </inputs>
+  
+  <critical_instruction>
+    <rule>ALWAYS generate a complete core offer outline - NEVER refuse to generate content or ask for more information</rule>
+    <rule>If user inputs contain placeholder text (like "Lorem ipsum", "Commodi dolor", "Iure nostrud", "Elit omnis", "Laudantium", "Ab laborum", "Qui sint", "Libero at", "Aliquam velit", "Aut est", "Ut tempora", "Magni provident", etc.), ignore the placeholder text and use the messaging strategy context to create compelling, professional content</rule>
+    <rule>Transform ANY placeholder or incomplete text into professional, compelling content that matches the messaging strategy tone and style</rule>
+    <rule>If a field contains placeholder text, infer reasonable content based on the messaging strategy, other provided fields, and your expertise in core offer creation</rule>
+    <rule>Your goal is to create a complete, usable core offer outline - use all available context (messaging strategy, other fields) to fill in any gaps</rule>
+    <rule>Do NOT mention that you detected placeholder text or ask for replacement - simply generate the best possible outline using available information</rule>
+    <rule>Do NOT include notes like "[NEEDS REPLACEMENT]" or "[NEEDS REPLACEMENT: ...]" in your output - generate complete, professional content</rule>
+  </critical_instruction>
+  
+  <critical_instructions>
+    <instruction number="1">Act as a marketing strategist + coach, not a template filler</instruction>
+    <instruction number="2">Analyze the inputs for clarity, emotional resonance, and alignment</instruction>
+    <instruction number="3">Synthesize them into a cohesive, persuasive offer outline</instruction>
+    <instruction number="4">Coach by rewriting vague inputs with specificity and emotional hooks</instruction>
+    <instruction number="5">Ensure logical flow: Problem → Promise → Proof → Price → Payoff</instruction>
+  </critical_instructions>
+  
+  <generation_rules>
+    <rule>If input is vague: rewrite it with specificity (e.g., "help clients" → "help busy executives reclaim 15+ hours weekly")</rule>
+    <rule>If jargon appears: replace with plain, emotional language</rule>
+    <rule>Always tie back to the MAIN transformation from headline</rule>
+    <rule>Use exact customer phrases when provided</rule>
+    <rule>No contradictions: everything ladders to one core promise</rule>
+    <rule>Add emotional depth where missing</rule>
+  </generation_rules>
+  
+  <depth_rules>
+    <rule>Use ALL details from user responses - never omit key information</rule>
+    <rule>EXPAND on ideas with expert-level insight, emotional context, and practical examples</rule>
+    <rule>Each section should be SUBSTANTIAL and value-packed with rich storytelling</rule>
+    <rule>Match or EXCEED the combined word length of user's original responses for completeness</rule>
+    <rule>Prioritize clarity, story, and emotional resonance over brevity</rule>
+    <rule>DO NOT SUMMARIZE — synthesize and expand with depth and nuance</rule>
+  </depth_rules>
+  
+  <outline_structure>
+    <section number="1" emoji="1️⃣" name="OFFER OVERVIEW">
+      <field name="Offer Name">Use the provided name or refine it if vague</field>
+      <field name="Core Transformation (Main Promise)">One concise, specific result this offer delivers - rewrite for clarity and emotional impact if needed</field>
+      <field name="One-Sentence Desire Fulfilled">"You'll [clear outcome] so you can [emotional benefit]."</field>
+    </section>
+    
+    <section number="2" emoji="2️⃣" name="PURPOSE & POSITIONING">
+      <field name="Problem This Solves">Summarize 2-3 key frustrations or desires from user's inputs - make them emotionally resonant</field>
+      <field name="What Makes It Different">Explain how this offer stands out - use their unique method, story, or approach</field>
+      <field name="Why It's Urgent Now">Describe what's at stake - use consequences from their "stakes" input</field>
+    </section>
+    
+    <section number="3" emoji="3️⃣" name="TARGET AUDIENCE">
+      <field name="Ideal Customer">Describe who this is for and what stage they're in - be specific</field>
+      <field name="What They've Tried (and Why It Didn't Work)">"They've tried [solution] but still struggle because [reason]."</field>
+      <field name="False Beliefs / Objections (and Reframes)">
+        Transform their objections into belief shifts
+        - Old Belief: [What holds them back]
+        - New Belief: [Truth that moves them forward]
+      </field>
+    </section>
+    
+    <section number="4" emoji="4️⃣" name="STRUCTURE & COMPONENTS">
+      <field name="Phases or Roadmap">Break down "how it works" into 3-5 clear phases with outcomes
+        - [Phase Name] – [Outcome they achieve]
+      </field>
+      <field name="Core Components">List key components from their inputs with direct benefits
+        - [Component Name] → [Direct benefit]
+      </field>
+      <field name="Bonuses">List bonuses with added value
+        - [Bonus Name] → [Added value or quick win]
+      </field>
+      <field name="Ultimate Emotional Benefit">"They'll feel [emotion], finally able to [new reality]."</field>
+    </section>
+    
+    <section number="5" emoji="5️⃣" name="PROOF & AUTHORITY">
+      <field name="Personal Story / Connection">Use their personal story - make it relatable and authentic</field>
+      <field name="Expertise / Credentials">Include qualifications and experience - position as credible authority</field>
+      <field name="Testimonials / Social Proof">Use provided testimonials or evidence - format as specific outcomes
+        "Before I joined, I [pain]. After [time], I [result]." — [Name or generic]
+      </field>
+    </section>
+    
+    <section number="6" emoji="6️⃣" name="PRICING & VALUE">
+      <field name="Investment">State price clearly with comparison if provided</field>
+      <field name="Value Framing">"Less than the cost of [painful alternative], for the result of [promise]."</field>
+      <field name="Guarantee / Risk Reversal">Use their guarantee or create one if missing
+        "If you [take action] and don't get [result], you'll receive [risk reversal]."
+      </field>
+    </section>
+    
+    <section number="7" emoji="7️⃣" name="DELIVERY & SUPPORT">
+      <field name="Format + Duration">"Delivered as [format] over [timeframe]."</field>
+      <field name="Support Included">List coaching, community, tools, or access points</field>
+      <field name="Tools / Access Points">Platforms or systems needed to deliver</field>
+    </section>
+    
+    <section number="8" emoji="8️⃣" name="OFFER SUMMARY (CLOSING SNAPSHOT)">
+      "[Offer Name] is a [format/type] for [ideal audience] who want to [main transformation]. Through [core components], it helps them [achieve key result] without [major pain]. Backed by [proof/credibility] and [guarantee], it gives them [emotional payoff] in [timeframe]."
+    </section>
+  </outline_structure>
+</prompt>`;
 }
 
 async function evaluateOutline(
@@ -312,36 +281,51 @@ async function evaluateOutline(
   coaching_feedback: string;
 }> {
   try {
-    const evaluationPrompt = `As a marketing strategist, evaluate this Core Offer Outline for clarity, alignment, and conversion potential.
-
-GENERATED OUTLINE:
+    const evaluationPrompt = `<prompt>
+  <task>Evaluate a Core Offer Outline for clarity, alignment, and conversion potential as a marketing strategist.</task>
+  
+  <inputs>
+    <generated_outline>
+      <![CDATA[
 ${outline}
-
-ORIGINAL USER INPUTS:
-- Offer Name: ${responses.offerName}
-- Main Transformation: ${responses.headlineTransformation}
-- Unique Difference: ${responses.uniqueDifference}
-
-Evaluate on these criteria:
-1. **Clarity** - Is the main promise crystal clear?
-2. **Emotional Resonance** - Does it connect emotionally?
-3. **Differentiation** - Is it clearly different from competitors?
-4. **Logical Alignment** - Does Problem → Promise → Proof → Price → Payoff flow logically?
-5. **Conversion Elements** - Are there strong hooks, urgency, and risk reversal?
-
-Provide:
-1. Overall score (1-100)
-2. Top 3 strengths
-3. Top 3 areas needing improvement
-4. Specific coaching feedback with actionable rewrites
-
-Respond in valid JSON format:
+      ]]>
+    </generated_outline>
+    <original_user_inputs>
+      <offer_name>${responses.offerName}</offer_name>
+      <main_transformation>${responses.headlineTransformation}</main_transformation>
+      <unique_difference>${responses.uniqueDifference}</unique_difference>
+    </original_user_inputs>
+  </inputs>
+  
+  <evaluation_criteria>
+    <criterion number="1" name="Clarity">Is the main promise crystal clear?</criterion>
+    <criterion number="2" name="Emotional Resonance">Does it connect emotionally?</criterion>
+    <criterion number="3" name="Differentiation">Is it clearly different from competitors?</criterion>
+    <criterion number="4" name="Logical Alignment">Does Problem → Promise → Proof → Price → Payoff flow logically?</criterion>
+    <criterion number="5" name="Conversion Elements">Are there strong hooks, urgency, and risk reversal?</criterion>
+  </evaluation_criteria>
+  
+  <evaluation_requirements>
+    <requirement number="1">Overall score (1-100)</requirement>
+    <requirement number="2">Top 3 strengths</requirement>
+    <requirement number="3">Top 3 areas needing improvement</requirement>
+    <requirement number="4">Specific coaching feedback with actionable rewrites</requirement>
+  </evaluation_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "overall_score": number,
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "improvements_needed": ["improvement 1", "improvement 2", "improvement 3"],
   "coaching_feedback": "Detailed feedback with specific suggestions..."
-}`;
+}
+      ]]>
+    </schema>
+  </output_format>
+</prompt>`;
 
     const userPromptWithJson = evaluationPrompt + PROMPT_JSON_ONLY;
     

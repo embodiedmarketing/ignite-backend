@@ -106,29 +106,38 @@ async function synthesizeResponse(
   synthesisPrompt: string
 ): Promise<string> {
   try {
-    const prompt = `You are an expert messaging strategist synthesizing customer interview insights into authentic messaging strategy responses.
-
-MESSAGING QUESTION: "${messagingQuestion}"
-
-RELEVANT INTERVIEW INSIGHTS:
-${relevantInsights.join("\n")}
-
-EXISTING RESPONSE: "${existingResponse}"
-
-SYNTHESIS INSTRUCTIONS:
-${synthesisPrompt}
-
-GUIDELINES:
-1. Create a comprehensive response that combines interview insights with existing content
-2. Remove any repetition - if the existing response already covers something, don't repeat it
-3. Use the customers' actual language and emotional tone when possible
-4. Build a cohesive narrative that flows naturally
-5. Focus on specific, concrete details from the interviews
-6. Maintain third-person perspective ("They feel..." not "I feel...")
-7. If existing response is empty, create a complete answer from interview insights
-8. If existing response exists, intelligently enhance it with new interview data
-
-OUTPUT: A single, comprehensive response that intelligently combines all relevant information without repetition.`;
+    const prompt = `<prompt>
+  <task>Synthesize customer interview insights into an authentic messaging strategy response.</task>
+  
+  <inputs>
+    <messaging_question>${messagingQuestion}</messaging_question>
+    <relevant_interview_insights>
+      ${relevantInsights.map(insight => `<insight><![CDATA[${insight}]]></insight>`).join('\n      ')}
+    </relevant_interview_insights>
+    <existing_response>
+      <![CDATA[
+${existingResponse}
+      ]]>
+    </existing_response>
+    <synthesis_instructions>${synthesisPrompt}</synthesis_instructions>
+  </inputs>
+  
+  <guidelines>
+    <guideline number="1">Create a comprehensive response that combines interview insights with existing content</guideline>
+    <guideline number="2">Remove any repetition - if the existing response already covers something, don't repeat it</guideline>
+    <guideline number="3">Use the customers' actual language and emotional tone when possible</guideline>
+    <guideline number="4">Build a cohesive narrative that flows naturally</guideline>
+    <guideline number="5">Focus on specific, concrete details from the interviews</guideline>
+    <guideline number="6">Maintain third-person perspective ("They feel..." not "I feel...")</guideline>
+    <guideline number="7">If existing response is empty, create a complete answer from interview insights</guideline>
+    <guideline number="8">If existing response exists, intelligently enhance it with new interview data</guideline>
+  </guidelines>
+  
+  <output>
+    <format>Single comprehensive response</format>
+    <requirement>Intelligently combine all relevant information without repetition</requirement>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

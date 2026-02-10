@@ -148,42 +148,55 @@ async function intelligentlyMergeContent(
   console.log(`   Existing: ${existingContent.substring(0, 100)}...`);
   console.log(`   New: ${newInsight.substring(0, 100)}...`);
 
-  const prompt = `You are an expert at merging customer insights without creating repetition.
-
-CONTEXT: ${questionContext}
-
-EXISTING MESSAGING STRATEGY CONTENT:
+  const prompt = `<prompt>
+  <task>Intelligently merge customer insights without creating repetition.</task>
+  
+  <inputs>
+    <context>${questionContext}</context>
+    <existing_content>
+      <![CDATA[
 ${existingContent}
-
-NEW CUSTOMER INSIGHT TO ADD:
+      ]]>
+    </existing_content>
+    <new_insight>
+      <![CDATA[
 ${newInsight}
-
-TASK: Intelligently merge the new insight with the existing content. 
-
-CRITICAL RULES TO PREVENT REPETITION:
-1. If the new insight says essentially the same thing as existing content, DON'T add it - just return the existing content
-2. If the new insight adds NEW information or details, weave it in naturally
-3. Keep the response concise (2-3 sentences max)
-4. Maintain third-person perspective (they/them, not I/me)
-5. Create a flowing narrative - don't just append text
-6. Remove duplicate ideas - prioritize the more specific/emotional version
-7. If contradictory, favor the more recent/specific insight
-
-EXAMPLES OF GOOD MERGING:
-Existing: "They worry about covering payroll each month."
-New: "They fear running out of cash and not being able to pay their team."
-MERGED: "They worry about cash flow and fear not being able to cover payroll and pay their team each month."
-
-Existing: "They are frustrated with inconsistent client bookings."
-New: "They struggle with feast-or-famine cycles in their business."
-MERGED: "They are frustrated with the feast-or-famine cycles of inconsistent client bookings that create revenue instability."
-
-EXAMPLES OF PREVENTING REPETITION:
-Existing: "They want financial freedom and time flexibility."
-New: "They desire to have more free time and financial independence."
-MERGED: "They want financial freedom and time flexibility." (No change - same idea)
-
-Return ONLY the merged content, no explanations or meta-commentary.`;
+      ]]>
+    </new_insight>
+  </inputs>
+  
+  <critical_rules>
+    <rule number="1">If the new insight says essentially the same thing as existing content, DON'T add it - just return the existing content</rule>
+    <rule number="2">If the new insight adds NEW information or details, weave it in naturally</rule>
+    <rule number="3">Keep the response concise (2-3 sentences max)</rule>
+    <rule number="4">Maintain third-person perspective (they/them, not I/me)</rule>
+    <rule number="5">Create a flowing narrative - don't just append text</rule>
+    <rule number="6">Remove duplicate ideas - prioritize the more specific/emotional version</rule>
+    <rule number="7">If contradictory, favor the more recent/specific insight</rule>
+  </critical_rules>
+  
+  <examples>
+    <example type="good_merging">
+      <existing>They worry about covering payroll each month.</existing>
+      <new>They fear running out of cash and not being able to pay their team.</new>
+      <merged>They worry about cash flow and fear not being able to cover payroll and pay their team each month.</merged>
+    </example>
+    <example type="good_merging">
+      <existing>They are frustrated with inconsistent client bookings.</existing>
+      <new>They struggle with feast-or-famine cycles in their business.</new>
+      <merged>They are frustrated with the feast-or-famine cycles of inconsistent client bookings that create revenue instability.</merged>
+    </example>
+    <example type="preventing_repetition">
+      <existing>They want financial freedom and time flexibility.</existing>
+      <new>They desire to have more free time and financial independence.</new>
+      <merged>They want financial freedom and time flexibility. (No change - same idea)</merged>
+    </example>
+  </examples>
+  
+  <output>
+    <instruction>Return ONLY the merged content, no explanations or meta-commentary</instruction>
+  </output>
+</prompt>`;
 
   try {
     const response = await anthropic.messages.create({

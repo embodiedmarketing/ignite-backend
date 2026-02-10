@@ -379,51 +379,17 @@ export async function generateLaunchEmailSequence(inputData: LaunchEmailInputDat
   const emails: GeneratedEmail[] = [];
   
   try {
-    // Generate emails sequentially to avoid rate limits, with retry logic for JSON errors
-    console.log('[LAUNCH EMAILS] Generating 5 registration invite emails');
-    const registrationEmails = await generateWithRetry(
-      () => generateRegistrationInviteEmails(compactInputData),
-      'Registration invites',
-      3
-    );
-    emails.push(...registrationEmails);
-    await sleep(500);
-    
-    console.log('[LAUNCH EMAILS] Generating confirmation email');
-    const confirmationEmail = await generateWithRetry(
-      () => generateConfirmationEmail(compactInputData),
-      'Confirmation',
-      3
-    );
-    emails.push(confirmationEmail);
-    await sleep(500);
-    
-    console.log('[LAUNCH EMAILS] Generating 3 nurture emails');
-    const nurtureEmails = await generateWithRetry(
-      () => generateNurtureEmails(compactInputData),
-      'Nurture emails',
-      3
-    );
-    emails.push(...nurtureEmails);
-    await sleep(500);
-    
-    console.log('[LAUNCH EMAILS] Generating 3 reminder emails');
-    const reminderEmails = await generateWithRetry(
-      () => generateReminderEmails(compactInputData),
-      'Reminder emails',
-      3
-    );
-    emails.push(...reminderEmails);
-    await sleep(500);
-    
-    console.log('[LAUNCH EMAILS] Generating 5 sales emails');
-    const salesEmails = await generateWithRetry(
-      () => generateSalesEmails(compactInputData),
-      'Sales emails',
-      3
-    );
-    emails.push(...salesEmails);
-    
+    // Run all 5 Anthropic calls in parallel — total time ≈ slowest call (~30–45s)
+    console.log('[LAUNCH EMAILS] Generating all email types in parallel (registration, confirmation, nurture, reminder, sales)');
+    const [registrationEmails, confirmationEmail, nurtureEmails, reminderEmails, salesEmails] = await Promise.all([
+      generateWithRetry(() => generateRegistrationInviteEmails(compactInputData), 'Registration invites', 3),
+      generateWithRetry(() => generateConfirmationEmail(compactInputData), 'Confirmation', 3),
+      generateWithRetry(() => generateNurtureEmails(compactInputData), 'Nurture emails', 3),
+      generateWithRetry(() => generateReminderEmails(compactInputData), 'Reminder emails', 3),
+      generateWithRetry(() => generateSalesEmails(compactInputData), 'Sales emails', 3),
+    ]);
+    emails.push(...registrationEmails, confirmationEmail, ...nurtureEmails, ...reminderEmails, ...salesEmails);
+
     console.log(`[LAUNCH EMAILS] Successfully generated ${emails.length} emails`);
     
     return {
@@ -453,63 +419,76 @@ export async function generateLaunchEmailSequence(inputData: LaunchEmailInputDat
 async function generateRegistrationInviteEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 5 registration invite emails');
   
-  const userPrompt = `Generate 5 unique registration invite emails to promote the user's upcoming live launch experience.
-
-MESSAGING STRATEGY:
+    const userPrompt = `<prompt>
+  <task>Generate 5 unique registration invite emails to promote the user's upcoming live launch experience.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${inputData.messagingStrategyEssentials}
-
-LIVE LAUNCH DETAILS:
+      ]]>
+    </messaging_strategy>
+    <live_launch_details>
+      <![CDATA[
 ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
-
-USER PROVIDED:
-- Main hooks and promises: ${truncateText(inputData.inviteHooks, 1000)}
-- What they miss if they don't attend: ${truncateText(inputData.inviteFOMO, 500)}
-
-REQUIREMENTS:
-Each email should focus on a different core angle:
-1. Pain-based hook (highlight frustration or problem)
-2. Desire-based hook (highlight dream outcome)
-3. Unique mechanism hook (what makes this launch different)
-4. Authority hook (personal or client story)
-5. Urgency hook (final reminder, limited spots)
-
-For each email:
-- Start with a strong emotional hook or curiosity-driven statement
-- Reinforce the transformation and core promise of attending
-- Weave in emotional storytelling and relatable tone
-- End with a clear CTA to register for the live event
-- Keep subject lines friendly like they're from a friend (e.g., "RE: Your strategy" or "Quick heads-up about tomorrow")
-
-OUTPUT FORMAT (JSON):
-CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
-
-Return a JSON object with this exact structure:
+      ]]>
+    </live_launch_details>
+    <user_provided>
+      <main_hooks_promises>${truncateText(inputData.inviteHooks, 1000)}</main_hooks_promises>
+      <fomo_content>${truncateText(inputData.inviteFOMO, 500)}</fomo_content>
+    </user_provided>
+  </inputs>
+  
+  <email_angles>
+    <angle number="1" type="Pain-based">Highlight frustration or problem</angle>
+    <angle number="2" type="Desire-based">Highlight dream outcome</angle>
+    <angle number="3" type="Unique mechanism">What makes this launch different</angle>
+    <angle number="4" type="Authority">Personal or client story</angle>
+    <angle number="5" type="Urgency">Final reminder, limited spots</angle>
+  </email_angles>
+  
+  <email_requirements>
+    <requirement>Start with a strong emotional hook or curiosity-driven statement</requirement>
+    <requirement>Reinforce the transformation and core promise of attending</requirement>
+    <requirement>Weave in emotional storytelling and relatable tone</requirement>
+    <requirement>End with a clear CTA to register for the live event</requirement>
+    <requirement>Keep subject lines friendly like they're from a friend (e.g., "RE: Your strategy" or "Quick heads-up about tomorrow")</requirement>
+    <requirement>Make copy skimmable with short paragraphs</requirement>
+    <requirement>Avoid corporate or templated formatting</requirement>
+  </email_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "emails": [
     {
       "subjectLine": "friendly subject line here",
       "emailBody": "full email body. Use \\n\\n for paragraph breaks. Escape quotes: \\\"example\\\""
-    },
-    ...
+    }
   ]
 }
-
-IMPORTANT JSON RULES:
-- Escape all double quotes in string values: \\\"
-- Escape all backslashes: \\\\
-- Use \\n for newlines in email bodies
-- Ensure proper comma placement between array elements
-- Close all brackets and braces properly
-- No trailing commas
-
-Make copy skimmable with short paragraphs. Avoid corporate or templated formatting.`;
+      ]]>
+    </structure>
+    <json_rules>
+      <rule>Escape all double quotes in string values: \\\"</rule>
+      <rule>Escape all backslashes: \\\\</rule>
+      <rule>Use \\n for newlines in email bodies</rule>
+      <rule>Ensure proper comma placement between array elements</rule>
+      <rule>Close all brackets and braces properly</rule>
+      <rule>No trailing commas</rule>
+    </json_rules>
+    <critical>You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.</critical>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      temperature: 0.8,
+      max_tokens: 3000,
+      temperature: 0.7,
       system: SYSTEM_EMAIL_COPYWRITER_BASE,
       messages: [
         { role: "user", content: userPromptWithJson }
@@ -531,38 +510,54 @@ Make copy skimmable with short paragraphs. Avoid corporate or templated formatti
 async function generateConfirmationEmail(inputData: any): Promise<GeneratedEmail> {
   console.log('[LAUNCH EMAILS] Generating confirmation email');
   
-  const userPrompt = `Write a friendly confirmation email for registrants of the live launch experience.
-
-LIVE LAUNCH DETAILS:
+    const userPrompt = `<prompt>
+  <task>Write a friendly confirmation email for registrants of the live launch experience.</task>
+  
+  <inputs>
+    <live_launch_details>
+      <![CDATA[
 ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
-
-USER PROVIDED:
-- Key details registrants need: ${truncateText(inputData.confirmationDetails, 500)}
-- Pre-event actions: ${truncateText(inputData.preEventActions, 500)}
-${inputData.showUpBonus ? `- Show-up bonus: ${truncateText(inputData.showUpBonus, 300)}` : ''}
-
-Include:
-- The event name, date, time, and timezone
-- Direct link to access or join (placeholder: [JOIN LINK HERE])
-- A short reminder of the transformation or promise of the event
-- Optional next step (add to calendar, join community, etc.)
-
-Keep tone casual, warm, and excited — under 200 words.
-
-OUTPUT FORMAT (JSON):
-CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
-
+      ]]>
+    </live_launch_details>
+    <user_provided>
+      <confirmation_details>${truncateText(inputData.confirmationDetails, 500)}</confirmation_details>
+      <pre_event_actions>${truncateText(inputData.preEventActions, 500)}</pre_event_actions>
+      ${inputData.showUpBonus ? `<show_up_bonus>${truncateText(inputData.showUpBonus, 300)}</show_up_bonus>` : ''}
+    </user_provided>
+  </inputs>
+  
+  <content_requirements>
+    <requirement>The event name, date, time, and timezone</requirement>
+    <requirement>Direct link to access or join (placeholder: [JOIN LINK HERE])</requirement>
+    <requirement>A short reminder of the transformation or promise of the event</requirement>
+    <requirement>Optional next step (add to calendar, join community, etc.)</requirement>
+  </content_requirements>
+  
+  <tone>
+    <style>Casual, warm, and excited</style>
+    <length>Under 200 words</length>
+  </tone>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "subjectLine": "friendly confirmation subject",
   "emailBody": "full email body. Use \\n\\n for paragraph breaks. Escape quotes: \\\"example\\\""
 }
-
-IMPORTANT JSON RULES:
-- Escape all double quotes in string values: \\\"
-- Escape all backslashes: \\\\
-- Use \\n for newlines
-- No trailing commas
-- Close all braces properly`;
+      ]]>
+    </structure>
+    <json_rules>
+      <rule>Escape all double quotes in string values: \\\"</rule>
+      <rule>Escape all backslashes: \\\\</rule>
+      <rule>Use \\n for newlines</rule>
+      <rule>No trailing commas</rule>
+      <rule>Close all braces properly</rule>
+    </json_rules>
+    <critical>You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.</critical>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -590,31 +585,41 @@ IMPORTANT JSON RULES:
 
 async function generateNurtureEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 3 nurture emails');
-  const userPrompt = `Write 3 nurture emails for registrants leading up to the live launch.
-
-LIVE LAUNCH DETAILS:
+    const userPrompt = `<prompt>
+  <task>Write 3 nurture emails for registrants leading up to the live launch.</task>
+  
+  <inputs>
+    <live_launch_details>
+      <![CDATA[
 ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
-
-MESSAGING STRATEGY:
+      ]]>
+    </live_launch_details>
+    <messaging_strategy>
+      <![CDATA[
 ${inputData.messagingStrategyEssentials}
-
-USER PROVIDED:
-- Stories, tips, or insights: ${truncateText(inputData.nurtureContent, 800)}
-- Why show up live: ${truncateText(inputData.liveAttendanceValue, 500)}
-- Myths or limiting beliefs to break down: ${truncateText(inputData.mythsBeliefs, 500)}
-${inputData.showUpBonus ? `- Show-up bonus: ${truncateText(inputData.showUpBonus, 300)}` : ''}
-
-Each email should:
-- Tell a story or share an insight that builds anticipation
-- Reconnect readers to their core desire or the problem this event solves
-- Break down a limiting belief or false assumption
-- Reinforce date/time/link clearly
-${inputData.showUpBonus ? '- Tease the show-up bonus as extra reason to attend live' : ''}
-- Keep tone warm, conversational, and focused on connection
-
-OUTPUT FORMAT (JSON):
-CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
-
+      ]]>
+    </messaging_strategy>
+    <user_provided>
+      <nurture_content>${truncateText(inputData.nurtureContent, 800)}</nurture_content>
+      <live_attendance_value>${truncateText(inputData.liveAttendanceValue, 500)}</live_attendance_value>
+      <myths_beliefs>${truncateText(inputData.mythsBeliefs, 500)}</myths_beliefs>
+      ${inputData.showUpBonus ? `<show_up_bonus>${truncateText(inputData.showUpBonus, 300)}</show_up_bonus>` : ''}
+    </user_provided>
+  </inputs>
+  
+  <email_requirements>
+    <requirement>Tell a story or share an insight that builds anticipation</requirement>
+    <requirement>Reconnect readers to their core desire or the problem this event solves</requirement>
+    <requirement>Break down a limiting belief or false assumption</requirement>
+    <requirement>Reinforce date/time/link clearly</requirement>
+    ${inputData.showUpBonus ? '<requirement>Tease the show-up bonus as extra reason to attend live</requirement>' : ''}
+    <requirement>Keep tone warm, conversational, and focused on connection</requirement>
+  </email_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "emails": [
     {"subjectLine": "...", "emailBody": "... Use \\n\\n for breaks. Escape quotes: \\\"example\\\""},
@@ -622,14 +627,19 @@ CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, an
     {"subjectLine": "...", "emailBody": "..."}
   ]
 }
-
-IMPORTANT JSON RULES:
-- Escape all double quotes in string values: \\\"
-- Escape all backslashes: \\\\
-- Use \\n for newlines in email bodies
-- Ensure proper comma placement between array elements
-- No trailing commas
-- Close all brackets and braces properly`;
+      ]]>
+    </structure>
+    <json_rules>
+      <rule>Escape all double quotes in string values: \\\"</rule>
+      <rule>Escape all backslashes: \\\\</rule>
+      <rule>Use \\n for newlines in email bodies</rule>
+      <rule>Ensure proper comma placement between array elements</rule>
+      <rule>No trailing commas</rule>
+      <rule>Close all brackets and braces properly</rule>
+    </json_rules>
+    <critical>You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.</critical>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -639,8 +649,8 @@ IMPORTANT JSON RULES:
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // Increased to handle 5 longer sales emails
-      temperature: 0.8,
+      max_tokens: 3000, // Increased to handle 5 longer sales emails
+      temperature: 0.7,
       system: SYSTEM_EMAIL_NURTURE,
       messages: [
         { role: "user", content: userPromptWithJson }
@@ -660,24 +670,35 @@ IMPORTANT JSON RULES:
 async function generateReminderEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 3 reminder emails');
   
-  const userPrompt = `Write 3 reminder emails for the live launch experience at these intervals:
-1. 24 hours before
-2. 1 hour before  
-3. Live now
-
-LIVE LAUNCH DETAILS:
+    const userPrompt = `<prompt>
+  <task>Write 3 reminder emails for the live launch experience at specific intervals.</task>
+  
+  <inputs>
+    <live_launch_details>
+      <![CDATA[
 ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
-
-Each email should:
-- Open with excitement ("It's almost time!", "We're going live soon!")
-- Include the event name, exact time, and timezone
-- Put the JOIN LINK at the top and again near the bottom (use placeholder: [JOIN LINK HERE])
-- Keep it short (under 120 words), urgent, and easy to skim
-- Use energetic, friendly tone
-
-OUTPUT FORMAT (JSON):
-CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.
-
+      ]]>
+    </live_launch_details>
+  </inputs>
+  
+  <email_intervals>
+    <interval number="1">24 hours before</interval>
+    <interval number="2">1 hour before</interval>
+    <interval number="3">Live now</interval>
+  </email_intervals>
+  
+  <email_requirements>
+    <requirement>Open with excitement ("It's almost time!", "We're going live soon!")</requirement>
+    <requirement>Include the event name, exact time, and timezone</requirement>
+    <requirement>Put the JOIN LINK at the top and again near the bottom (use placeholder: [JOIN LINK HERE])</requirement>
+    <requirement>Keep it short (under 120 words), urgent, and easy to skim</requirement>
+    <requirement>Use energetic, friendly tone</requirement>
+  </email_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "emails": [
     {"subjectLine": "...", "emailBody": "... Use \\n\\n for breaks. Escape quotes: \\\"example\\\""},
@@ -685,14 +706,19 @@ CRITICAL: You MUST return valid, properly escaped JSON. All quotes, newlines, an
     {"subjectLine": "...", "emailBody": "..."}
   ]
 }
-
-IMPORTANT JSON RULES:
-- Escape all double quotes in string values: \\\"
-- Escape all backslashes: \\\\
-- Use \\n for newlines in email bodies
-- Ensure proper comma placement between array elements
-- No trailing commas
-- Close all brackets and braces properly`;
+      ]]>
+    </structure>
+    <json_rules>
+      <rule>Escape all double quotes in string values: \\\"</rule>
+      <rule>Escape all backslashes: \\\\</rule>
+      <rule>Use \\n for newlines in email bodies</rule>
+      <rule>Ensure proper comma placement between array elements</rule>
+      <rule>No trailing commas</rule>
+      <rule>Close all brackets and braces properly</rule>
+    </json_rules>
+    <critical>You MUST return valid, properly escaped JSON. All quotes, newlines, and special characters in strings must be escaped.</critical>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -702,7 +728,7 @@ IMPORTANT JSON RULES:
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // Increased to handle 5 longer sales emails
+      max_tokens: 3000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
       system: SYSTEM_EMAIL_REMINDER,
       messages: [
@@ -725,36 +751,47 @@ IMPORTANT JSON RULES:
 async function generateSalesEmails(inputData: any): Promise<GeneratedEmail[]> {
   console.log('[LAUNCH EMAILS] Generating 5 sales emails');
   
-  const userPrompt = `Write 5 sales emails to promote the user's core offer after the live launch.
-
-MESSAGING STRATEGY:
+    const userPrompt = `<prompt>
+  <task>Write 5 sales emails to promote the user's core offer after the live launch.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${inputData.messagingStrategyEssentials}
-${inputData.offerEssentials ? `
-CORE OFFER OUTLINE:
+      ]]>
+    </messaging_strategy>
+    ${inputData.offerEssentials ? `<core_offer_outline>
+      <![CDATA[
 ${inputData.offerEssentials}
-` : ''}
-SALES PAGE URGENCY:
-${truncateText(inputData.salesPageUrgency, 500)}
-
-USER PROVIDED:
-- Stories for sales emails: ${truncateText(inputData.salesStories, 800)}
-- Final push for fence-sitters: ${truncateText(inputData.finalPush, 500)}
-
-Each email should focus on a distinct conversion angle:
-1. Emotional recap of the live event + open cart announcement
-2. Transformation-focused story (what's possible after joining)
-3. Objection handling (time, cost, belief — include proof or perspective)
-4. Proof and credibility (client success, testimonials, guarantee)
-5. Final urgency push (bonuses expiring, cart closing, limited spots)
-
-Each email should:
-- Start with a hook that resonates emotionally
-- Highlight the offer's unique approach and transformation
-- Reinforce urgency and deadlines
-- Include one clear CTA to buy or join
-- Maintain a natural, confident tone focused on opportunity — not pressure
-
-OUTPUT FORMAT (JSON):
+      ]]>
+    </core_offer_outline>` : ''}
+    <sales_page_urgency>${truncateText(inputData.salesPageUrgency, 500)}</sales_page_urgency>
+    <user_provided>
+      <sales_stories>${truncateText(inputData.salesStories, 800)}</sales_stories>
+      <final_push>${truncateText(inputData.finalPush, 500)}</final_push>
+    </user_provided>
+  </inputs>
+  
+  <email_angles>
+    <angle number="1">Emotional recap of the live event + open cart announcement</angle>
+    <angle number="2">Transformation-focused story (what's possible after joining)</angle>
+    <angle number="3">Objection handling (time, cost, belief — include proof or perspective)</angle>
+    <angle number="4">Proof and credibility (client success, testimonials, guarantee)</angle>
+    <angle number="5">Final urgency push (bonuses expiring, cart closing, limited spots)</angle>
+  </email_angles>
+  
+  <email_requirements>
+    <requirement>Start with a hook that resonates emotionally</requirement>
+    <requirement>Highlight the offer's unique approach and transformation</requirement>
+    <requirement>Reinforce urgency and deadlines</requirement>
+    <requirement>Include one clear CTA to buy or join</requirement>
+    <requirement>Maintain a natural, confident tone focused on opportunity — not pressure</requirement>
+  </email_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "emails": [
     {"subjectLine": "...", "emailBody": "..."},
@@ -763,7 +800,11 @@ OUTPUT FORMAT (JSON):
     {"subjectLine": "...", "emailBody": "..."},
     {"subjectLine": "...", "emailBody": "..."}
   ]
-}`;
+}
+      ]]>
+    </structure>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -773,8 +814,8 @@ OUTPUT FORMAT (JSON):
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // Increased to handle 5 longer sales emails
-      temperature: 0.8,
+      max_tokens: 3000, // Increased to handle 5 longer sales emails
+      temperature: 0.7,
       system: SYSTEM_EMAIL_SALES,
       messages: [
         { role: "user", content: userPromptWithJson }

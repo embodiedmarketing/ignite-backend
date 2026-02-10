@@ -10,6 +10,7 @@
     "start": "cross-env NODE_ENV=production node dist/server.js",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit push",
+    "db:migrate": "node --import tsx/esm scripts/run-drizzle-migrations.ts",
     "db:studio": "drizzle-kit studio",
     "db:migrate:interview-notes": "node --import tsx/esm scripts/apply-interview-notes-migration.ts",
     "db:migrate:device-tokens": "node --import tsx/esm scripts/apply-device-tokens-migration.ts",

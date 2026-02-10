@@ -36,20 +36,34 @@ interface CustomerAvatarSynthesis {
 
 export async function synthesizeCustomerAvatar(interviewNotes: InterviewNotes): Promise<CustomerAvatarSynthesis> {
   try {
-    const prompt = `
-You are an expert customer research analyst. Based on the following interview insights, create a comprehensive customer avatar that captures the real voice and needs of these potential customers.
-
-Interview Insights:
-- Pain Points & Frustrations: ${interviewNotes.painPoints || 'Not provided'}
-- Failed Solutions: ${interviewNotes.failedSolutions || 'Not provided'}
-- Perfect Day Scenarios: ${interviewNotes.perfectDay || 'Not provided'}
-- Secret Fears: ${interviewNotes.secretFears || 'Not provided'}
-- Language They Use: ${interviewNotes.language || 'Not provided'}
-- Decision Making Process: ${interviewNotes.decisionMaking || 'Not provided'}
-
-Create a detailed customer avatar by synthesizing these insights into the following format. Use the actual language and phrases from the interviews when possible. Be specific and authentic - avoid generic business speak.
-
-Respond in JSON format with these fields:
+    const prompt = `<prompt>
+  <task>Create a comprehensive customer avatar that captures the real voice and needs of potential customers based on interview insights.</task>
+  
+  <inputs>
+    <interview_insights>
+      <pain_points_frustrations>${interviewNotes.painPoints || 'Not provided'}</pain_points_frustrations>
+      <failed_solutions>${interviewNotes.failedSolutions || 'Not provided'}</failed_solutions>
+      <perfect_day_scenarios>${interviewNotes.perfectDay || 'Not provided'}</perfect_day_scenarios>
+      <secret_fears>${interviewNotes.secretFears || 'Not provided'}</secret_fears>
+      <language_they_use>${interviewNotes.language || 'Not provided'}</language_they_use>
+      <decision_making_process>${interviewNotes.decisionMaking || 'Not provided'}</decision_making_process>
+    </interview_insights>
+  </inputs>
+  
+  <synthesis_requirements>
+    <requirement>Use the actual language and phrases from the interviews when possible</requirement>
+    <requirement>Be specific and authentic - avoid generic business speak</requirement>
+    <requirement>Use first-person language when appropriate ("I feel...", "I need...")</requirement>
+    <requirement>Include specific phrases from the interviews</requirement>
+    <requirement>Be authentic and avoid marketing-speak</requirement>
+    <requirement>If limited interview data, make reasonable inferences but mark them as such</requirement>
+    <requirement>Focus on emotional drivers, not just functional needs</requirement>
+  </synthesis_requirements>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "frustration": "Their biggest frustration (use their actual words/phrases)",
   "fears": "What keeps them up at night (from secret fears insights)",
@@ -68,14 +82,10 @@ Respond in JSON format with these fields:
   "successMeasures": "How they'll measure success",
   "outcomes": "Specific outcomes they want to achieve"
 }
-
-Guidelines:
-- Use first-person language when appropriate ("I feel...", "I need...")
-- Include specific phrases from the interviews
-- Be authentic and avoid marketing-speak
-- If limited interview data, make reasonable inferences but mark them as such
-- Focus on emotional drivers, not just functional needs
-`;
+      ]]>
+    </schema>
+  </output_format>
+</prompt>`;
 
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     

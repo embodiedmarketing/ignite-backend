@@ -89,55 +89,55 @@ KEY PRINCIPLES:
 
 CRITICAL REQUIREMENT: You MUST generate EXACTLY 3 distinct video scripts following the template structure provided. The scripts must have different hooks and angles as specified.`;
 
-  const userPrompt = `You are creating 3 short video ad scripts for the landing page at: ${input.landingPageUrl}
-
-These scripts MUST be based on and aligned with the user's existing messaging strategy from "Build Your Strategy" section, which includes:
+    const userPrompt = `<prompt>
+  <task>Create 3 short video ad scripts for a landing page, customized using the user's existing messaging strategy.</task>
+  
+  <inputs>
+    <landing_page_url>${input.landingPageUrl}</landing_page_url>
+    <messaging_context>
+      <![CDATA[
 ${messagingContext || "No existing messaging strategy found - create scripts based on landing page URL only."}
-
----
-
-## SCRIPT REQUIREMENTS
-
-Generate EXACTLY 3 video scripts with these specifications:
-
-### SCRIPT 1: Problem-Focused Hook
-Start with the viewer's struggle, frustration, or pain point (drawn from the messaging strategy above).
-
-### SCRIPT 2: Desire/Curiosity-Focused Hook  
-Start with the possibility, transformation, or curiosity (using language from sales page and emails above).
-
-### SCRIPT 3: Social Proof/Authority Hook
-Start with credibility, social proof, or unique positioning (leveraging positioning from messaging strategy above).
-
----
-
-## STRUCTURE FOR EACH SCRIPT
-
-Each script must follow this exact structure and format:
-
-**Title/Angle:** "Brief catchy title describing the hook angle"
-
-**Full Script:**
-[Hook]
-"Opening line that grabs attention - emotionally charged question or statement"
-
-[Problem & Pain]
-"Identify the viewer's frustration or pain point. Explain what's not working for them and why they feel stuck."
-
-[Transformation or Promise]
-"Describe what becomes possible when they use the lead magnet. Connect to the core benefit/result from the landing page."
-
-[Soft CTA]
-"Invite them to download the resource, take the quiz, or watch the training. Make it feel like an invitation, not pressure."
-
----
-
-## OUTPUT FORMAT
-
-You MUST create CUSTOMIZED scripts based on the landing page URL and the user's existing messaging strategy provided above. Use authentic language, pain points, transformations, and positioning from their Build Your Strategy work. Do NOT use generic examples.
-
-Provide your response in the following JSON format with EXACTLY this structure:
-
+      ]]>
+    </messaging_context>
+  </inputs>
+  
+  <script_requirements>
+    <script number="1" hook_type="Problem-Focused">
+      Start with the viewer's struggle, frustration, or pain point (drawn from the messaging strategy above).
+    </script>
+    <script number="2" hook_type="Desire/Curiosity-Focused">
+      Start with the possibility, transformation, or curiosity (using language from sales page and emails above).
+    </script>
+    <script number="3" hook_type="Social Proof/Authority">
+      Start with credibility, social proof, or unique positioning (leveraging positioning from messaging strategy above).
+    </script>
+  </script_requirements>
+  
+  <script_structure>
+    <element name="Title/Angle">Brief catchy title describing the hook angle</element>
+    <element name="Hook">Opening line that grabs attention - emotionally charged question or statement</element>
+    <element name="Problem & Pain">Identify the viewer's frustration or pain point. Explain what's not working for them and why they feel stuck.</element>
+    <element name="Transformation or Promise">Describe what becomes possible when they use the lead magnet. Connect to the core benefit/result from the landing page.</element>
+    <element name="Soft CTA">Invite them to download the resource, take the quiz, or watch the training. Make it feel like an invitation, not pressure.</element>
+  </script_structure>
+  
+  <customization_rules>
+    <rule>CUSTOMIZE every script using the user's existing messaging from Build Your Strategy section</rule>
+    <rule>Pull authentic language, pain points, and transformations directly from their funnel copy, sales page, and email sequences</rule>
+    <rule>Each script's content must be written line-by-line as if spoken on camera</rule>
+    <rule>Start each section with [Hook], [Problem & Pain], [Transformation or Promise], or [Soft CTA] in square brackets</rule>
+    <rule>Put each section label on its own line</rule>
+    <rule>Use quotation marks around the actual spoken content</rule>
+    <rule>Add double line breaks (\n\n) between sections for readability</rule>
+    <rule>Make sure each script sounds natural when read aloud and is emotionally engaging</rule>
+    <rule>Maintain the brand's voice and tone from their existing messaging strategy</rule>
+    <rule>Each of the 3 scripts should test a different messaging angle while staying true to the user's authentic voice</rule>
+  </customization_rules>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "script1": {
     "title": "[Custom title for Script 1 - Problem-Focused]",
@@ -152,18 +152,12 @@ Provide your response in the following JSON format with EXACTLY this structure:
     "content": "[Hook]\n\"[Authority/credibility hook using positioning from their messaging strategy]\"\n\n[Problem & Pain]\n\"[Third angle on pain point from their strategy. 2-3 sentences.]\"\n\n[Transformation or Promise]\n\"[Unique positioning/promise from their messaging strategy.]\"\n\n[Soft CTA]\n\"[Compelling invitation aligned with their brand voice.]\""
   }
 }
-
-CRITICAL FORMATTING RULES:
-- CUSTOMIZE every script using the user's existing messaging from Build Your Strategy section
-- Pull authentic language, pain points, and transformations directly from their funnel copy, sales page, and email sequences
-- Each script's content must be written line-by-line as if spoken on camera
-- Start each section with [Hook], [Problem & Pain], [Transformation or Promise], or [Soft CTA] in square brackets
-- Put each section label on its own line
-- Use quotation marks around the actual spoken content
-- Add double line breaks (\n\n) between sections for readability
-- Make sure each script sounds natural when read aloud and is emotionally engaging
-- Maintain the brand's voice and tone from their existing messaging strategy
-- Each of the 3 scripts should test a different messaging angle while staying true to the user's authentic voice`;
+      ]]>
+    </structure>
+    <requirement>Generate EXACTLY 3 video scripts</requirement>
+    <requirement>Do NOT use generic examples - customize using user's messaging strategy</requirement>
+  </output_format>
+</prompt>`;
 
   try {
     console.log("[VIDEO SCRIPT GENERATOR] Calling Claude Sonnet 4 for script generation");
@@ -173,7 +167,7 @@ CRITICAL FORMATTING RULES:
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 2000,
-      temperature: 0.8,
+      temperature: 0.7,
       system: systemPrompt,
       messages: [
         { role: "user", content: userPromptWithJson }

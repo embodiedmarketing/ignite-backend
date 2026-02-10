@@ -100,20 +100,33 @@ async function generateOnboardingPlan(
   offerOutline: any,
   experienceQuestions: any
 ): Promise<OnboardingPlan> {
-  const prompt = `Based on this offer and delivery method, create a comprehensive onboarding plan:
-
-OFFER: ${JSON.stringify(offerOutline)}
-DELIVERY METHOD: ${experienceQuestions.deliveryMethod}
-DURATION: ${experienceQuestions.offerDuration}
-ONBOARDING ELEMENTS: ${experienceQuestions.onboardingElements?.join(', ')}
-
-Create a detailed onboarding plan with:
-1. Welcome email sequence (3-4 emails) with specific subjects, timing, and key points
-2. Clear next steps to prevent confusion
-3. Strategies to avoid overwhelming new customers
-4. Key information they need upfront
-
-Focus on making buyers feel confident and clear about what to expect. Return as JSON.`;
+  const prompt = `<prompt>
+  <task>Create a comprehensive onboarding plan based on the offer and delivery method.</task>
+  
+  <inputs>
+    <offer>
+      <![CDATA[
+${JSON.stringify(offerOutline)}
+      ]]>
+    </offer>
+    <delivery_method>${experienceQuestions.deliveryMethod}</delivery_method>
+    <duration>${experienceQuestions.offerDuration}</duration>
+    <onboarding_elements>${experienceQuestions.onboardingElements?.join(', ')}</onboarding_elements>
+  </inputs>
+  
+  <onboarding_plan_requirements>
+    <requirement number="1">Welcome email sequence (3-4 emails) with specific subjects, timing, and key points</requirement>
+    <requirement number="2">Clear next steps to prevent confusion</requirement>
+    <requirement number="3">Strategies to avoid overwhelming new customers</requirement>
+    <requirement number="4">Key information they need upfront</requirement>
+  </onboarding_plan_requirements>
+  
+  <focus>Make buyers feel confident and clear about what to expect</focus>
+  
+  <output_format>
+    <format>JSON</format>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
@@ -141,19 +154,32 @@ async function generateDeliveryPlan(
   offerOutline: any,
   experienceQuestions: any
 ): Promise<DeliveryPlan> {
-  const prompt = `Based on this offer outline, create a comprehensive content delivery plan:
-
-OFFER: ${JSON.stringify(offerOutline)}
-DELIVERY METHOD: ${experienceQuestions.deliveryMethod}
-DURATION: ${experienceQuestions.offerDuration}
-
-Create a detailed delivery plan with:
-1. Complete list of all content that needs to be created (videos, worksheets, templates, etc.)
-2. Creation timeline with priorities
-3. Delivery methods and platforms
-4. Quality standards and requirements
-
-Focus on breaking down EXACTLY what content needs to be created for this offer to be complete. Return as JSON.`;
+  const prompt = `<prompt>
+  <task>Create a comprehensive content delivery plan based on the offer outline.</task>
+  
+  <inputs>
+    <offer>
+      <![CDATA[
+${JSON.stringify(offerOutline)}
+      ]]>
+    </offer>
+    <delivery_method>${experienceQuestions.deliveryMethod}</delivery_method>
+    <duration>${experienceQuestions.offerDuration}</duration>
+  </inputs>
+  
+  <delivery_plan_requirements>
+    <requirement number="1">Complete list of all content that needs to be created (videos, worksheets, templates, etc.)</requirement>
+    <requirement number="2">Creation timeline with priorities</requirement>
+    <requirement number="3">Delivery methods and platforms</requirement>
+    <requirement number="4">Quality standards and requirements</requirement>
+  </delivery_plan_requirements>
+  
+  <focus>Break down EXACTLY what content needs to be created for this offer to be complete</focus>
+  
+  <output_format>
+    <format>JSON</format>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
@@ -182,20 +208,37 @@ async function generateCommunicationPlan(
   messagingStrategy: any,
   experienceQuestions: any
 ): Promise<CommunicationPlan> {
-  const prompt = `Create an ongoing communication strategy for customers:
-
-OFFER: ${JSON.stringify(offerOutline)}
-MESSAGING STRATEGY: ${JSON.stringify(messagingStrategy)}
-COMMUNICATION FREQUENCY: ${experienceQuestions.communicationFrequency}
-DURATION: ${experienceQuestions.offerDuration}
-
-Create a detailed communication plan with:
-1. Email schedule with specific subjects and timing
-2. Check-in cadence throughout the program
-3. Value-add content to send regularly
-4. Retention strategy to keep customers engaged
-
-Focus on maintaining engagement and providing ongoing value. Return as JSON.`;
+  const prompt = `<prompt>
+  <task>Create an ongoing communication strategy for customers.</task>
+  
+  <inputs>
+    <offer>
+      <![CDATA[
+${JSON.stringify(offerOutline)}
+      ]]>
+    </offer>
+    <messaging_strategy>
+      <![CDATA[
+${JSON.stringify(messagingStrategy)}
+      ]]>
+    </messaging_strategy>
+    <communication_frequency>${experienceQuestions.communicationFrequency}</communication_frequency>
+    <duration>${experienceQuestions.offerDuration}</duration>
+  </inputs>
+  
+  <communication_plan_requirements>
+    <requirement number="1">Email schedule with specific subjects and timing</requirement>
+    <requirement number="2">Check-in cadence throughout the program</requirement>
+    <requirement number="3">Value-add content to send regularly</requirement>
+    <requirement number="4">Retention strategy to keep customers engaged</requirement>
+  </communication_plan_requirements>
+  
+  <focus>Maintain engagement and provide ongoing value</focus>
+  
+  <output_format>
+    <format>JSON</format>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
@@ -223,19 +266,32 @@ async function generateFeedbackPlan(
   offerOutline: any,
   experienceQuestions: any
 ): Promise<FeedbackPlan> {
-  const prompt = `Create a comprehensive feedback collection strategy:
-
-OFFER: ${JSON.stringify(offerOutline)}
-FEEDBACK METHOD: ${experienceQuestions.feedbackMethod}
-DURATION: ${experienceQuestions.offerDuration}
-
-Create a detailed feedback plan with:
-1. Collection methods based on their chosen approach
-2. Optimal timing for feedback requests
-3. Specific questions to ask at different stages
-4. Implementation strategy for using feedback
-
-Focus on gathering actionable feedback that improves the offer and creates testimonials. Return as JSON.`;
+  const prompt = `<prompt>
+  <task>Create a comprehensive feedback collection strategy.</task>
+  
+  <inputs>
+    <offer>
+      <![CDATA[
+${JSON.stringify(offerOutline)}
+      ]]>
+    </offer>
+    <feedback_method>${experienceQuestions.feedbackMethod}</feedback_method>
+    <duration>${experienceQuestions.offerDuration}</duration>
+  </inputs>
+  
+  <feedback_plan_requirements>
+    <requirement number="1">Collection methods based on their chosen approach</requirement>
+    <requirement number="2">Optimal timing for feedback requests</requirement>
+    <requirement number="3">Specific questions to ask at different stages</requirement>
+    <requirement number="4">Implementation strategy for using feedback</requirement>
+  </feedback_plan_requirements>
+  
+  <focus>Gather actionable feedback that improves the offer and creates testimonials</focus>
+  
+  <output_format>
+    <format>JSON</format>
+  </output_format>
+</prompt>`;
 
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   

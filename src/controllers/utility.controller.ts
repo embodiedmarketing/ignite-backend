@@ -1007,86 +1007,72 @@ export async function generateLaunchRegistrationFunnelCopy(
     }
 
     // Build the AI prompt based on the provided template
-    const prompt = `You are an expert conversion copywriter specializing in high-converting webinar and challenge funnels.
-
-Your task is to write two pages of copy — an Opt-In Page and a Thank You Page — for a live launch experience.
-
-MESSAGING STRATEGY:
+    const prompt = `<prompt>
+  <task>Write two pages of copy — an Opt-In Page and a Thank You Page — for a live launch experience.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${JSON.stringify(messagingStrategy, null, 2)}
-
-ABOUT THE LIVE LAUNCH:
-1. Date/Time: ${launchData.launchDateTime || "Not specified"}
-2. Type: ${launchData.experienceType || "Not specified"}
-3. Main Transformation: ${launchData.transformationResult || "Not specified"}
-4. Top 3 Outcomes: ${launchData.topThreeOutcomes || "Not specified"}
-5. Problem It Solves: ${launchData.specificProblem || "Not specified"}
-6. Why It's Urgent: ${launchData.urgentProblem || "Not specified"}
-7. Unique Angle: ${launchData.uniqueExperience || "Not specified"}
-8. Show-Up Bonus Outcome: ${launchData.showUpBonus || "Not specified"}
-9. Next Step (Thank You Page Action): ${
-      launchData.thankYouAction || "Not specified"
-    }
-10. Pain Points/Frustrations: ${launchData.painPoints || "Not specified"}
-11. Quick Win: ${launchData.quickWin || "Not specified"}
-12. Objections: ${launchData.objections || "Not specified"}
-13. Proof or Testimonials: ${launchData.socialProofResults || "Not specified"}
-
-STYLE RULES:
-- Use the ICA's language from the messaging strategy
-- Keep paragraphs under 3 lines
-- Focus on benefits > features
-- Maintain authenticity + energy in tone
-
-CRITICAL FORMATTING REQUIREMENTS:
-You MUST follow this EXACT formatting structure. Use HTML for proper formatting.
-
-1. OPT-IN PAGE COPY - Use this exact structure:
-
-<strong>OPT-IN PAGE COPY</strong>
-
-<strong>Headline:</strong>
-[Write a compelling, outcome-driven headline]
-
-<strong>Subheadline:</strong>
-[Write one line that amplifies the benefit]
-
-<strong>Event Details:</strong>
-📅 [Date] | 🕐 [Time with timezone] | 📺 [Type of event - e.g., Free Live Webinar]
-
-<strong>Here's What You'll Learn:</strong>
-✓ [Benefit 1]
-✓ [Benefit 2]
-✓ [Benefit 3]
-✓ [Benefit 4]
-
-<strong>Why This Is Different:</strong>
-[Write 2-3 sentences explaining the unique angle and why this matters]
-
-<strong>CTA:</strong>
-👆 [Action-based call-to-action button text]
-
-<strong>About the Host:</strong>
-[Write 2-3 sentences about the host and their credibility]
-
-
-2. THANK YOU PAGE COPY - Use this exact structure:
-
-<strong>THANK YOU PAGE COPY</strong>
-
-<strong>Headline:</strong>
-[Write an enthusiastic confirmation headline]
-
-<strong>Body:</strong>
-[Write body text that confirms their registration. Make sure to include the date/time like: <strong>[Date] at [Time with timezone]</strong>]
-[Second line about checking inbox for confirmation]
-
-<strong>🎁 Show Up Live & Get This Bonus:</strong>
-[Describe the show-up bonus and its value]
-
-<strong>Next Step:</strong>
-👉 [Clear next action they should take]
-
-Please generate compelling, emotionally resonant copy that converts. IMPORTANT: Follow the exact HTML formatting structure shown above.`;
+      ]]>
+    </messaging_strategy>
+    <live_launch_details>
+      <date_time>${launchData.launchDateTime || "Not specified"}</date_time>
+      <type>${launchData.experienceType || "Not specified"}</type>
+      <main_transformation>${launchData.transformationResult || "Not specified"}</main_transformation>
+      <top_3_outcomes>${launchData.topThreeOutcomes || "Not specified"}</top_3_outcomes>
+      <problem_it_solves>${launchData.specificProblem || "Not specified"}</problem_it_solves>
+      <why_urgent>${launchData.urgentProblem || "Not specified"}</why_urgent>
+      <unique_angle>${launchData.uniqueExperience || "Not specified"}</unique_angle>
+      <show_up_bonus_outcome>${launchData.showUpBonus || "Not specified"}</show_up_bonus_outcome>
+      <next_step>${launchData.thankYouAction || "Not specified"}</next_step>
+      <pain_points_frustrations>${launchData.painPoints || "Not specified"}</pain_points_frustrations>
+      <quick_win>${launchData.quickWin || "Not specified"}</quick_win>
+      <objections>${launchData.objections || "Not specified"}</objections>
+      <proof_testimonials>${launchData.socialProofResults || "Not specified"}</proof_testimonials>
+    </live_launch_details>
+  </inputs>
+  
+  <style_rules>
+    <rule>Use the ICA's language from the messaging strategy</rule>
+    <rule>Keep paragraphs under 3 lines</rule>
+    <rule>Focus on benefits > features</rule>
+    <rule>Maintain authenticity + energy in tone</rule>
+  </style_rules>
+  
+  <page_structures>
+    <page number="1" name="OPT-IN PAGE COPY">
+      <section name="Headline">Write a compelling, outcome-driven headline</section>
+      <section name="Subheadline">Write one line that amplifies the benefit</section>
+      <section name="Event Details">📅 [Date] | 🕐 [Time with timezone] | 📺 [Type of event - e.g., Free Live Webinar]</section>
+      <section name="Here's What You'll Learn">
+        ✓ [Benefit 1]
+        ✓ [Benefit 2]
+        ✓ [Benefit 3]
+        ✓ [Benefit 4]
+      </section>
+      <section name="Why This Is Different">Write 2-3 sentences explaining the unique angle and why this matters</section>
+      <section name="CTA">👆 [Action-based call-to-action button text]</section>
+      <section name="About the Host">Write 2-3 sentences about the host and their credibility</section>
+    </page>
+    
+    <page number="2" name="THANK YOU PAGE COPY">
+      <section name="Headline">Write an enthusiastic confirmation headline</section>
+      <section name="Body">
+        Write body text that confirms their registration. Make sure to include the date/time like: &lt;strong&gt;[Date] at [Time with timezone]&lt;/strong&gt;
+        Second line about checking inbox for confirmation
+      </section>
+      <section name="Show Up Live & Get This Bonus">🎁 Describe the show-up bonus and its value</section>
+      <section name="Next Step">👉 [Clear next action they should take]</section>
+    </page>
+  </page_structures>
+  
+  <formatting_requirements>
+    <critical>You MUST follow this EXACT formatting structure. Use HTML for proper formatting.</critical>
+    <instruction>Use &lt;strong&gt; tags for section headings</instruction>
+    <instruction>Generate compelling, emotionally resonant copy that converts</instruction>
+  </formatting_requirements>
+</prompt>`;
 
     const completion = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -1226,102 +1212,123 @@ export async function generateLaunchSalesPageCopy(req: Request, res: Response) {
     );
 
     // Build the comprehensive AI prompt based on the sales page structure
-    const prompt = `You are an expert conversion copywriter specializing in long-form, narrative-driven sales pages.
-
-Your task is to write a comprehensive sales page that emotionally guides readers from awareness → belief → decision → action.
-
-MESSAGING STRATEGY:
+    const prompt = `<prompt>
+  <task>Write a comprehensive sales page that emotionally guides readers from awareness → belief → decision → action.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${messagingStrategy.content || ""}
-
-CORE OFFER OUTLINE:
+      ]]>
+    </messaging_strategy>
+    <core_offer_outline>
+      <![CDATA[
 ${coreOfferOutline.content || ""}
+      ]]>
+    </core_offer_outline>
+    <live_launch_specific_messaging>
+      <desired_action>${salesPageAction || "Not specified"}</desired_action>
+      <urgency_scarcity_elements>${salesPageUrgency || "Not specified"}</urgency_scarcity_elements>
+    </live_launch_specific_messaging>
+  </inputs>
+  
+  <sections>
+    <section number="1" name="CURRENT DESIRES + STRUGGLES">
+      <purpose>Build instant resonance. Make readers feel seen before you ever mention the offer.</purpose>
+      <elements>
+        <element name="Headline – Desired Outcome">Make it emotionally specific and outcome-driven. Avoid vague promises.</element>
+        <element name="Expand on Their Desired Outcome">Use emotional imagery and sensory language. Speak to what life feels like when their goal becomes real.</element>
+        <element name="Current Feelings / Problem">Mirror the reader's internal dialogue. Call out both surface frustrations and deeper emotional costs. Keep tone empathetic, not pitying.</element>
+        <element name="Why the Problem Is Worse Than Expected">Contrast what they thought would happen vs. what actually happens. Add urgency through consequence storytelling.</element>
+        <element name="Bridge">Transition with hope, energy, and authority. Keep this short — one to two lines that introduce the solution naturally.</element>
+      </elements>
+    </section>
+    
+    <section number="2" name="THE SOLUTION (YOUR OFFER)">
+      <purpose>Position the offer as the natural bridge between pain and possibility.</purpose>
+      <elements>
+        <element name="Introduce the Offer">Use format "Introducing {offer_name} — the proven system to {core_promise} without {main_pain_point}."</element>
+        <element name="Core Pillars / Learnings">List 3–5 pillars, each written as: What they'll learn/do, Why it matters, What changes as a result. Use "so that…" phrasing. Connect to their emotional journey.</element>
+      </elements>
+    </section>
+    
+    <section number="3" name="AUTHORITY">
+      <purpose>Build trust through credibility + relatability.</purpose>
+      <elements>
+        <element name="Testimonials">Use storytelling testimonials (before → after → feeling). Prioritize transformation over metrics. Include at least one that mirrors the reader's current struggle.</element>
+        <element name="About the Creator">Share your "why" through a moment of personal truth or past failure. Include emotional resonance before listing credentials. Keep it human, not résumé-style.</element>
+      </elements>
+    </section>
+    
+    <section number="4" name="OFFER SPECIFICS">
+      <purpose>Move the reader from belief to action.</purpose>
+      <elements>
+        <element name="What's Included">Turn features into outcomes. Use bullet sections for readability.</element>
+        <element name="Bonuses">Only include bonuses that feel essential or urgency-driven. Tie each to a key objection.</element>
+        <element name="Pricing & CTA">Position the price as an investment not an expense. Add multiple CTAs using ${salesPageAction || "the desired action"} language. Insert urgency details: ${salesPageUrgency || "urgency elements"}.</element>
+        <element name="Guarantee">Reinforce trust and remove risk. Keep tone confident and integrity-driven.</element>
+      </elements>
+    </section>
+    
+    <section number="5" name="BREAKTHROUGH RESISTANCE">
+      <purpose>Reframe objections, reignite belief, and close with inspiration.</purpose>
+      <elements>
+        <element name="Address Objections">Name them directly using the reader's inner voice. Respond with calm authority, not hype.</element>
+        <element name="Big Breakthrough Visualization">Use sensory, present-tense storytelling. Focus on emotional payoff.</element>
+        <element name="Review of Everything They Get">Bullet all inclusions + bonuses with value if appropriate.</element>
+        <element name="FAQ">Write 4–6 questions that handle practical concerns. Use friendly tone.</element>
+        <element name="Decision Note / Final CTA">Close like a personal letter. Use "two paths" framing. Bring it back to the reader's identity. End with emotional certainty and direct CTA.</element>
+      </elements>
+    </section>
+  </sections>
+  
+  <style_voice_directives>
+    <directive>Lead with empathy, close with certainty</directive>
+    <directive>Show vs. tell using vivid examples and micro-stories</directive>
+    <directive>Simplify the path - clarity converts</directive>
+    <directive>Momentum matters - use rhythm, white space, and punchy transitions</directive>
+    <directive>Emotional layering: Start with pain, shift to hope, end with empowerment</directive>
+    <directive>Every CTA should feel like an invitation, not pressure</directive>
+    <directive>Consistency of tone throughout</directive>
+  </style_voice_directives>
+  
+  <formatting_requirements>
+    <format>HTML</format>
+    <structure>
+      <![CDATA[
+&lt;strong&gt;SECTION 1: CURRENT DESIRES + STRUGGLES&lt;/strong&gt;
 
-LIVE LAUNCH SPECIFIC MESSAGING:
-- Desired Action: ${salesPageAction || "Not specified"}
-- Urgency/Scarcity Elements: ${salesPageUrgency || "Not specified"}
-
-STRUCTURE & WRITING RULES:
-
-SECTION 1: CURRENT DESIRES + STRUGGLES
-Purpose: Build instant resonance. Make readers feel seen before you ever mention the offer.
-
-- Headline – Desired Outcome: Make it emotionally specific and outcome-driven. Avoid vague promises.
-- Expand on Their Desired Outcome: Use emotional imagery and sensory language. Speak to what life feels like when their goal becomes real.
-- Current Feelings / Problem: Mirror the reader's internal dialogue. Call out both surface frustrations and deeper emotional costs. Keep tone empathetic, not pitying.
-- Why the Problem Is Worse Than Expected: Contrast what they thought would happen vs. what actually happens. Add urgency through consequence storytelling.
-- Bridge: Transition with hope, energy, and authority. Keep this short — one to two lines that introduce the solution naturally.
-
-SECTION 2: THE SOLUTION (YOUR OFFER)
-Purpose: Position the offer as the natural bridge between pain and possibility.
-
-- Introduce the Offer: Use format "Introducing {offer_name} — the proven system to {core_promise} without {main_pain_point}."
-- Core Pillars / Learnings: List 3–5 pillars, each written as: What they'll learn/do, Why it matters, What changes as a result. Use "so that…" phrasing. Connect to their emotional journey.
-
-SECTION 3: AUTHORITY
-Purpose: Build trust through credibility + relatability.
-
-- Testimonials: Use storytelling testimonials (before → after → feeling). Prioritize transformation over metrics. Include at least one that mirrors the reader's current struggle.
-- About the Creator: Share your "why" through a moment of personal truth or past failure. Include emotional resonance before listing credentials. Keep it human, not résumé-style.
-
-SECTION 4: OFFER SPECIFICS
-Purpose: Move the reader from belief to action.
-
-- What's Included: Turn features into outcomes. Use bullet sections for readability.
-- Bonuses: Only include bonuses that feel essential or urgency-driven. Tie each to a key objection.
-- Pricing & CTA: Position the price as an investment not an expense. Add multiple CTAs using ${
-      salesPageAction || "the desired action"
-    } language. Insert urgency details: ${
-      salesPageUrgency || "urgency elements"
-    }.
-- Guarantee: Reinforce trust and remove risk. Keep tone confident and integrity-driven.
-
-SECTION 5: BREAKTHROUGH RESISTANCE
-Purpose: Reframe objections, reignite belief, and close with inspiration.
-
-- Address Objections: Name them directly using the reader's inner voice. Respond with calm authority, not hype.
-- Big Breakthrough Visualization: Use sensory, present-tense storytelling. Focus on emotional payoff.
-- Review of Everything They Get: Bullet all inclusions + bonuses with value if appropriate.
-- FAQ: Write 4–6 questions that handle practical concerns. Use friendly tone.
-- Decision Note / Final CTA: Close like a personal letter. Use "two paths" framing. Bring it back to the reader's identity. End with emotional certainty and direct CTA.
-
-STYLE + VOICE DIRECTIVES:
-- Lead with empathy, close with certainty
-- Show vs. tell using vivid examples and micro-stories
-- Simplify the path - clarity converts
-- Momentum matters - use rhythm, white space, and punchy transitions
-- Emotional layering: Start with pain, shift to hope, end with empowerment
-- Every CTA should feel like an invitation, not pressure
-- Consistency of tone throughout
-
-CRITICAL FORMATTING:
-Return copy using HTML formatting with the following structure:
-
-<strong>SECTION 1: CURRENT DESIRES + STRUGGLES</strong>
-
-<strong>Headline:</strong>
+&lt;strong&gt;Headline:&lt;/strong&gt;
 [Write compelling headline]
 
 [Continue with rest of section 1 content...]
 
-<strong>SECTION 2: THE SOLUTION</strong>
+&lt;strong&gt;SECTION 2: THE SOLUTION&lt;/strong&gt;
 
 [Section 2 content with HTML formatting...]
 
-<strong>SECTION 3: AUTHORITY</strong>
+&lt;strong&gt;SECTION 3: AUTHORITY&lt;/strong&gt;
 
 [Section 3 content...]
 
-<strong>SECTION 4: OFFER SPECIFICS</strong>
+&lt;strong&gt;SECTION 4: OFFER SPECIFICS&lt;/strong&gt;
 
 [Section 4 content...]
 
-<strong>SECTION 5: BREAKTHROUGH RESISTANCE</strong>
+&lt;strong&gt;SECTION 5: BREAKTHROUGH RESISTANCE&lt;/strong&gt;
 
 [Section 5 content...]
-
-Include CTA prompts after every major section. Use <strong> tags for headings and subheadings. Use line breaks appropriately for readability.
-
-Generate a compelling, emotionally resonant sales page that converts. Follow the exact structure and formatting shown above.`;
+      ]]>
+    </structure>
+    <instructions>
+      <instruction>Include CTA prompts after every major section</instruction>
+      <instruction>Use &lt;strong&gt; tags for headings and subheadings</instruction>
+      <instruction>Use line breaks appropriately for readability</instruction>
+    </instructions>
+  </formatting_requirements>
+  
+  <output_goal>Generate a compelling, emotionally resonant sales page that converts. Follow the exact structure and formatting shown above.</output_goal>
+</prompt>`;
 
     const completion = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

@@ -41,47 +41,64 @@ export async function generateOfferOutline(
     // Extract key insights from responses
     const insights = extractOfferInsights(offerResponses, messagingStrategy);
     
-    const prompt = `You are an expert offer strategist creating a comprehensive offer outline for a business professional. Based on their responses, create a detailed offer outline that includes both the structure and messaging.
-
-OFFER RESPONSES PROVIDED:
+    const prompt = `<prompt>
+  <task>Create a comprehensive offer outline for a business professional based on their responses.</task>
+  
+  <inputs>
+    <offer_responses>
+      <![CDATA[
 ${formatOfferInsightsForPrompt(insights)}
-
-${messagingStrategy ? `MESSAGING STRATEGY CONTEXT:
-${formatMessagingStrategyForPrompt(messagingStrategy)}` : ''}
-
-Create a comprehensive offer outline that includes:
-
-1. **OFFER FOUNDATION**
-   - Clear, compelling offer title using customer language
-   - One-sentence transformation statement (what customers get)
-   - Core problem being solved
-   - Target customer description
-
-2. **OFFER STRUCTURE & DELIVERY**
-   - Delivery method and format
-   - Timeline and duration
-   - Complete program components (each component paired with its specific benefit/outcome)
-   - Support and accountability elements
-
-3. **PRICING & POSITIONING**
-   - Pricing strategy and rationale
-   - Value proposition and ROI
-   - Payment options
-   - Positioning against alternatives
-
-4. **GUARANTEE & RISK REVERSAL**
-   - Specific guarantee terms
-   - Risk reversal elements
-   - Success criteria and metrics
-
-SPECIAL FOCUS: In the "OFFER STRUCTURE & DELIVERY" section, create a detailed component-benefit mapping where each program element is clearly paired with its specific benefit or outcome. Format it as:
-- Component Name → Specific Benefit/Outcome for customer
-
-This component-benefit mapping is critical for sales page generation, so be thorough and specific about what each element delivers.
-
-Write this as a professional strategy document that could be used to create sales pages, marketing materials, and presentations. Use clear headings and bullet points. Make it specific and actionable.
-
-Avoid generic business language. Use the customer's actual language and focus on concrete outcomes and emotional benefits.`;
+      ]]>
+    </offer_responses>
+    ${messagingStrategy ? `<messaging_strategy_context>
+      <![CDATA[
+${formatMessagingStrategyForPrompt(messagingStrategy)}
+      ]]>
+    </messaging_strategy_context>` : ''}
+  </inputs>
+  
+  <outline_sections>
+    <section number="1" name="OFFER FOUNDATION">
+      <requirement>Clear, compelling offer title using customer language</requirement>
+      <requirement>One-sentence transformation statement (what customers get)</requirement>
+      <requirement>Core problem being solved</requirement>
+      <requirement>Target customer description</requirement>
+    </section>
+    
+    <section number="2" name="OFFER STRUCTURE & DELIVERY">
+      <requirement>Delivery method and format</requirement>
+      <requirement>Timeline and duration</requirement>
+      <requirement>Complete program components (each component paired with its specific benefit/outcome)</requirement>
+      <requirement>Support and accountability elements</requirement>
+      <special_focus>
+        Create a detailed component-benefit mapping where each program element is clearly paired with its specific benefit or outcome. Format it as:
+        - Component Name → Specific Benefit/Outcome for customer
+        This component-benefit mapping is critical for sales page generation, so be thorough and specific about what each element delivers.
+      </special_focus>
+    </section>
+    
+    <section number="3" name="PRICING & POSITIONING">
+      <requirement>Pricing strategy and rationale</requirement>
+      <requirement>Value proposition and ROI</requirement>
+      <requirement>Payment options</requirement>
+      <requirement>Positioning against alternatives</requirement>
+    </section>
+    
+    <section number="4" name="GUARANTEE & RISK REVERSAL">
+      <requirement>Specific guarantee terms</requirement>
+      <requirement>Risk reversal elements</requirement>
+      <requirement>Success criteria and metrics</requirement>
+    </section>
+  </outline_sections>
+  
+  <writing_guidelines>
+    <guideline>Write this as a professional strategy document that could be used to create sales pages, marketing materials, and presentations</guideline>
+    <guideline>Use clear headings and bullet points</guideline>
+    <guideline>Make it specific and actionable</guideline>
+    <guideline>Avoid generic business language</guideline>
+    <guideline>Use the customer's actual language and focus on concrete outcomes and emotional benefits</guideline>
+  </writing_guidelines>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

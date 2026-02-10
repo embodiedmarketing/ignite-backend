@@ -198,9 +198,7 @@ Reduce duplicate prompt text across the codebase to cut token usage and enable a
 
 For exact diffs and line-level changes, use version control (e.g. `git log` and `git diff`).
 
-
-
-## 6. Latest Session — Prompt Optimization, Validation, and Instruction Fixes 
+## 6. Latest Session — Prompt Optimization, Validation, and Instruction Fixes
 
 This section documents changes made in the most recent session: content-ideas validation shape, messaging-strategy prompt length reduction, max_tokens tuning, instruction order, conflicting instructions, and schema-enforcement documentation.
 

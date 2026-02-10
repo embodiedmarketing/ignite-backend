@@ -82,29 +82,44 @@ ${questionCoaching.successPatterns.map(pattern => `- ${pattern}`).join('\n')}
 `;
     }
 
-    const prompt = `You are an expert business coach providing question-specific feedback. You're analyzing a user's response to give tailored coaching.
-
-QUESTION: "${questionContext}"
-SECTION: "${section}"
-USER'S CURRENT RESPONSE: "${userResponse}"
-
+    const prompt = `<prompt>
+  <task>Provide question-specific feedback as an expert business coach analyzing a user's response.</task>
+  
+  <inputs>
+    <question>${questionContext}</question>
+    <section>${section}</section>
+    <user_response>
+      <![CDATA[
+${userResponse}
+      ]]>
+    </user_response>
+    <coaching_context>
+      <![CDATA[
 ${coachingContext}
-
-COACHING APPROACH:
-1. ANALYZE their response against the specific criteria for this exact question
-2. IDENTIFY which required elements are missing
-3. PROVIDE 2-3 COMPLETE IMPROVED VERSIONS that address the missing elements
-4. REFERENCE their specific words and build upon them rather than starting over
-5. FOLLOW the success patterns proven to work for this question type
-
-COACHING METHODOLOGY:
-- Acknowledge what they've written specifically
-- Use the proven improvement patterns for this question type
-- Apply the best practices to enhance their content
-- Avoid the common mistakes identified in our coaching knowledge
-- Provide ready-to-use enhanced versions that follow successful transformation patterns
-
-Respond with ONLY valid JSON (no markdown):
+      ]]>
+    </coaching_context>
+  </inputs>
+  
+  <coaching_approach>
+    <step number="1">ANALYZE their response against the specific criteria for this exact question</step>
+    <step number="2">IDENTIFY which required elements are missing</step>
+    <step number="3">PROVIDE 2-3 COMPLETE IMPROVED VERSIONS that address the missing elements</step>
+    <step number="4">REFERENCE their specific words and build upon them rather than starting over</step>
+    <step number="5">FOLLOW the success patterns proven to work for this question type</step>
+  </coaching_approach>
+  
+  <coaching_methodology>
+    <principle>Acknowledge what they've written specifically</principle>
+    <principle>Use the proven improvement patterns for this question type</principle>
+    <principle>Apply the best practices to enhance their content</principle>
+    <principle>Avoid the common mistakes identified in our coaching knowledge</principle>
+    <principle>Provide ready-to-use enhanced versions that follow successful transformation patterns</principle>
+  </coaching_methodology>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "level": "needs-more-detail" | "good-start" | "excellent-depth",
   "levelDescription": "assessment based on best practices above",
@@ -115,7 +130,12 @@ Respond with ONLY valid JSON (no markdown):
   "nextSteps": ["specific actions based on improvement patterns"],
   "encouragement": "encouraging statement about their progress",
   "conversationalResponse": "warm coaching response referencing their specific content and coaching insights"
-}`;
+}
+      ]]>
+    </schema>
+    <rule>Respond with ONLY valid JSON (no markdown)</rule>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -145,45 +165,60 @@ async function analyzeOfferResponse(
   messagingStrategy?: any
 ): Promise<InteractiveCoachingResponse> {
   try {
-    const prompt = `You are an expert offer creation coach analyzing a user's response to an offer development question.
-
-QUESTION: "${questionContext}"
-USER'S CURRENT RESPONSE: "${userResponse}"
-
-${messagingStrategy ? `MESSAGING STRATEGY CONTEXT:
-${typeof messagingStrategy === 'string' ? messagingStrategy : JSON.stringify(messagingStrategy)}` : ''}
-
-CRITICAL ANALYSIS APPROACH:
-1. ANALYZE what the user has written specifically - don't ignore their content
-2. IDENTIFY what's working well in their response
-3. SPOT specific gaps or areas that need enhancement
-4. PROVIDE 2-3 IMPROVED VERSIONS that build on their actual words
-5. FOCUS on their offer creation, not generic business advice
-
-COACHING GUIDELINES:
-- If they've written substantial content (20+ words), acknowledge what they've provided
-- Build on their specific ideas rather than replacing them
-- For transformation questions: coach toward one powerful "I want..." customer statement
-- For components questions: ensure each component has a clear customer benefit
-- For differentiation questions: push for specific methodology or unique approach
-- Use their messaging strategy insights to enhance their offer positioning
-
-OFFER OUTLINE AUDIT FRAMEWORK:
-When analyzing offer content, evaluate these core components:
-1. TARGET AUDIENCE & PAIN POINTS: Are pain points specific, emotional, and urgent? Is there a consistent core problem?
-2. PROBLEM-SOLUTION CLARITY: Does it solve one main problem with benefit-driven language (not process-driven)?
-3. TRANSFORMATION STATEMENT: Short, emotionally resonant, outcome-focused following "We help [audience] go from [problem] to [desire] through [solution]"
-4. DELIVERABLES: Are features tied to benefits? Do components match the transformation?
-5. MESSAGING: Does it speak to dreams/results with outcome-oriented language (gain, become, achieve) vs tactical (get, access, download)?
-
-KEY FEEDBACK PATTERNS:
-- Flag vague descriptions: "Help you be more confident" → "Speak confidently at team meetings so you're seen as a leader"
-- Transform features to benefits: "PDF guide" → "gives you clarity to take action fast"
-- Lead with emotion + outcome: "Dream of running your business without tech headaches? We've got you."
-- Create one-liner taglines usable "at Starbucks if someone asked"
-- Address objections: time, money, DIY capability, trust
-
-Respond with ONLY valid JSON (no markdown):
+    const prompt = `<prompt>
+  <task>Analyze a user's response to an offer development question as an expert offer creation coach.</task>
+  
+  <inputs>
+    <question>${questionContext}</question>
+    <user_current_response>
+      <![CDATA[
+${userResponse}
+      ]]>
+    </user_current_response>
+    ${messagingStrategy ? `<messaging_strategy_context>
+      <![CDATA[
+${typeof messagingStrategy === 'string' ? messagingStrategy : JSON.stringify(messagingStrategy)}
+      ]]>
+    </messaging_strategy_context>` : ''}
+  </inputs>
+  
+  <critical_analysis_approach>
+    <step number="1">ANALYZE what the user has written specifically - don't ignore their content</step>
+    <step number="2">IDENTIFY what's working well in their response</step>
+    <step number="3">SPOT specific gaps or areas that need enhancement</step>
+    <step number="4">PROVIDE 2-3 IMPROVED VERSIONS that build on their actual words</step>
+    <step number="5">FOCUS on their offer creation, not generic business advice</step>
+  </critical_analysis_approach>
+  
+  <coaching_guidelines>
+    <guideline>If they've written substantial content (20+ words), acknowledge what they've provided</guideline>
+    <guideline>Build on their specific ideas rather than replacing them</guideline>
+    <guideline>For transformation questions: coach toward one powerful "I want..." customer statement</guideline>
+    <guideline>For components questions: ensure each component has a clear customer benefit</guideline>
+    <guideline>For differentiation questions: push for specific methodology or unique approach</guideline>
+    <guideline>Use their messaging strategy insights to enhance their offer positioning</guideline>
+  </coaching_guidelines>
+  
+  <offer_outline_audit_framework>
+    <component number="1" name="TARGET AUDIENCE & PAIN POINTS">Are pain points specific, emotional, and urgent? Is there a consistent core problem?</component>
+    <component number="2" name="PROBLEM-SOLUTION CLARITY">Does it solve one main problem with benefit-driven language (not process-driven)?</component>
+    <component number="3" name="TRANSFORMATION STATEMENT">Short, emotionally resonant, outcome-focused following "We help [audience] go from [problem] to [desire] through [solution]"</component>
+    <component number="4" name="DELIVERABLES">Are features tied to benefits? Do components match the transformation?</component>
+    <component number="5" name="MESSAGING">Does it speak to dreams/results with outcome-oriented language (gain, become, achieve) vs tactical (get, access, download)?</component>
+  </offer_outline_audit_framework>
+  
+  <key_feedback_patterns>
+    <pattern>Flag vague descriptions: "Help you be more confident" → "Speak confidently at team meetings so you're seen as a leader"</pattern>
+    <pattern>Transform features to benefits: "PDF guide" → "gives you clarity to take action fast"</pattern>
+    <pattern>Lead with emotion + outcome: "Dream of running your business without tech headaches? We've got you."</pattern>
+    <pattern>Create one-liner taglines usable "at Starbucks if someone asked"</pattern>
+    <pattern>Address objections: time, money, DIY capability, trust</pattern>
+  </key_feedback_patterns>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "level": "needs-more-detail" | "good-start" | "excellent-depth",
   "levelDescription": "brief assessment of their current response quality",
@@ -194,7 +229,12 @@ Respond with ONLY valid JSON (no markdown):
   "nextSteps": ["actionable steps based on their current response"],
   "encouragement": "encouraging statement about their progress",
   "conversationalResponse": "warm coaching response that references their specific content"
-}`;
+}
+      ]]>
+    </schema>
+    <rule>Respond with ONLY valid JSON (no markdown)</rule>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -326,23 +366,51 @@ async function generateActualImprovedVersions(
     // Get question-specific coaching based on the question type
     const questionSpecificPrompt = getQuestionSpecificCoachingPrompt(questionContext, userResponse);
     
-    const prompt = `You are an expert business coach. A user answered this question: "${questionContext}"
-
-Their current response: "${userResponse}"
-${messagingStrategy ? `Their messaging strategy context: ${JSON.stringify(messagingStrategy)}` : ''}
-
+    const prompt = `<prompt>
+  <task>Create 2-3 actual improved versions of a user's response that they can use directly.</task>
+  
+  <inputs>
+    <question>${questionContext}</question>
+    <current_response>
+      <![CDATA[
+${userResponse}
+      ]]>
+    </current_response>
+    ${messagingStrategy ? `<messaging_strategy_context>
+      <![CDATA[
+${JSON.stringify(messagingStrategy)}
+      ]]>
+    </messaging_strategy_context>` : ''}
+    <question_specific_prompt>
+      <![CDATA[
 ${questionSpecificPrompt}
-
-Create 2-3 ACTUAL IMPROVED VERSIONS of their response that they can use directly. These should be:
-- Complete, ready-to-use responses (not suggestions or prompts)
-- Based on their original response but enhanced with more depth, emotion, and specificity
-- Written in a natural, authentic voice
-- Addressing the question more completely than their original response
-
-CRITICAL: Do NOT provide thinking prompts like "Think about..." or "Consider...". 
-Provide ACTUAL improved response text they can copy and paste.
-
-Return as a JSON object with an "improvedVersions" array containing the enhanced responses.`;
+      ]]>
+    </question_specific_prompt>
+  </inputs>
+  
+  <improvement_requirements>
+    <requirement>Complete, ready-to-use responses (not suggestions or prompts)</requirement>
+    <requirement>Based on their original response but enhanced with more depth, emotion, and specificity</requirement>
+    <requirement>Written in a natural, authentic voice</requirement>
+    <requirement>Addressing the question more completely than their original response</requirement>
+  </improvement_requirements>
+  
+  <critical_instruction>
+    Do NOT provide thinking prompts like "Think about..." or "Consider...". 
+    Provide ACTUAL improved response text they can copy and paste.
+  </critical_instruction>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
+{
+  "improvedVersions": ["enhanced response 1", "enhanced response 2", "enhanced response 3"]
+}
+      ]]>
+    </structure>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -705,74 +773,106 @@ IMPORTANT: Use this existing customer understanding to provide specific, actiona
   }
 
   try {
-    const prompt = `You are an expert business coach helping an entrepreneur develop their offer creation strategy. They just answered this question: "${questionContext}"${messagingContext}
-
-QUESTION ANALYSIS:
-- Complexity: ${questionAnalysis.complexity} (${questionAnalysis.questionType})
-- This question specifically explores: ${questionAnalysis.keyElements.join(", ")}
-- Their current response: "${userResponse}"
-
-CRITICAL PERSPECTIVE GUIDANCE:
-- If this question is about customer emotions, fears, frustrations, or feelings, ALL coaching must focus on their IDEAL CUSTOMER'S emotions, NOT the entrepreneur's personal feelings
-- Questions about "their" fears means the customer's fears, not the entrepreneur's fears
-- Help them understand what their customers think, feel, and experience
-- Keep the focus on customer psychology, customer language, and customer emotional states
-- NEVER ask about the entrepreneur's personal feelings or experiences
-- ALL follow-up questions should be about understanding their CUSTOMERS better
-- Examples: "What do your customers fear?" NOT "What do you fear?"
-
-TRANSFORMATION QUESTION SPECIAL INSTRUCTIONS:
-- If the question contains "main transformation" or "transformation you help people achieve", this asks what the OFFER provides
-- The answer should describe the transformation from the entrepreneur's perspective (what they help achieve)
-- Format: "They go from [current state] to [desired outcome]" or "Transform from X to Y"
-- Focus on emotional/identity shifts, not just tactical results
-- Examples: "Transform from overwhelmed solopreneur to confident CEO" vs "I help with business strategy"
-- This is NOT asking for customer voice - it's asking what transformation the offer delivershe entrepreneur does
-
-OFFER CREATION COACHING APPROACH:
-- Since this is likely Step 2 (Create Your Offer), the user has already completed their messaging strategy in Step 1
-- ANALYZE their existing messaging strategy and provide SPECIFIC RECOMMENDATIONS based on what you find
-- DO NOT ask them to do more research - they've already done the work
-- Instead of asking questions, GIVE THEM specific suggestions based on their messaging strategy data
-- Provide 2-3 REVISED VERSIONS of their response that incorporate their customer insights
-- Focus on how their offer delivers the transformation their customers want
-
-As their business coach, provide deep, personalized guidance for this specific question. Your coaching should:
-
-1. ACKNOWLEDGE their current response specifically
-2. ANALYZE their existing messaging strategy and extract relevant insights
-3. PROVIDE 2-3 SPECIFIC IMPROVED VERSIONS of their response using their customer data
-4. Give 2-3 concrete examples that build on their actual customer avatar and positioning
-5. Suggest EXACT LANGUAGE from their messaging strategy to improve their answer
-6. Make the improvements actionable and ready to use immediately
-
-For ${questionAnalysis.questionType} questions, focus especially on helping them develop ${questionAnalysis.keyElements.join(" and ")}.
-
-IMPORTANT: If the question contains words like "their fears", "their frustrations", "their feelings", "what they think" - ALL coaching must be about understanding their CUSTOMERS, not the entrepreneur personally. 
-
-Frame everything as leveraging existing customer research: "Based on your customer avatar work..." or "Your messaging strategy shows that your customers..."
-
-Be conversational and supportive, like you're sitting across from them in a coaching session. Make this feel personal and specific to their situation.
-
-CRITICAL: If messaging strategy is available, DO NOT ask follow-up questions. Instead:
-- Analyze their messaging strategy data thoroughly
-- WRITE COMPLETE, SPECIFIC TRANSFORMATION STATEMENTS for them to use
-- Extract exact language from their customer avatar work to create ready-to-use statements
-- Provide 2-3 COMPLETE REWRITTEN VERSIONS that they can copy and paste directly
-- Make each suggestion a finished statement, not a template with brackets
-
-Respond ONLY with valid JSON (no markdown formatting):
-- level: "needs-more-detail" | "good-start" | "excellent-depth"
-- levelDescription: Brief description of their response quality
-- feedback: Your main coaching response that ANALYZES their messaging strategy and provides specific improvements
-- followUpQuestions: Array of 3-4 questions (ONLY if no messaging strategy available)
-- interactivePrompts: Array of 2-3 COMPLETE IMPROVED VERSIONS of their response that they can use directly
-- examples: Array of 2-3 examples that reference their actual customer avatar and positioning
-- nextSteps: Array of 2-3 ready-to-implement improvements using their messaging strategy insights
-- encouragement: One encouraging sentence
-- conversationalResponse: A warm, conversational response as their coach (2-3 sentences)
-
-Focus on making this feel like a real coaching conversation, not generic advice.`;
+    const prompt = `<prompt>
+  <task>Help an entrepreneur develop their offer creation strategy as an expert business coach.</task>
+  
+  <inputs>
+    <question>${questionContext}</question>
+    ${messagingContext ? `<messaging_context>
+      <![CDATA[
+${messagingContext}
+      ]]>
+    </messaging_context>` : ''}
+    <question_analysis>
+      <complexity>${questionAnalysis.complexity}</complexity>
+      <question_type>${questionAnalysis.questionType}</question_type>
+      <key_elements>${questionAnalysis.keyElements.join(", ")}</key_elements>
+    </question_analysis>
+    <current_response>
+      <![CDATA[
+${userResponse}
+      ]]>
+    </current_response>
+  </inputs>
+  
+  <critical_perspective_guidance>
+    <rule>If this question is about customer emotions, fears, frustrations, or feelings, ALL coaching must focus on their IDEAL CUSTOMER'S emotions, NOT the entrepreneur's personal feelings</rule>
+    <rule>Questions about "their" fears means the customer's fears, not the entrepreneur's fears</rule>
+    <rule>Help them understand what their customers think, feel, and experience</rule>
+    <rule>Keep the focus on customer psychology, customer language, and customer emotional states</rule>
+    <rule>NEVER ask about the entrepreneur's personal feelings or experiences</rule>
+    <rule>ALL follow-up questions should be about understanding their CUSTOMERS better</rule>
+    <example>Examples: "What do your customers fear?" NOT "What do you fear?"</example>
+  </critical_perspective_guidance>
+  
+  <transformation_question_instructions>
+    <condition>If the question contains "main transformation" or "transformation you help people achieve", this asks what the OFFER provides</condition>
+    <format>"They go from [current state] to [desired outcome]" or "Transform from X to Y"</format>
+    <focus>Focus on emotional/identity shifts, not just tactical results</focus>
+    <example>Examples: "Transform from overwhelmed solopreneur to confident CEO" vs "I help with business strategy"</example>
+    <clarification>This is NOT asking for customer voice - it's asking what transformation the offer delivers</clarification>
+  </transformation_question_instructions>
+  
+  <offer_creation_coaching_approach>
+    <context>Since this is likely Step 2 (Create Your Offer), the user has already completed their messaging strategy in Step 1</context>
+    <instruction>ANALYZE their existing messaging strategy and provide SPECIFIC RECOMMENDATIONS based on what you find</instruction>
+    <instruction>DO NOT ask them to do more research - they've already done the work</instruction>
+    <instruction>Instead of asking questions, GIVE THEM specific suggestions based on their messaging strategy data</instruction>
+    <instruction>Provide 2-3 REVISED VERSIONS of their response that incorporate their customer insights</instruction>
+    <instruction>Focus on how their offer delivers the transformation their customers want</instruction>
+  </offer_creation_coaching_approach>
+  
+  <coaching_requirements>
+    <requirement number="1">ACKNOWLEDGE their current response specifically</requirement>
+    <requirement number="2">ANALYZE their existing messaging strategy and extract relevant insights</requirement>
+    <requirement number="3">PROVIDE 2-3 SPECIFIC IMPROVED VERSIONS of their response using their customer data</requirement>
+    <requirement number="4">Give 2-3 concrete examples that build on their actual customer avatar and positioning</requirement>
+    <requirement number="5">Suggest EXACT LANGUAGE from their messaging strategy to improve their answer</requirement>
+    <requirement number="6">Make the improvements actionable and ready to use immediately</requirement>
+  </coaching_requirements>
+  
+  <question_type_focus>
+    <type>${questionAnalysis.questionType}</type>
+    <focus_elements>${questionAnalysis.keyElements.join(" and ")}</focus_elements>
+  </question_type_focus>
+  
+  <important_note>
+    If the question contains words like "their fears", "their frustrations", "their feelings", "what they think" - ALL coaching must be about understanding their CUSTOMERS, not the entrepreneur personally.
+    Frame everything as leveraging existing customer research: "Based on your customer avatar work..." or "Your messaging strategy shows that your customers..."
+  </important_note>
+  
+  <tone>Be conversational and supportive, like you're sitting across from them in a coaching session. Make this feel personal and specific to their situation.</tone>
+  
+  <critical_if_messaging_available>
+    <instruction>DO NOT ask follow-up questions. Instead:</instruction>
+    <action>Analyze their messaging strategy data thoroughly</action>
+    <action>WRITE COMPLETE, SPECIFIC TRANSFORMATION STATEMENTS for them to use</action>
+    <action>Extract exact language from their customer avatar work to create ready-to-use statements</action>
+    <action>Provide 2-3 COMPLETE REWRITTEN VERSIONS that they can copy and paste directly</action>
+    <action>Make each suggestion a finished statement, not a template with brackets</action>
+  </critical_if_messaging_available>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
+{
+  "level": "needs-more-detail" | "good-start" | "excellent-depth",
+  "levelDescription": "Brief description of their response quality",
+  "feedback": "Your main coaching response that ANALYZES their messaging strategy and provides specific improvements",
+  "followUpQuestions": ["Array of 3-4 questions (ONLY if no messaging strategy available)"],
+  "interactivePrompts": ["Array of 2-3 COMPLETE IMPROVED VERSIONS of their response that they can use directly"],
+  "examples": ["Array of 2-3 examples that reference their actual customer avatar and positioning"],
+  "nextSteps": ["Array of 2-3 ready-to-implement improvements using their messaging strategy insights"],
+  "encouragement": "One encouraging sentence",
+  "conversationalResponse": "A warm, conversational response as their coach (2-3 sentences)"
+}
+      ]]>
+    </schema>
+    <rule>Respond ONLY with valid JSON (no markdown formatting)</rule>
+    <focus>Focus on making this feel like a real coaching conversation, not generic advice</focus>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -903,22 +1003,39 @@ export async function generateExpandedResponse(
   questionContext: string
 ): Promise<string> {
   try {
-    const prompt = `You are helping an entrepreneur expand their business response. They originally wrote: "${originalResponse}"
-
-Based on coaching insights, help them create an expanded version that incorporates:
-- More specific details and examples
-- Emotional depth and personal connection
-- Concrete evidence or stories
-- Clear value proposition
-
-Question context: "${questionContext}"
-
-Coaching suggestions to incorporate:
-${coachingInsights.followUpQuestions.map(q => `- ${q}`).join('\n')}
-
-Write an expanded version that feels natural and authentic to their voice, but with much more depth and specificity. Keep their original tone but enhance it with the missing elements identified in the coaching.
-
-Return only the expanded response text, not additional commentary.`;
+    const prompt = `<prompt>
+  <task>Help an entrepreneur expand their business response with more depth and specificity.</task>
+  
+  <inputs>
+    <original_response>
+      <![CDATA[
+${originalResponse}
+      ]]>
+    </original_response>
+    <question_context>${questionContext}</question_context>
+    <coaching_suggestions>
+      ${coachingInsights.followUpQuestions.map(q => `<suggestion>${q}</suggestion>`).join('\n      ')}
+    </coaching_suggestions>
+  </inputs>
+  
+  <expansion_elements>
+    <element>More specific details and examples</element>
+    <element>Emotional depth and personal connection</element>
+    <element>Concrete evidence or stories</element>
+    <element>Clear value proposition</element>
+  </expansion_elements>
+  
+  <writing_guidelines>
+    <guideline>Feel natural and authentic to their voice</guideline>
+    <guideline>Add much more depth and specificity</guideline>
+    <guideline>Keep their original tone</guideline>
+    <guideline>Enhance with the missing elements identified in the coaching</guideline>
+  </writing_guidelines>
+  
+  <output>
+    <instruction>Return only the expanded response text, not additional commentary</instruction>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

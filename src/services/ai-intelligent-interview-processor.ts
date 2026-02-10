@@ -136,52 +136,70 @@ export async function intelligentlyProcessInterviewTranscript(
 async function extractInterviewInsights(
   transcript: string
 ): Promise<{ insights: InterviewInsights; wasTruncated: boolean }> {
-  const prompt = `You are a customer research analyst. Extract ONLY what was explicitly stated in this interview transcript.
-
-CRITICAL RULES - READ CAREFULLY:
-1. ONLY extract information that is EXPLICITLY stated in the transcript
-2. DO NOT make up, infer, guess, or assume ANY information
-3. DO NOT add details that weren't mentioned (e.g., don't mention "dad's health" if it wasn't discussed)
-4. If information is NOT in the transcript, return "N/A" (not empty string, not inferred info)
-5. Keep responses CONCISE - 1-2 sentences maximum per field
-6. Convert first-person to third-person: "I" → "they", "my" → "their", "me" → "them"
-7. Use the customer's EXACT words when possible - just change pronouns
-8. If a question was asked but not answered, return "N/A"
-9. DO NOT combine information from different contexts - if it wasn't explicitly connected, don't connect it
-
-TRANSCRIPT:
+  const prompt = `<prompt>
+  <task>Extract ONLY what was explicitly stated in this interview transcript.</task>
+  
+  <critical_rules>
+    <rule number="1">ONLY extract information that is EXPLICITLY stated in the transcript</rule>
+    <rule number="2">DO NOT make up, infer, guess, or assume ANY information</rule>
+    <rule number="3">DO NOT add details that weren't mentioned (e.g., don't mention "dad's health" if it wasn't discussed)</rule>
+    <rule number="4">If information is NOT in the transcript, return "N/A" (not empty string, not inferred info)</rule>
+    <rule number="5">Keep responses CONCISE - 1-2 sentences maximum per field</rule>
+    <rule number="6">Convert first-person to third-person: "I" → "they", "my" → "their", "me" → "them"</rule>
+    <rule number="7">Use the customer's EXACT words when possible - just change pronouns</rule>
+    <rule number="8">If a question was asked but not answered, return "N/A"</rule>
+    <rule number="9">DO NOT combine information from different contexts - if it wasn't explicitly connected, don't connect it</rule>
+  </critical_rules>
+  
+  <transcript>
+    <![CDATA[
 ${transcript}
-
-Extract ONLY what was explicitly stated. For each field:
-- If the information IS in the transcript: Extract it (1-2 sentences max, converted to third-person)
-- If the information is NOT in the transcript: Return "N/A"
-
-1. frustrations - Their exact words about pain points (if stated, else "N/A")
-2. nighttime_worries - What keeps them awake (if stated, else "N/A")
-3. secret_fears - Their hidden fears (if stated, else "N/A")
-4. magic_solution - Their ideal outcomes (if stated, else "N/A")
-5. demographics - Age, income, role (if stated, else "N/A" - format: "46, earning about 75K" or "N/A")
-6. failed_solutions - What they tried that didn't work (if stated, else "N/A")
-7. blockers - Current obstacles (if stated, else "N/A")
-8. info_sources - Where they go for advice (if stated, else "N/A")
-9. decision_making - How they make decisions (if stated, else "N/A")
-10. investment_criteria - What they need to invest (if stated, else "N/A")
-11. success_measures - How they measure success (if stated, else "N/A")
-12. referral_outcomes - What makes them recommend (if stated, else "N/A")
-
-VALIDATION CHECK BEFORE RETURNING:
-- For each field, ask yourself: "Is this information EXPLICITLY stated in the transcript?"
-- If YES: Extract it (convert pronouns to third-person)
-- If NO: Return "N/A"
-- DO NOT infer connections (e.g., don't connect "dad" mentioned elsewhere to "nighttime worries" unless explicitly connected)
-- DO NOT add details from context clues - only use explicit statements
-
-Return ONLY valid JSON. Use "N/A" for fields where information was NOT explicitly stated:
+    ]]>
+  </transcript>
+  
+  <extraction_fields>
+    <field key="frustrations">Their exact words about pain points (if stated, else "N/A")</field>
+    <field key="nighttime_worries">What keeps them awake (if stated, else "N/A")</field>
+    <field key="secret_fears">Their hidden fears (if stated, else "N/A")</field>
+    <field key="magic_solution">Their ideal outcomes (if stated, else "N/A")</field>
+    <field key="demographics">Age, income, role (if stated, else "N/A" - format: "46, earning about 75K" or "N/A")</field>
+    <field key="failed_solutions">What they tried that didn't work (if stated, else "N/A")</field>
+    <field key="blockers">Current obstacles (if stated, else "N/A")</field>
+    <field key="info_sources">Where they go for advice (if stated, else "N/A")</field>
+    <field key="decision_making">How they make decisions (if stated, else "N/A")</field>
+    <field key="investment_criteria">What they need to invest (if stated, else "N/A")</field>
+    <field key="success_measures">How they measure success (if stated, else "N/A")</field>
+    <field key="referral_outcomes">What makes them recommend (if stated, else "N/A")</field>
+  </extraction_fields>
+  
+  <extraction_logic>
+    <logic>If the information IS in the transcript: Extract it (1-2 sentences max, converted to third-person)</logic>
+    <logic>If the information is NOT in the transcript: Return "N/A"</logic>
+  </extraction_logic>
+  
+  <validation_check>
+    <check>For each field, ask yourself: "Is this information EXPLICITLY stated in the transcript?"</check>
+    <check>If YES: Extract it (convert pronouns to third-person)</check>
+    <check>If NO: Return "N/A"</check>
+    <check>DO NOT infer connections (e.g., don't connect "dad" mentioned elsewhere to "nighttime worries" unless explicitly connected)</check>
+    <check>DO NOT add details from context clues - only use explicit statements</check>
+  </validation_check>
+  
+  <output_format>
+    <format>JSON</format>
+    <example>
+      <![CDATA[
 {
   "frustrations": "They feel spread too thin" OR "N/A",
   "nighttime_worries": "They worry about their family" OR "N/A",
   "demographics": "46, earning about 75K" OR "N/A"
-}`;
+}
+      ]]>
+    </example>
+    <rule>Use "N/A" for fields where information was NOT explicitly stated</rule>
+    <rule>Return ONLY valid JSON</rule>
+  </output_format>
+</prompt>`;
 
   try {
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
@@ -563,48 +581,66 @@ async function synthesizeInsightsToMessagingStrategyWithValidation(
     "[CONTAMINATION-SAFE] Synthesizing insights with data source validation..."
   );
 
-  const prompt = `You are a customer research specialist focused on helping business owners understand their customers better. Your task is to suggest ENHANCEMENTS to the business owner's existing messaging strategy based on client interview insights.
-
-CRITICAL CONTAMINATION PREVENTION RULES:
-- You are ENHANCING the business owner's messaging, NOT replacing it with client quotes
-- Use client insights to INSPIRE improvements to the owner's messaging approach
-- NEVER directly copy client demographics, quotes, or personal details into the messaging strategy  
-- Focus on PATTERNS and THEMES from client insights that can inform the owner's positioning
-- The final messaging must sound like it comes from the BUSINESS OWNER, not the client
-
-VALIDATED BUSINESS OWNER CONTEXT:
-Business: ${userContext.businessName || "Business owner"}
-Industry: ${userContext.industry || "Professional services"}
-User ID: ${userContext.userId}
-
-EXISTING OWNER MESSAGING TO ENHANCE:
-${Object.entries(existingMessagingStrategy)
-  .map(([key, value]) => `${key}: ${value}`)
-  .join("\n")}
-
-CLIENT RESEARCH INSIGHTS (For Pattern Analysis Only):
-${Object.entries(insights)
-  .filter(([_, value]) => value && value.trim())
-  .map(([key, value]) => `${key}: ${value}`)
-  .join("\n")}
-
-TASK: Based on the client research patterns, suggest specific enhancements to the business owner's messaging. Focus on:
-
-1. How the owner can better communicate their unique value based on what clients actually struggle with
-2. Language refinements that would resonate more with the target audience  
-3. Positioning adjustments that address the real concerns clients expressed
-4. Messaging gaps that could be filled based on client feedback patterns
-
-Return ONLY a JSON object with suggested messaging enhancements:
+  const prompt = `<prompt>
+  <task>Suggest ENHANCEMENTS to the business owner's existing messaging strategy based on client interview insights.</task>
+  
+  <inputs>
+    <validated_business_owner_context>
+      <business>${userContext.businessName || "Business owner"}</business>
+      <industry>${userContext.industry || "Professional services"}</industry>
+      <user_id>${userContext.userId}</user_id>
+    </validated_business_owner_context>
+    <existing_owner_messaging_to_enhance>
+      ${Object.entries(existingMessagingStrategy)
+        .map(([key, value]) => `<field key="${key}">
+        <![CDATA[
+${value}
+        ]]>
+      </field>`).join("\n      ")}
+    </existing_owner_messaging_to_enhance>
+    <client_research_insights>
+      <purpose>For Pattern Analysis Only</purpose>
+      ${Object.entries(insights)
+        .filter(([_, value]) => value && value.trim())
+        .map(([key, value]) => `<insight key="${key}">
+        <![CDATA[
+${value}
+        ]]>
+      </insight>`).join("\n      ")}
+    </client_research_insights>
+  </inputs>
+  
+  <critical_contamination_prevention_rules>
+    <rule>You are ENHANCING the business owner's messaging, NOT replacing it with client quotes</rule>
+    <rule>Use client insights to INSPIRE improvements to the owner's messaging approach</rule>
+    <rule>NEVER directly copy client demographics, quotes, or personal details into the messaging strategy</rule>
+    <rule>Focus on PATTERNS and THEMES from client insights that can inform the owner's positioning</rule>
+    <rule>The final messaging must sound like it comes from the BUSINESS OWNER, not the client</rule>
+  </critical_contamination_prevention_rules>
+  
+  <enhancement_focus>
+    <focus number="1">How the owner can better communicate their unique value based on what clients actually struggle with</focus>
+    <focus number="2">Language refinements that would resonate more with the target audience</focus>
+    <focus number="3">Positioning adjustments that address the real concerns clients expressed</focus>
+    <focus number="4">Messaging gaps that could be filled based on client feedback patterns</focus>
+  </enhancement_focus>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
 {
   "positioning_enhancement": "Enhanced positioning statement based on client needs patterns",
-  "value_proposition_refinement": "Refined value prop that addresses client pain points", 
+  "value_proposition_refinement": "Refined value prop that addresses client pain points",
   "brand_voice_adjustment": "Voice adjustments based on client communication preferences",
   "key_messages_improvement": "Key message improvements based on client priorities",
   "customer_avatar_refinement": "Avatar refinements based on actual client insights"
 }
-
-VALIDATION CHECK: Ensure your suggestions sound like they come from the business owner about their approach, NOT like client testimonials or client quotes.`;
+      ]]>
+    </schema>
+    <validation>Ensure your suggestions sound like they come from the business owner about their approach, NOT like client testimonials or client quotes</validation>
+  </output_format>
+</prompt>`;
 
   try {
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;

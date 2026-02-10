@@ -329,20 +329,35 @@ export async function improveSalesPageSection(
   
   try {
     const bestPractices = getBestPracticesForSection(sectionType);
-    const prompt = `Improve this ${sectionType} section using proven best practices:
-
+    const prompt = `<prompt>
+  <task>Improve a sales page section using proven best practices.</task>
+  
+  <inputs>
+    <section_type>${sectionType}</section_type>
+    <best_practices>
+      <![CDATA[
 ${bestPractices}
-
-CURRENT CONTENT:
-"${currentContent}"
-
-Rewrite this to be more compelling using the best practices above. Keep the core message but enhance with:
-- More emotional depth and connection
-- Specific transformation promises  
-- Customer language that resonates
-- Proven conversion techniques
-
-Return only the improved version, no explanation needed.`;
+      ]]>
+    </best_practices>
+    <current_content>
+      <![CDATA[
+${currentContent}
+      ]]>
+    </current_content>
+  </inputs>
+  
+  <improvement_requirements>
+    <requirement>More emotional depth and connection</requirement>
+    <requirement>Specific transformation promises</requirement>
+    <requirement>Customer language that resonates</requirement>
+    <requirement>Proven conversion techniques</requirement>
+  </improvement_requirements>
+  
+  <output>
+    <instruction>Keep the core message but enhance with the requirements above</instruction>
+    <instruction>Return only the improved version, no explanation needed</instruction>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

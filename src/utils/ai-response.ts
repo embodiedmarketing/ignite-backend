@@ -65,6 +65,41 @@ export function stripJsonMarkdown(raw: string): string {
   return s.slice(start);
 }
 
+/**
+ * Try to repair truncated email-sequence JSON when the AI response was cut off
+ * mid-string (e.g. "Unterminated string"). Closes the last "body" string at a
+ * sentence boundary and adds the missing closing brackets.
+ * Returns the repaired JSON string (markdown already stripped). If repair is
+ * not applicable, returns the same as stripJsonMarkdown(raw).
+ */
+export function repairTruncatedEmailSequenceJson(raw: string): string {
+  let s = stripJsonMarkdown(raw);
+  if (/\}\s*$/.test(s)) return s;
+
+  const bodyLabel = '"body": "';
+  const lastBody = s.lastIndexOf(bodyLabel);
+  if (lastBody === -1) return s;
+
+  const bodyStart = lastBody + bodyLabel.length;
+  const bodyContent = s.substring(bodyStart);
+
+  const searchLen = Math.min(bodyContent.length, 800);
+  const searchRegion = bodyContent.slice(-searchLen);
+  const sentenceEnd = Math.max(
+    searchRegion.lastIndexOf(". "),
+    searchRegion.lastIndexOf(".\n"),
+    searchRegion.lastIndexOf("? "),
+    searchRegion.lastIndexOf("! "),
+    searchRegion.lastIndexOf(".\n\n")
+  );
+  const cut = sentenceEnd === -1
+    ? bodyContent.length
+    : bodyContent.length - searchLen + sentenceEnd + (searchRegion[sentenceEnd + 1] === "\n" ? 1 : 2);
+  const truncatedBody = bodyContent.substring(0, cut).trim();
+
+  return s.substring(0, bodyStart) + truncatedBody + '"\n    }\n  ]\n}';
+}
+
 export interface ParseAndValidateOptions {
   /** Label for logs when validation fails */
   context?: string;

@@ -30,40 +30,58 @@ export async function generateCustomerLocations(customerAvatar: CustomerAvatar, 
   try {
     const existingLocationsList = existingLocations ? `\n\nEXISTING LOCATIONS TO AVOID (do not suggest any of these):\n${existingLocations}` : '';
     
-    const prompt = `Based on this detailed customer avatar, suggest 6-8 HIGHLY SPECIFIC locations where I can find and connect with these exact customers. I need real, actionable places - specific Facebook group names, LinkedIn communities, subreddit names, actual event types, etc.
-
-Customer Avatar Analysis:
-- Core Frustration: ${customerAvatar.frustration || 'Not provided'}
-- Hidden Fears: ${customerAvatar.fears || 'Not provided'}
-- Dream Outcome: ${customerAvatar.perfectDay || 'Not provided'}
-- Transformation Sought: ${customerAvatar.transformation || 'Not provided'}
-- Demographics: ${customerAvatar.age || 'Not specified'} years old, ${customerAvatar.income || 'income not specified'}, ${customerAvatar.jobTitle || 'role not specified'}
-- Failed Solutions: ${customerAvatar.previousSolutions || 'Not provided'}
-- Current Obstacles: ${customerAvatar.blockers || 'Not provided'}
-- Information Sources: ${customerAvatar.informationSources || 'Not provided'}
-- Communication Style: ${customerAvatar.language || 'Not provided'}
-- Decision Process: ${customerAvatar.decisionMaking || 'Not provided'}
-
-REQUIREMENTS:
-- Give me SPECIFIC Facebook group names (search exact names people would recognize)
-- Include SPECIFIC LinkedIn communities and hashtags they follow
-- Name ACTUAL Instagram influencers they follow (use @username format)
-- Suggest REAL subreddit communities (r/communityname)
-- Recommend SPECIFIC podcast hosts they listen to
-- Mention ACTUAL conference names and industry events
-- Include REAL online course platforms or communities they join
-
-For each suggestion, provide:
-1. Category (Facebook Groups, Instagram Influencers, LinkedIn Communities, etc.)
-2. Platform name
-3. Specific location/name with member count if available
-4. Reasoning why this customer avatar would be there
-5. Connection strategy for authentic relationship building
-6. Estimated audience size${existingLocationsList}
-
-Generate 6-8 SPECIFIC, REAL locations. Be creative and think about where this exact customer avatar would naturally spend time online and offline.
-
-Respond in JSON format:
+    const prompt = `<prompt>
+  <task>Suggest 6-8 highly specific locations where the user can find and connect with their exact customers.</task>
+  
+  <inputs>
+    <customer_avatar>
+      <core_frustration>${customerAvatar.frustration || 'Not provided'}</core_frustration>
+      <hidden_fears>${customerAvatar.fears || 'Not provided'}</hidden_fears>
+      <dream_outcome>${customerAvatar.perfectDay || 'Not provided'}</dream_outcome>
+      <transformation_sought>${customerAvatar.transformation || 'Not provided'}</transformation_sought>
+      <demographics>
+        <age>${customerAvatar.age || 'Not specified'}</age>
+        <income>${customerAvatar.income || 'income not specified'}</income>
+        <job_title>${customerAvatar.jobTitle || 'role not specified'}</job_title>
+      </demographics>
+      <failed_solutions>${customerAvatar.previousSolutions || 'Not provided'}</failed_solutions>
+      <current_obstacles>${customerAvatar.blockers || 'Not provided'}</current_obstacles>
+      <information_sources>${customerAvatar.informationSources || 'Not provided'}</information_sources>
+      <communication_style>${customerAvatar.language || 'Not provided'}</communication_style>
+      <decision_process>${customerAvatar.decisionMaking || 'Not provided'}</decision_process>
+    </customer_avatar>
+    ${existingLocations ? `<existing_locations>
+      <![CDATA[
+${existingLocations}
+      ]]>
+    </existing_locations>` : ''}
+  </inputs>
+  
+  <location_requirements>
+    <requirement>SPECIFIC Facebook group names (search exact names people would recognize)</requirement>
+    <requirement>SPECIFIC LinkedIn communities and hashtags they follow</requirement>
+    <requirement>ACTUAL Instagram influencers they follow (use @username format)</requirement>
+    <requirement>REAL subreddit communities (r/communityname)</requirement>
+    <requirement>SPECIFIC podcast hosts they listen to</requirement>
+    <requirement>ACTUAL conference names and industry events</requirement>
+    <requirement>REAL online course platforms or communities they join</requirement>
+  </location_requirements>
+  
+  <suggestion_format>
+    <field name="category">Category Name (Facebook Groups, Instagram Influencers, LinkedIn Communities, etc.)</field>
+    <field name="platform">Platform</field>
+    <field name="specificLocation">Exact name with details and member count if available</field>
+    <field name="reasoning">Why this customer avatar would be here</field>
+    <field name="connectionStrategy">How to authentically connect</field>
+    <field name="estimatedAudience">Size of community</field>
+  </suggestion_format>
+  
+  <output>
+    <count>6-8 SPECIFIC, REAL locations</count>
+    <requirement>Be creative and think about where this exact customer avatar would naturally spend time online and offline</requirement>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "suggestions": [
     {
@@ -77,7 +95,11 @@ Respond in JSON format:
   ],
   "summary": "Brief summary of the personalized approach",
   "nextSteps": ["actionable next steps"]
-}`;
+}
+      ]]>
+    </structure>
+  </output>
+</prompt>`;
 
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     

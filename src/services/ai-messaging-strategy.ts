@@ -8,6 +8,7 @@ import { getTextFromAnthropicContent, validateAiText } from "../utils/ai-respons
 import {
   SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS,
   SYSTEM_MESSAGING_STRATEGY,
+  SYSTEM_MESSAGING_STRATEGY_REGENERATION,
   MESSAGING_REGENERATION_PREFIX,
 } from "@backend/shared";
 
@@ -48,50 +49,35 @@ async function extractEmotionalInsights(
     return "No user responses available for emotional insight extraction.";
   }
 
-  const emotionalExtractionPrompt = `You are an expert at extracting emotional insights, authentic customer language, and powerful quotes from raw business questionnaire answers.
+  const emotionalExtractionPrompt = `<prompt>
+  <task>Extract emotional insights, authentic language, and quotes from business questionnaire answers.</task>
 
-Your task is to analyze the user's answers and extract:
-1. **Emotional Pain Points**: What frustrations, fears, and struggles do they describe (in their own words)?
-2. **Deep Desires**: What do they really want? What transformation are they seeking?
-3. **Customer Quotes**: Exact phrases or paraphrased language that feels authentic and human
-4. **Situational Context**: Specific scenarios, details, or circumstances they mention
-5. **Identity & Belief Shifts**: How do they see themselves? What beliefs are holding them back or driving them forward?
-6. **Emotional Costs**: How do their problems affect their confidence, relationships, daily life, or sense of self?
-7. **Emotional Rewards**: What would solving this problem mean to them emotionally?
-
-RAW USER ANSWERS:
+  <inputs>
+    <raw_answers><![CDATA[
 ${rawAnswers}
+    ]]></raw_answers>
+  </inputs>
 
-EXTRACT AND ORGANIZE EMOTIONAL INSIGHTS:
-Provide a structured summary of the emotional insights you found in the user's answers. Use their exact language wherever possible. Focus on emotions, authentic voice, specific details, and transformation.
+  <extraction_categories>
+    <category name="EMOTIONAL PAIN POINTS">Frustrations, fears, struggles in their own words</category>
+    <category name="DEEP DESIRES & TRANSFORMATION">What they want to achieve, become, or experience</category>
+    <category name="POWERFUL CUSTOMER QUOTES">Exact or paraphrased authentic quotes</category>
+    <category name="SITUATIONAL CONTEXT">Specific scenarios, details, circumstances mentioned</category>
+    <category name="IDENTITY & BELIEF SHIFTS">How they see themselves now vs. desired self</category>
+    <category name="EMOTIONAL COSTS">How problems affect confidence, relationships, daily life, identity</category>
+    <category name="EMOTIONAL REWARDS">What solving the problem means emotionally</category>
+  </extraction_categories>
 
-Format your response as follows:
-
-**EMOTIONAL PAIN POINTS:**
-- [List specific frustrations, fears, struggles in customer's language]
-
-**DEEP DESIRES & TRANSFORMATION:**
-- [List what they want to achieve, become, or experience]
-
-**POWERFUL CUSTOMER QUOTES:**
-- "[Exact or paraphrased quotes that feel authentic]"
-
-**SITUATIONAL CONTEXT:**
-- [Specific scenarios, circumstances, or details they mentioned]
-
-**IDENTITY & BELIEF SHIFTS:**
-- [How they see themselves now vs. how they want to see themselves]
-
-**EMOTIONAL COSTS:**
-- [How problems affect confidence, relationships, daily life, identity]
-
-**EMOTIONAL REWARDS:**
-- [What solving the problem means to them emotionally]`;
+  <output_format>
+    <structure>**EMOTIONAL PAIN POINTS:**\n- [List in customer's language]\n\n**DEEP DESIRES & TRANSFORMATION:**\n- [List outcomes]\n\n**POWERFUL CUSTOMER QUOTES:**\n- "[Quotes]"\n\n**SITUATIONAL CONTEXT:**\n- [Scenarios/details]\n\n**IDENTITY & BELIEF SHIFTS:**\n- [Current vs. desired self]\n\n**EMOTIONAL COSTS:**\n- [Impact on life]\n\n**EMOTIONAL REWARDS:**\n- [Emotional meaning]</structure>
+    <rules>Use exact language where possible. Focus on emotions, authentic voice, specific details, transformation.</rules>
+  </output_format>
+</prompt>`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000, // Structured emotional summary; 3k was overkill
+      max_tokens: 1200, // Reduced from 2000 - emotional extraction doesn't need that much
       temperature: 0.5,
       system: SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS,
       messages: [
@@ -192,12 +178,30 @@ export async function generateMessagingStrategy(
     const completeness = calculateCompleteness(cleanUserResponses);
 
     // STEP 1: Extract emotional insights and customer quotes from raw answers using AI
-    console.log(
-      "[EMOTIONAL INSIGHTS] Extracting emotional insights and customer quotes..."
-    );
-    const emotionalInsights = await extractEmotionalInsights(
-      cleanUserResponses
-    );
+    const responseCount = Object.keys(cleanUserResponses).length;
+    const totalResponseLength = Object.values(cleanUserResponses).join(' ').length;
+
+    let emotionalInsights = "";
+    if (responseCount >= 3 && totalResponseLength > 200) {
+      console.log(
+        "[EMOTIONAL INSIGHTS] Extracting emotional insights and customer quotes..."
+      );
+      const startTime = Date.now();
+      emotionalInsights = await extractEmotionalInsights(
+        cleanUserResponses
+      );
+      const extractionTime = Date.now() - startTime;
+      console.log(`[EMOTIONAL INSIGHTS] Extraction completed in ${extractionTime}ms`);
+    } else {
+      console.log(
+        `[EMOTIONAL INSIGHTS] Insufficient data for extraction (responses: ${responseCount}, length: ${totalResponseLength}) - using fallback`
+      );
+      emotionalInsights = Object.entries(cleanUserResponses)
+        .filter(([_, value]) => value?.trim())
+        .slice(0, 5)
+        .map(([key, value]) => `${key}: ${value.substring(0, 200)}`)
+        .join('\n\n');
+    }
 
     // STEP 2: Extract key insights from ONLY user business data
     const insights = extractKeyInsightsFromUserData(
@@ -239,17 +243,20 @@ export async function generateMessagingStrategy(
       );
     }
 
-    const systemMessage = SYSTEM_MESSAGING_STRATEGY;
+    // REGENERATION MODE: Use separate system prompt optimized for enhancement
+    const isRegeneration = regenerationOptions?.previousStrategy?.trim();
+    const systemMessage = isRegeneration 
+      ? SYSTEM_MESSAGING_STRATEGY_REGENERATION 
+      : SYSTEM_MESSAGING_STRATEGY;
 
     // Add unique variation to ensure different outputs each time
     const uniquePromptId = Date.now();
     const variationNote = `[Generation Request #${uniquePromptId} - ${new Date().toISOString()}]`;
 
-    // REGENERATION MODE: Short instructions when enhancing a previous strategy
-    const isRegeneration = regenerationOptions?.previousStrategy?.trim();
+    // REGENERATION MODE: Build focused regeneration context
     let regenerationContext = "";
     if (isRegeneration && regenerationOptions) {
-      console.log("[REGENERATION MODE] Previous strategy detected - generating improved version");
+      console.log("[REGENERATION MODE] Using regeneration-optimized system prompt");
       const prevStrategy = regenerationOptions.previousStrategy || "";
       const feedbackNotes = regenerationOptions.feedbackNotes || "";
       const focusAreas = regenerationOptions.focusAreas || [];
@@ -265,89 +272,76 @@ ${focusAreas.length > 0 ? `\n**FOCUS AREAS:** ${focusAreas.join(", ")}` : ""}
 `;
     }
 
-    // Instruction order: (1) what to do first, (2) data, (3) output structure. No duplicate rules at the end.
-    const beforeYouStart = `BEFORE YOU START:
-1. Use ONLY audience, problems, outcomes, and voice from the data below — nothing from assumptions.
-2. Do not use generic entrepreneur/coach language.
-3. Then fill the 11 sections that follow, keeping the exact headings.`;
-
-    const userMessage = `${variationNote}
-${regenerationContext}
-${beforeYouStart}
-
-===== USER BUSINESS CONTEXT (From Workbook Responses) =====
-${formatUserInsightsForPrompt(insights)}
-${
-  hasInterviewInsights
-    ? `\n===== CLIENT INTERVIEW INSIGHTS (Structured Data) =====
-
-${clientInterviewContext}
-
-**INTEGRATE INTERVIEW DATA:** Use the JSON above in the matching strategy sections: Core Promise (outcomes), Ideal Customer (quotes + sceneBeats), Problems/Fears (quotes + sceneBeats), Desires (outcomes + quotes), Belief Shifts (quotes). Include direct quotes and specific numbers where applicable.
-
-`
-    : ""
-}
-
-# MESSAGING STRATEGY
-
----
-
-## 1. CORE PROMISE
-1-2 sentences: "We help [ideal customer] get [tangible result] in [timeframe] using [their framework/differentiator]." Include specific timeframe and their methodology name.
-
----
-
-## 2. IDEAL CUSTOMER PROFILE (ICP SNAPSHOT)
-Start with: "We serve [specific person/situation]." and "They're ready for [transformation], but [blocker]." Then: Who they are; What they're struggling with (specific, with customer language); What they want most.
-
-## 3. BRAND VOICE GUIDELINES
-Core personality, What We Believe (values/stance), How We Sound (DO/DON'T from their answers), Signature Phrases, Billboard message. All from Brand Voice answers.
-
-## 4. PROBLEMS, FRUSTRATIONS, FEARS (RANKED)
-At least 3 problems: specific language, emotional cost, customer quotes or internal thoughts. Use their exact problems.
-
-## 5. DESIRES & SUCCESS OUTCOMES
-3-5 outcomes. Each: Tangible outcome (numbers/timeframes), Emotional reward, Why it matters. From their stated transformation.
-
-## 6. BELIEF SHIFTS
-3-5 shifts. Each: Old Belief, What this looked like, New Belief, What this looks like now. Specific and relatable.
-
-## 7. DIFFERENTIATORS
-3-5 unique points tied to frustrations. For each: differentiator + Why this matters to the customer (personal/emotional/practical).
-
-## 8. MESSAGING PILLARS (3 CORE THEMES)
-Three pillars. Each: Pillar name (one-sentence thesis in their voice), 3 talking points. Core themes for all content.
-
-## 9. HOOKS & ANGLES
-5-10 short lines in the owner's voice for copy. Address frustrations/desires; sound like them, not generic marketing.
-
-## 10. OFFER SNAPSHOT
-Conversational tone. How it works, what changes; include their framework name. End with one vivid after-success moment (specific, tangible).
-
-## 11. OBJECTION-HANDLING FAQ SEEDS
-5-7 Q&A pairs. Reframe common doubts in the owner's authentic voice.`;
-
     const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = new Date().toISOString();
-    const finalUserMessage = `${userMessage}
 
----
-Generate a fresh, original strategy for this request (ID: ${generationId}). Do not reuse previous phrasing or structure.`;
+    // Optimized concise XML prompt
+    const userMessage = `<prompt>
+  <task>Generate messaging strategy from workbook responses${hasInterviewInsights ? ' + interview insights' : ''}${isRegeneration ? ' (regeneration mode)' : ''}.</task>
+
+  ${isRegeneration && regenerationOptions ? `
+  <regeneration>
+    <previous><![CDATA[${regenerationOptions.previousStrategy || ''}]]></previous>
+    ${regenerationOptions.feedbackNotes ? `<feedback><![CDATA[${regenerationOptions.feedbackNotes}]]></feedback>` : ''}
+    ${regenerationOptions.focusAreas?.length ? `<focus>${regenerationOptions.focusAreas.join(', ')}</focus>` : ''}
+  </regeneration>
+  ` : ''}
+
+  <inputs>
+    <user_data><![CDATA[${formatUserInsightsForPrompt(insights)}]]></user_data>
+    ${hasInterviewInsights ? `<interview_data format="json"><![CDATA[${clientInterviewContext}]]></interview_data>
+    <interview_usage>Core Promise: outcomes | Ideal Customer: quotes+scenes | Problems/Fears: quotes+scenes | Desires: outcomes+quotes | Belief Shifts: quotes</interview_usage>` : ''}
+  </inputs>
+
+  <sections>
+    <s n="1" name="CORE PROMISE">1-2 sentences: "We help [customer] get [result] in [timeframe] using [framework]." Include timeframe + methodology name.</s>
+    <s n="2" name="IDEAL CUSTOMER PROFILE">Start: "We serve [person/situation]." + "They're ready for [transformation], but [blocker]." Then: who they are, struggles (customer language), what they want.</s>
+    <s n="3" name="BRAND VOICE GUIDELINES">Core personality, What We Believe, How We Sound (DO/DON'T), Signature Phrases, Billboard message. All from Brand Voice answers.</s>
+    <s n="4" name="PROBLEMS, FRUSTRATIONS, FEARS">Min 3 problems: specific language, emotional cost, customer quotes/internal thoughts. Use exact problems.</s>
+    <s n="5" name="DESIRES & SUCCESS OUTCOMES">3-5 outcomes. Each: tangible (numbers/timeframes), emotional reward, why it matters. From stated transformation.</s>
+    <s n="6" name="BELIEF SHIFTS">3-5 shifts. Each: Old Belief, what it looked like, New Belief, what it looks like now. Specific & relatable.</s>
+    <s n="7" name="DIFFERENTIATORS">3-5 points tied to frustrations. Each: differentiator + why it matters (personal/emotional/practical).</s>
+    <s n="8" name="MESSAGING PILLARS">3 pillars. Each: name (one-sentence thesis in their voice) + 3 talking points. Core themes.</s>
+    <s n="9" name="HOOKS & ANGLES">5-10 short lines in owner's voice. Address frustrations/desires. Sound like them, not generic marketing.</s>
+    <s n="10" name="OFFER SNAPSHOT">Conversational. How it works, what changes, include framework name. End with vivid after-success moment.</s>
+    <s n="11" name="OBJECTION-HANDLING FAQ SEEDS">5-7 Q&A pairs. Reframe doubts in owner's authentic voice.</s>
+  </sections>
+
+  <rules>
+    <r>Use ONLY data provided — no assumptions</r>
+    <r>No generic entrepreneur/coach language</r>
+    <r>Use exact section headings: ## 1. CORE PROMISE, ## 2. IDEAL CUSTOMER PROFILE, etc.</r>
+    <r>Use customer's exact language/quotes</r>
+    <r>Authentic voice — sound like owner, not marketing</r>
+    <r>Include numbers, timeframes, tangible outcomes</r>
+    <r>Trusted advisor tone, not promotional</r>
+  </rules>
+
+  <output>
+    <format>Markdown</format>
+    <structure># MESSAGING STRATEGY\n\n---\n\n## 1. CORE PROMISE\n[Content]\n\n---\n\n## 2. IDEAL CUSTOMER PROFILE (ICP SNAPSHOT)\n[Content]\n\n## 3. BRAND VOICE GUIDELINES\n[Content]\n\n## 4. PROBLEMS, FRUSTRATIONS, FEARS (RANKED)\n[Content]\n\n## 5. DESIRES & SUCCESS OUTCOMES\n[Content]\n\n## 6. BELIEF SHIFTS\n[Content]\n\n## 7. DIFFERENTIATORS\n[Content]\n\n## 8. MESSAGING PILLARS (3 CORE THEMES)\n[Content]\n\n## 9. HOOKS & ANGLES\n[Content]\n\n## 10. OFFER SNAPSHOT\n[Content]\n\n## 11. OBJECTION-HANDLING FAQ SEEDS\n[Content]</structure>
+    <requirements>Complete document, all 11 sections, no meta-commentary, fresh original content</requirements>
+  </output>
+</prompt>`;
 
     console.log(
       `[MESSAGING STRATEGY] Starting generation (ID: ${generationId}) at ${timestamp}`
     );
+    
+    const strategyStartTime = Date.now();
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000, // 11-section strategy; 5k was excess headroom
-      temperature: 0.8,
+      max_tokens: 3500, // Reduced from 4000 - still sufficient for 11 sections but faster
+      temperature: 0.7, // Reduced from 0.8 - slightly faster, still creative
       system: systemMessage,
       messages: [
-        { role: "user", content: [ { type: "text", text: finalUserMessage } ]  },
+        { role: "user", content: userMessage },
       ],
     });
+
+    const strategyGenerationTime = Date.now() - strategyStartTime;
+    console.log(`[MESSAGING STRATEGY] Strategy generation completed in ${strategyGenerationTime}ms`);
 
     const rawStrategy = validateAiText(getTextFromAnthropicContent(response.content), {
       context: "messaging strategy",
@@ -583,90 +577,6 @@ function calculateCompleteness(responses: WorkbookResponses): number {
   return Math.min(100, (completedSections / totalPossibleSections) * 100);
 }
 
-function extractKeyInsights(
-  responses: WorkbookResponses,
-  interviewNotes?: Record<string, string>
-) {
-  return {
-    positioning: Object.entries(responses)
-      .filter(([key]) => key.includes("positioning"))
-      .map(([key, value]) => ({ key, value })),
-    customerAvatar: Object.entries(responses)
-      .filter(([key]) => key.includes("customer-avatar"))
-      .map(([key, value]) => ({ key, value })),
-    brandVoice: Object.entries(responses)
-      .filter(([key]) => key.includes("brand-voice"))
-      .map(([key, value]) => ({ key, value })),
-    offer: Object.entries(responses)
-      .filter(([key]) => key.includes("offer") || key.includes("problem"))
-      .map(([key, value]) => ({ key, value })),
-    other: Object.entries(responses)
-      .filter(
-        ([key]) =>
-          !key.includes("positioning") &&
-          !key.includes("customer-avatar") &&
-          !key.includes("brand-voice") &&
-          !key.includes("offer") &&
-          !key.includes("problem")
-      )
-      .map(([key, value]) => ({ key, value })),
-    interviews: interviewNotes || {},
-  };
-}
-
-function formatInsightsForPrompt(insights: any): string {
-  let formatted = "";
-
-  if (insights.positioning.length > 0) {
-    formatted += "POSITIONING INSIGHTS:\n";
-    insights.positioning.forEach((item: any) => {
-      if (item.value?.trim()) {
-        formatted += `- ${item.value}\n`;
-      }
-    });
-    formatted += "\n";
-  }
-
-  if (insights.customerAvatar.length > 0) {
-    formatted += "CUSTOMER AVATAR INSIGHTS:\n";
-    insights.customerAvatar.forEach((item: any) => {
-      if (item.value?.trim()) {
-        formatted += `- ${item.value}\n`;
-      }
-    });
-    formatted += "\n";
-  }
-
-  if (insights.brandVoice.length > 0) {
-    formatted += "BRAND VOICE INSIGHTS:\n";
-    insights.brandVoice.forEach((item: any) => {
-      if (item.value?.trim()) {
-        formatted += `- ${item.value}\n`;
-      }
-    });
-    formatted += "\n";
-  }
-
-  if (insights.offer.length > 0) {
-    formatted += "OFFER & PROBLEM INSIGHTS:\n";
-    insights.offer.forEach((item: any) => {
-      if (item.value?.trim()) {
-        formatted += `- ${item.value}\n`;
-      }
-    });
-    formatted += "\n";
-  }
-
-  return formatted;
-}
-
-function formatInterviewNotes(notes: Record<string, string>): string {
-  return Object.entries(notes)
-    .filter(([_, value]) => value?.trim())
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
-}
-
 function generateRecommendations(
   completeness: number,
   missingInfo: string[]
@@ -807,46 +717,6 @@ function formatUserInsightsForPrompt(insights: any): string {
   return formatted;
 }
 
-function formatClientContextForReference(
-  clientContext: ClientContextData
-): string {
-  let formatted =
-    "CLIENT RESEARCH PATTERNS (For Strategy Inspiration Only):\n\n";
-
-  const clientData = Object.values(clientContext.interviewData);
-  if (clientData.length === 0) {
-    return "No client interview data available.\n";
-  }
-
-  clientData.forEach((dataPoint: any) => {
-    if (dataPoint.content?.trim()) {
-      formatted += `- Client Pattern: ${dataPoint.content.substring(0, 100)}${
-        dataPoint.content.length > 100 ? "..." : ""
-      }\n`;
-    }
-  });
-
-  formatted +=
-    "\n⚠️ IMPORTANT: These are client examples for context only. DO NOT include client quotes or demographics in the business messaging strategy.\n";
-
-  return formatted;
-}
-
-interface InterviewInsightsBySection {
-  quotes: string[];
-  sceneBeats: string[];
-  outcomes: string[];
-}
-
-interface FormattedInterviewInsights {
-  contextBlock: string;
-  metrics: {
-    totalInsights: number;
-    quoteCount: number;
-    categoriesWithData: number;
-    sampleInsight: string;
-  };
-}
 
 function extractInterviewDataStructure(
   interviewNotes: Record<string, string>
@@ -1117,6 +987,7 @@ function calculateAlignmentScore(
   
   const driftScore = Math.max(0, 10 - driftPenalty);
   totalPoints += driftScore;
+
   details.push(`Audience drift check: ${driftPenalty} drift penalty (${Math.round(driftScore)} pts)`);
   
   if (driftScore < 7) {

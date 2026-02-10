@@ -40,54 +40,108 @@ export async function generateTripwireFunnelPages(
   productName: string = "your offer"
 ): Promise<TripwireFunnelPages> {
   
-  const prompt = `You are an expert copywriter creating a complete Tripwire Funnel for a customer.
-
-You will receive a Tripwire Offer Outline (structured summary) and must generate THREE separate funnel pages with compelling, conversion-focused copy.
-
-TRIPWIRE OFFER OUTLINE:
+  const prompt = `<prompt>
+  <task>Create a complete Tripwire Funnel with THREE separate funnel pages using the Tripwire Offer Outline.</task>
+  
+  <inputs>
+    <tripwire_offer_outline>
+      <![CDATA[
 ${outlineText}
-
-YOUR TASK:
-Generate a complete JSON object with three funnel pages. Follow the EXACT MAPPING below to extract information from the outline.
-
-DETAILED MAPPING GUIDE (Outline → Funnel Pages):
-
-1. OFFER SNAPSHOT:
-   - Offer Name/Product → use in: Tripwire Page (productName), Checkout Page (offerRecap), Confirmation (deliveryInstructions)
-   - Big Promise (One-Sentence Result) → use in: Tripwire Page (quickTransformation), Checkout headline
-   - Quick Win/Transformation → use in: Tripwire Page (quickTransformation), Checkout (whatsIncluded)
-
-2. CORE PROBLEM & URGENCY:
-   - Problem It Solves → use in: Tripwire Page (transition - bridge copy showing pain it fixes)
-   - Why This Matters Now → use in: Tripwire Page (urgency/scarcity)
-   - Why Different from Free Alternatives → use in: Tripwire Page (benefits)
-
-3. TARGET AUDIENCE & PAIN POINTS:
-   - Key Frustrations → use in: Tripwire Page (transition - problem intro)
-   - 'I've Tried Everything' Problem → use in: Tripwire Page (quickTransformation)
-   - Objections + How Overcome → use in: Checkout (trustElements)
-
-4. FEATURES & BENEFITS:
-   - What's Included (Features) → use in: Tripwire Page (benefits - bulleted), Checkout (whatsIncluded)
-   - Direct Benefits → use in: Tripwire Page (benefits - clear outcomes)
-   - Biggest Emotional Benefit → use in: Tripwire headline, Confirmation (encouragement)
-
-5. PROOF & AUTHORITY:
-   - Expertise/Credentials/Story → use in: Tripwire Page (socialProof)
-   - Testimonials/Case Studies → use in: Tripwire Page (socialProof)
-   - Personal Story → use in: Tripwire Page (transition - story-driven)
-
-6. STRUCTURE & DELIVERY:
-   - Format & Delivery Method → use in: Tripwire (productName description), Checkout (offerRecap), Confirmation (deliveryInstructions)
-   - Time Commitment → use in: Tripwire benefits, Checkout reassurance
-   - Tools/Platforms Required → use in: Confirmation (deliveryInstructions - access info)
-
-7. PRICING & POSITIONING:
-   - Tripwire Price → use in: Tripwire Page (price "Get it for $X today"), Checkout ("Today's Price: $X")
-   - Regular Price Comparison → use in: Tripwire Page (price anchor "Normally $X")
-   - Value Positioning → use in: Tripwire (price/value framing), Checkout (offerRecap)
-
-OUTPUT FORMAT (strict JSON - no markdown, no explanations):
+      ]]>
+    </tripwire_offer_outline>
+  </inputs>
+  
+  <mapping_guide>
+    <mapping category="Offer Snapshot">
+      <source>Offer Name/Product</source>
+      <target>Tripwire Page (productName), Checkout Page (offerRecap), Confirmation (deliveryInstructions)</target>
+    </mapping>
+    <mapping category="Offer Snapshot">
+      <source>Big Promise (One-Sentence Result)</source>
+      <target>Tripwire Page (quickTransformation), Checkout headline</target>
+    </mapping>
+    <mapping category="Offer Snapshot">
+      <source>Quick Win/Transformation</source>
+      <target>Tripwire Page (quickTransformation), Checkout (whatsIncluded)</target>
+    </mapping>
+    <mapping category="Core Problem & Urgency">
+      <source>Problem It Solves</source>
+      <target>Tripwire Page (transition - bridge copy showing pain it fixes)</target>
+    </mapping>
+    <mapping category="Core Problem & Urgency">
+      <source>Why This Matters Now</source>
+      <target>Tripwire Page (urgency/scarcity)</target>
+    </mapping>
+    <mapping category="Core Problem & Urgency">
+      <source>Why Different from Free Alternatives</source>
+      <target>Tripwire Page (benefits)</target>
+    </mapping>
+    <mapping category="Target Audience & Pain Points">
+      <source>Key Frustrations</source>
+      <target>Tripwire Page (transition - problem intro)</target>
+    </mapping>
+    <mapping category="Target Audience & Pain Points">
+      <source>I've Tried Everything Problem</source>
+      <target>Tripwire Page (quickTransformation)</target>
+    </mapping>
+    <mapping category="Target Audience & Pain Points">
+      <source>Objections + How Overcome</source>
+      <target>Checkout (trustElements)</target>
+    </mapping>
+    <mapping category="Features & Benefits">
+      <source>What's Included (Features)</source>
+      <target>Tripwire Page (benefits - bulleted), Checkout (whatsIncluded)</target>
+    </mapping>
+    <mapping category="Features & Benefits">
+      <source>Direct Benefits</source>
+      <target>Tripwire Page (benefits - clear outcomes)</target>
+    </mapping>
+    <mapping category="Features & Benefits">
+      <source>Biggest Emotional Benefit</source>
+      <target>Tripwire headline, Confirmation (encouragement)</target>
+    </mapping>
+    <mapping category="Proof & Authority">
+      <source>Expertise/Credentials/Story</source>
+      <target>Tripwire Page (socialProof)</target>
+    </mapping>
+    <mapping category="Proof & Authority">
+      <source>Testimonials/Case Studies</source>
+      <target>Tripwire Page (socialProof)</target>
+    </mapping>
+    <mapping category="Proof & Authority">
+      <source>Personal Story</source>
+      <target>Tripwire Page (transition - story-driven)</target>
+    </mapping>
+    <mapping category="Structure & Delivery">
+      <source>Format & Delivery Method</source>
+      <target>Tripwire (productName description), Checkout (offerRecap), Confirmation (deliveryInstructions)</target>
+    </mapping>
+    <mapping category="Structure & Delivery">
+      <source>Time Commitment</source>
+      <target>Tripwire benefits, Checkout reassurance</target>
+    </mapping>
+    <mapping category="Structure & Delivery">
+      <source>Tools/Platforms Required</source>
+      <target>Confirmation (deliveryInstructions - access info)</target>
+    </mapping>
+    <mapping category="Pricing & Positioning">
+      <source>Tripwire Price</source>
+      <target>Tripwire Page (price "Get it for $X today"), Checkout ("Today's Price: $X")</target>
+    </mapping>
+    <mapping category="Pricing & Positioning">
+      <source>Regular Price Comparison</source>
+      <target>Tripwire Page (price anchor "Normally $X")</target>
+    </mapping>
+    <mapping category="Pricing & Positioning">
+      <source>Value Positioning</source>
+      <target>Tripwire (price/value framing), Checkout (offerRecap)</target>
+    </mapping>
+  </mapping_guide>
+  
+  <output_format>
+    <format>JSON</format>
+    <structure>
+      <![CDATA[
 {
   "thankyou": {
     "headline": "Your [lead magnet] is on its way! (Use biggest emotional benefit)",
@@ -133,24 +187,32 @@ OUTPUT FORMAT (strict JSON - no markdown, no explanations):
     "supportInfo": "Need help? [Support contact if available in outline]"
   }
 }
-
-REQUIREMENTS:
-- FOLLOW THE MAPPING EXACTLY: Extract information from the specified outline sections
-- Use persuasive, benefit-driven language
-- Keep copy concise and action-oriented  
-- Extract ALL specific details from the outline (prices, features, delivery, etc.)
-- Benefits must be tangible and specific from "What's Included" section
-- Price must include both Tripwire Price and Regular Price if available
-- Transition/Bridge Copy should combine: Problem + Key Frustration + Story
-- Social proof is optional - omit if no testimonials/credentials in outline
-- Trust Elements should address "Objections + How Overcome" from outline
-- Delivery Instructions must specify Format & Delivery Method + Tools/Platforms
-- Next Steps should be specific to the delivery format (not generic)
-- Maintain consistent voice across all pages
-- Use second-person ("you", "your") throughout
-- Extract value positioning for price framing
-
-Return ONLY the JSON object, nothing else.`;
+      ]]>
+    </structure>
+  </output_format>
+  
+  <requirements>
+    <requirement>FOLLOW THE MAPPING EXACTLY: Extract information from the specified outline sections</requirement>
+    <requirement>Use persuasive, benefit-driven language</requirement>
+    <requirement>Keep copy concise and action-oriented</requirement>
+    <requirement>Extract ALL specific details from the outline (prices, features, delivery, etc.)</requirement>
+    <requirement>Benefits must be tangible and specific from "What's Included" section</requirement>
+    <requirement>Price must include both Tripwire Price and Regular Price if available</requirement>
+    <requirement>Transition/Bridge Copy should combine: Problem + Key Frustration + Story</requirement>
+    <requirement>Social proof is optional - omit if no testimonials/credentials in outline</requirement>
+    <requirement>Trust Elements should address "Objections + How Overcome" from outline</requirement>
+    <requirement>Delivery Instructions must specify Format & Delivery Method + Tools/Platforms</requirement>
+    <requirement>Next Steps should be specific to the delivery format (not generic)</requirement>
+    <requirement>Maintain consistent voice across all pages</requirement>
+    <requirement>Use second-person ("you", "your") throughout</requirement>
+    <requirement>Extract value positioning for price framing</requirement>
+  </requirements>
+  
+  <output>
+    <instruction>Return ONLY the JSON object, nothing else</instruction>
+    <instruction>No markdown, no explanations</instruction>
+  </output>
+</prompt>`;
 
   try {
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;

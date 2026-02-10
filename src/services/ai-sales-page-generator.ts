@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getTextFromAnthropicContent } from "../utils/ai-response";
+import { getTextFromAnthropicContent, validateAiText } from "../utils/ai-response";
+import { SYSTEM_SALES_PAGE_COPYWRITER, SALES_PAGE_STRUCTURE } from "../shared/prompts";
+import { salesPageOutputSchema } from "../utils/ai-response-schemas";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -58,11 +60,6 @@ export async function generateSalesPage(salesPageData: SalesPageData): Promise<S
 }
 
 async function generateEmotionalSalesPage(messaging: any, offer: any, offerType: string): Promise<string> {
-  // Add timeout and error handling for Claude (Anthropic) API calls
-  const timeout = 15000; // 15 second timeout
-  
-  const systemPrompt = `You are an expert sales copywriter who writes compelling, conversion-focused sales pages. You write ONLY actual sales copy using simple text formatting with proper line breaks. You NEVER output structure templates, guidelines, or instructions.`;
-  
   // Check if messaging strategy contains interview-enhanced fields
   const hasInterviewData = messaging && typeof messaging === 'object' && (
     messaging.frustrations || messaging.nighttime_worries || messaging.secret_fears ||
@@ -70,180 +67,106 @@ async function generateEmotionalSalesPage(messaging: any, offer: any, offerType:
     messaging.decision_making || messaging.investment_criteria || messaging.success_measures
   );
 
-  const userPrompt = `Write a complete sales page for this user's offer using their messaging strategy and offer outline data.
+  // Optimized prompt: concise structure reference + content instructions
+  const interviewInstructions = hasInterviewData ? `
+⭐ INTERVIEW DATA DETECTED: Use customer's EXACT WORDS from frustrations, nighttime_worries, secret_fears, magic_solution.
+- Show moments, not descriptions: "They've been posting for months — still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'"
+- Include specific numbers, timeframes, sensory details
+- Make it visceral and raw, like talking to a friend
+` : '';
 
-USER'S MESSAGING STRATEGY:
+    const userPrompt = `<prompt>
+  <task>Write a complete sales page using the provided messaging strategy and offer outline data.</task>
+  
+  <inputs>
+    <messaging_strategy>
+      <![CDATA[
 ${JSON.stringify(messaging, null, 2)}
-
-${hasInterviewData ? `\n⭐ CRITICAL: This messaging strategy contains INTERVIEW-ENHANCED insights from customer interview transcripts. 
-These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.
-
-YOU MUST:
-1. Use CINEMATIC, MOMENT-BY-MOMENT language from these interview insights (show the moment, don't just describe)
-2. Include customer's exact words, internal dialogue, and emotional progression
-3. Add SPECIFIC, TANGIBLE outcomes with numbers, timeframes, and observable details
-4. Show sensory details and specific moments from their actual experience
-5. Make it VISCERAL and RAW - authentic like talking to a friend
-
-EXAMPLE TRANSFORMATION:
-❌ Generic: "They feel stuck and overwhelmed"
-✅ Interview-enhanced: "They've been showing up online for months — posting, tweaking, trying every hack — and still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?' That quiet doubt has turned into exhaustion and second-guessing every move."
-
-PRIORITIZE these interview-enhanced fields over generic messaging. Use the customer's exact language and emotional depth.\n` : ''}
-
-USER'S OFFER OUTLINE:
+      ]]>
+    </messaging_strategy>
+    
+    <offer_outline>
+      <![CDATA[
 ${JSON.stringify(offer, null, 2)}
+      ]]>
+    </offer_outline>
+    
+    ${hasInterviewData ? `<interview_instructions>
+      <![CDATA[
+${interviewInstructions}
+      ]]>
+    </interview_instructions>` : ''}
+  </inputs>
+  
+  <structure>
+    <section number="1" name="Current Desires + Struggles">
+      Outcome-driven headline, expand desired outcome, current feelings/problem, why problem is worse, bridge to solution (~300-400 words)
+    </section>
+    <section number="2" name="The Solution">
+      Introduce offer, 3-5 core pillars (what they learn + why it matters + what changes) (~300-400 words)
+    </section>
+    <section number="3" name="Authority">
+      Storytelling testimonials, about creator (personal truth + credentials) (~300-400 words)
+    </section>
+    <section number="4" name="Offer Specifics">
+      What's included (features→outcomes), bonuses, pricing/CTA, guarantee (~300-400 words)
+    </section>
+    <section number="5" name="Breakthrough Resistance">
+      Address objections, breakthrough visualization, review everything, FAQ (4-6), final CTA (~300-400 words)
+    </section>
+  </structure>
+  
+  <writing_rules>
+    <rule>Use &lt;strong&gt; for headings, plain text with line breaks</rule>
+    <rule>Lead with emotion, close with logic</rule>
+    <rule>Turn features into outcomes ("6 calls → clarity and accountability")</rule>
+    <rule>Use "so that..." phrasing for benefits</rule>
+    <rule>Write actual copy, not templates</rule>
+  </writing_rules>
+  
+  <output>
+    <format>Plain text sales page copy</format>
+    <instruction>Output ONLY the sales page copy, no additional commentary</instruction>
+  </output>
+</prompt>`;
 
-WRITE A SALES PAGE WITH THESE 5 SECTIONS using this EXACT TEXT FORMAT (write actual compelling copy, not templates).
-
-PRIORITY: Cover each required element below clearly. Keep each section tight (~300–400 words per section) so the full page is scannable and all 5 sections fit without bloat.
-
-<strong>📄 STRUCTURE & WRITING RULES</strong>
-
-<strong>SECTION 1: CURRENT DESIRES + STRUGGLES</strong>
-
-<strong>Purpose:</strong> Build instant resonance. Make readers feel seen before you ever mention the offer.
-
-1. <strong>Headline – Desired Outcome</strong>
-   - Make it emotionally specific and outcome-driven.
-   - Avoid vague promises ("reach your potential") — instead, use concrete results.
-   - Example: "Book Consistent Clients Without Burning Out or Playing the Algorithm Game."
-
-2. <strong>Expand on Their Desired Outcome</strong>
-   - Use emotional imagery and sensory language.
-   - Speak to what life feels like when their goal becomes real.
-   - Include lifestyle examples that show freedom, time, confidence, or presence.
-
-3. <strong>Current Feelings / Problem</strong>
-   - Mirror the reader's internal dialogue — what they're thinking but not saying.
-   - Call out both surface frustrations ("I'm posting all the time") and deeper emotional costs ("I'm starting to lose faith in myself").
-   - Keep tone empathetic, not pitying.
-
-4. <strong>Why the Problem Is Worse Than Expected</strong>
-   - Contrast what they thought would happen vs. what actually happens when this problem persists.
-   - Example: "You thought working harder would mean more clients — but now you're exhausted and still invisible."
-   - Add urgency through consequence storytelling (health, family, identity, burnout).
-
-5. <strong>Bridge: Their Desired Outcome Is Possible</strong>
-   - Transition with hope, energy, and authority.
-   - Keep this short — one to two lines that introduce the solution naturally.
-
-─────────────────────────────────────────────
-
-<strong>SECTION 2: THE SOLUTION (YOUR OFFER)</strong>
-
-<strong>Purpose:</strong> Position the offer as the natural bridge between pain and possibility.
-
-1. <strong>Introduce the Offer</strong>
-   - Format: "Introducing {offer_name} — the proven system to {core_promise} without {main_pain_point}."
-   - Keep this warm, confident, and simple (not over-hyped).
-
-2. <strong>Core Pillars / Learnings</strong>
-   - List 3–5 pillars, each written as:
-     • What they'll learn/do
-     • Why it matters
-     • What changes as a result
-   - Example: "Clarify Your Message so dream clients instantly understand what makes you different."
-
-<strong>BEST PRACTICES FROM TRANSCRIPTS:</strong>
-• Every pillar should build belief — not just list modules.
-• Use "so that..." phrasing for every benefit.
-• Connect the process to their emotional journey (e.g., confidence, momentum, self-trust).
-
-─────────────────────────────────────────────
-
-<strong>SECTION 3: AUTHORITY</strong>
-
-<strong>Purpose:</strong> Build trust through credibility + relatability.
-
-1. <strong>Testimonials</strong>
-   - Use storytelling testimonials (before → after → feeling).
-   - Prioritize transformation over metrics.
-   - Include at least one that mirrors the reader's current struggle.
-
-2. <strong>About the Creator</strong>
-   - Share your "why" through a moment of personal truth or past failure.
-   - Include emotional resonance before listing credentials.
-   - Example: "I built this because I know how it feels to work endlessly and still question your worth."
-   - Keep it human, not résumé-style.
-
-─────────────────────────────────────────────
-
-<strong>SECTION 4: OFFER SPECIFICS</strong>
-
-<strong>Purpose:</strong> Move the reader from belief to action by detailing what's included, bonuses, pricing, and proof.
-
-1. <strong>What's Included</strong>
-   - Turn features into outcomes: "6 coaching calls → personalized clarity and accountability."
-   - Use bullet sections for readability and emphasize what each inclusion helps them do.
-
-2. <strong>Bonuses</strong>
-   - Only include bonuses that feel essential or urgency-driven.
-   - Tie each bonus to a key objection ("no time," "need accountability," "fear of failure").
-
-3. <strong>Pricing & CTA</strong>
-   - Position the price as an investment not an expense.
-   - Use "value stack" comparisons sparingly — emphasize results, not math.
-   - Add multiple CTAs throughout the section using {desired_action} language.
-   - Insert {urgency} details naturally ("Doors close Sunday," "Only 20 seats available").
-
-4. <strong>Guarantee</strong>
-   - Reinforce trust and remove risk: "If you show up and do the work, we'll keep working with you until you see results."
-   - Keep tone confident and integrity-driven.
-
-─────────────────────────────────────────────
-
-<strong>SECTION 5: BREAKTHROUGH RESISTANCE</strong>
-
-<strong>Purpose:</strong> Reframe objections, reignite belief, and close with inspiration.
-
-1. <strong>Address Objections</strong>
-   - Name them directly using the reader's inner voice: "You're thinking — what if this doesn't work for me?"
-   - Respond with calm authority, not hype.
-   - Show empathy and logic (proof + reassurance).
-
-2. <strong>Big Breakthrough Visualization</strong>
-   - Use sensory, present-tense storytelling ("Imagine waking up to...").
-   - Focus on emotional payoff: relief, clarity, confidence, peace.
-
-3. <strong>Review of Everything They Get</strong>
-   - Bullet all inclusions + bonuses with value if appropriate.
-   - Example: "Total Value = $7,885 / Your Price = $997."
-   - End with CTA button and brief reminder of {urgency}.
-
-4. <strong>FAQ</strong>
-   - Write 4–6 questions that handle practical concerns (timeline, access, refund, fit).
-   - Use friendly tone ("Great question!" "Here's how it works...").
-
-5. <strong>Decision Note / Final CTA</strong>
-   - Close like a personal letter.
-   - Use the "two paths" framing (stay stuck vs. step forward).
-   - Bring it back to the reader's identity — who they want to become.
-   - End with emotional certainty and direct CTA: "It's your turn to {core_promise} — click below to {desired_action}."
-
-CRITICAL FORMATTING RULES:
-- Use <strong></strong> for bold headings and key terms
-- Use plain text with proper line breaks
-- Use dashes (─) to separate major sections
-- Use numbered lists (1., 2., 3.) for main points
-- Use dashes (-) and bullets (•) for sub-points
-- Keep formatting clean and simple
-- Write actual compelling sales copy using their data, NOT the structure template above
-
-OUTPUT ONLY THE SALES PAGE COPY - NO META INSTRUCTIONS.`;
-
-  const response = await anthropic.messages.create({
+  // Use Promise.race for timeout handling (30 seconds instead of 15)
+  const timeoutMs = 30000; // 30 seconds for long generations
+  
+  const apiCall = anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 4000,
     temperature: 0.7,
-    system: systemPrompt,
+    system: SYSTEM_SALES_PAGE_COPYWRITER,
     messages: [
       { role: "user", content: userPrompt }
     ],
   });
 
-  const contentText = getTextFromAnthropicContent(response.content);
-  return contentText.trim() || "";
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error("Sales page generation timed out after 30 seconds")), timeoutMs);
+  });
+
+  try {
+    const response = await Promise.race([apiCall, timeoutPromise]);
+    const contentText = getTextFromAnthropicContent(response.content);
+    
+    // Validate output with Zod schema
+    const validatedContent = salesPageOutputSchema.parse(contentText.trim());
+    return validatedContent;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("timed out")) {
+      console.error("Sales page generation timed out, using fallback");
+      throw error; // Let caller handle fallback
+    }
+    // If Zod validation fails, log but return the content anyway (with warning)
+    if (error && typeof error === 'object' && 'issues' in error) {
+      console.warn("Sales page validation warning:", error);
+      const contentText = getTextFromAnthropicContent((await apiCall).content);
+      return contentText.trim(); // Return unvalidated but still usable content
+    }
+    throw error;
+  }
 }
 
 function generateEnhancedFallbackSalesPage(messaging: any, offer: any, offerType: string): string {

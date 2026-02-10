@@ -92,109 +92,126 @@ export async function generateContentStrategy(
     const insights = extractContentInsights(preferences, messagingStrategy);
     const messagingData = parseMessagingStrategy(messagingStrategy);
     
-    const prompt = `You are an expert content strategist creating a specific, emotionally resonant, and disruptive content strategy. Use the client's Messaging Strategy (core promise, values, tone, differentiators) and their Content Strategy answers to generate a focused, authority-driven content plan.
-
-USER'S CONTENT STRATEGY ANSWERS:
+    const prompt = `<prompt>
+  <task>Create a specific, emotionally resonant, and disruptive content strategy using the client's Messaging Strategy and Content Strategy answers.</task>
+  
+  <inputs>
+    <content_strategy_answers>
+      <![CDATA[
 ${formatInsightsForPrompt(insights)}
-
-${messagingData.corePromise ? `
-CLIENT'S MESSAGING STRATEGY:
-
-**Core Promise:** ${messagingData.corePromise}
-
-**Ideal Customer:** ${messagingData.idealCustomer}
-
-**Differentiators:**
-${messagingData.differentiators.map((d: string) => `- ${d}`).join('\n')}
-
-**Belief Shifts:**
-${messagingData.beliefShifts.map((bs: any) => `- Old: ${bs.oldBelief} → New: ${bs.newBelief}`).join('\n')}
-
-**Messaging Pillars:**
-${messagingData.messagingPillars.map((p: any) => `- ${p.name}\n  ${p.talkingPoints.map((tp: string) => `  • ${tp}`).join('\n')}`).join('\n')}
-` : ''}
-
-Generate a CONTENT STRATEGY PLAN with the following 9 sections. Use language tied directly to the Messaging Strategy. Be short, specific, emotionally intelligent, and strategic. Make it feel custom and personal — not generic AI text.
-
-## PART 1: CONTENT STRATEGY OVERVIEW
-
-### 1. Core Platform
-State their one core platform: ${insights.platforms[0] || 'their primary platform'}
-
-### 2. Posting Frequency
-State their committed posting frequency: ${insights.frequency || 'their chosen frequency'}
-
-### 3. Content Format
-State their consistent weekly content format: ${insights.contentTypes?.join(', ') || 'their chosen format'}
-
-### 4. Content Goals
-Summarize 2–3 goals based on their business and audience stage. Examples: build trust and visibility, nurture warm leads, drive conversion through authority content.
-${messagingData.corePromise ? `Reference their core promise: ${messagingData.corePromise}` : ''}
-
-### 5. Emotional Tone Summary
-Describe how their audience should feel when engaging with their content, and what feelings they want to avoid.
-- Desired feelings: ${insights.desiredFeelings}
-- Avoid feelings: ${insights.avoidFeelings}
-
-### 6. Brand Vibe
-Write a short, powerful statement blending their 3–5 brand adjectives. Example format: "Bold yet grounded. Inspiring but real. Strategic and human."
-- Brand adjectives: ${insights.brandAdjectives}
-${messagingData.differentiators.length > 0 ? `- Reference differentiators: ${messagingData.differentiators.join(', ')}` : ''}
-
-### 7. Content Pillars
-${messagingData.messagingPillars.length > 0 ? `
-**CRITICAL: Pull 3–4 content pillars DIRECTLY from the Messaging Strategy Pillars provided above.**
-For each pillar:
-- Use the exact pillar name from Messaging Strategy
-- Write a 1-sentence explanation of what it represents
-- Connect it back to their offer or transformation
-` : `
-**IMPORTANT: These are BUSINESS PILLARS/CATEGORIES — the foundational themes that underpin their entire brand and business, NOT individual content topics or post ideas.**
-
-Think of pillars as the 3–4 core categories that organize ALL their content and represent what their business stands for.
-
-Examples of good business pillars:
-- "Mindset Mastery" (not "5 mindset tips")
-- "Strategic Visibility" (not "how to grow on Instagram")
-- "Offer Creation" (not "writing sales pages")
-- "Authority Building" (not "posting consistently")
-
-Based on their answers to "themes or truths your audience needs to understand before buying" (${insights.coreThemes}), identify 3–4 broad business pillars.
-
-For each pillar:
-- Give it a short, memorable category name (2-3 words max)
-- Write a 1-sentence explanation of what this pillar represents as a business category
-- Connect it to their offer or transformation showing why this pillar matters to their business
-`}
-
-### 8. Disruptive Angles
-${messagingData.beliefShifts.length > 0 ? `
-List 3–5 contrarian or bold truths drawn from the Belief Shifts in the Messaging Strategy and from their answers to Q7 and Q11.
-Transform each belief shift into a disruptive content angle that challenges the status quo, debunks myths, or calls out outdated industry thinking.
-` : `
-List 3–5 contrarian or bold truths drawn from their answers to Q7 (contrarian takes) and Q11 (authentic truths).
-These should challenge the status quo, debunk myths, or call out outdated industry thinking.
-`}
-
-### 9. Voice & Authenticity Guide
-Include 3 short bullets on how to keep their content tone aligned with their authentic voice.
-${messagingData.corePromise ? `Reference their Messaging Strategy tone and values.` : ''}
-From their answer: ${insights.authenticVoice}
-
-Example format:
-- Speak like a mentor, not a guru
-- Mix empathy with directness
-- Use stories and real examples over theory
-
-IMPORTANT FORMATTING INSTRUCTIONS:
-- Use clear section headers with numbers (1., 2., 3., etc.)
-- Keep each section concise and actionable
-- Use the exact data provided (platforms, frequency, adjectives)
-- Reference Messaging Strategy elements directly when available
-- Make the tone match their brand voice
-- Do NOT add extra commentary or sections beyond these 9
-
-Output the complete Content Strategy Plan now.`;
+      ]]>
+    </content_strategy_answers>
+    ${messagingData.corePromise ? `<messaging_strategy>
+      <core_promise>${messagingData.corePromise}</core_promise>
+      <ideal_customer>${messagingData.idealCustomer}</ideal_customer>
+      <differentiators>
+        ${messagingData.differentiators.map((d: string) => `<differentiator>${d}</differentiator>`).join('\n        ')}
+      </differentiators>
+      <belief_shifts>
+        ${messagingData.beliefShifts.map((bs: any) => `<shift><old>${bs.oldBelief}</old><new>${bs.newBelief}</new></shift>`).join('\n        ')}
+      </belief_shifts>
+      <messaging_pillars>
+        ${messagingData.messagingPillars.map((p: any) => `<pillar name="${p.name}">
+          ${p.talkingPoints.map((tp: string) => `<talking_point>${tp}</talking_point>`).join('\n          ')}
+        </pillar>`).join('\n        ')}
+      </messaging_pillars>
+    </messaging_strategy>` : ''}
+  </inputs>
+  
+  <content_strategy_plan>
+    <section number="1" name="Core Platform">
+      State their one core platform: ${insights.platforms[0] || 'their primary platform'}
+    </section>
+    
+    <section number="2" name="Posting Frequency">
+      State their committed posting frequency: ${insights.frequency || 'their chosen frequency'}
+    </section>
+    
+    <section number="3" name="Content Format">
+      State their consistent weekly content format: ${insights.contentTypes?.join(', ') || 'their chosen format'}
+    </section>
+    
+    <section number="4" name="Content Goals">
+      Summarize 2–3 goals based on their business and audience stage. Examples: build trust and visibility, nurture warm leads, drive conversion through authority content.
+      ${messagingData.corePromise ? `<reference>Reference their core promise: ${messagingData.corePromise}</reference>` : ''}
+    </section>
+    
+    <section number="5" name="Emotional Tone Summary">
+      Describe how their audience should feel when engaging with their content, and what feelings they want to avoid.
+      <desired_feelings>${insights.desiredFeelings}</desired_feelings>
+      <avoid_feelings>${insights.avoidFeelings}</avoid_feelings>
+    </section>
+    
+    <section number="6" name="Brand Vibe">
+      Write a short, powerful statement blending their 3–5 brand adjectives. Example format: "Bold yet grounded. Inspiring but real. Strategic and human."
+      <brand_adjectives>${insights.brandAdjectives}</brand_adjectives>
+      ${messagingData.differentiators.length > 0 ? `<differentiators>Reference differentiators: ${messagingData.differentiators.join(', ')}</differentiators>` : ''}
+    </section>
+    
+    <section number="7" name="Content Pillars">
+      ${messagingData.messagingPillars.length > 0 ? `<instructions>
+        <critical>Pull 3–4 content pillars DIRECTLY from the Messaging Strategy Pillars provided above.</critical>
+        <requirements>
+          <requirement>Use the exact pillar name from Messaging Strategy</requirement>
+          <requirement>Write a 1-sentence explanation of what it represents</requirement>
+          <requirement>Connect it back to their offer or transformation</requirement>
+        </requirements>
+      </instructions>` : `<instructions>
+        <important>These are BUSINESS PILLARS/CATEGORIES — the foundational themes that underpin their entire brand and business, NOT individual content topics or post ideas.</important>
+        <explanation>Think of pillars as the 3–4 core categories that organize ALL their content and represent what their business stands for.</explanation>
+        <examples>
+          <example>Mindset Mastery (not "5 mindset tips")</example>
+          <example>Strategic Visibility (not "how to grow on Instagram")</example>
+          <example>Offer Creation (not "writing sales pages")</example>
+          <example>Authority Building (not "posting consistently")</example>
+        </examples>
+        <source>Based on their answers to "themes or truths your audience needs to understand before buying" (${insights.coreThemes}), identify 3–4 broad business pillars.</source>
+        <requirements>
+          <requirement>Give it a short, memorable category name (2-3 words max)</requirement>
+          <requirement>Write a 1-sentence explanation of what this pillar represents as a business category</requirement>
+          <requirement>Connect it to their offer or transformation showing why this pillar matters to their business</requirement>
+        </requirements>
+      </instructions>`}
+    </section>
+    
+    <section number="8" name="Disruptive Angles">
+      ${messagingData.beliefShifts.length > 0 ? `<instructions>
+        List 3–5 contrarian or bold truths drawn from the Belief Shifts in the Messaging Strategy and from their answers to Q7 and Q11.
+        Transform each belief shift into a disruptive content angle that challenges the status quo, debunks myths, or calls out outdated industry thinking.
+      </instructions>` : `<instructions>
+        List 3–5 contrarian or bold truths drawn from their answers to Q7 (contrarian takes) and Q11 (authentic truths).
+        These should challenge the status quo, debunk myths, or call out outdated industry thinking.
+      </instructions>`}
+    </section>
+    
+    <section number="9" name="Voice & Authenticity Guide">
+      Include 3 short bullets on how to keep their content tone aligned with their authentic voice.
+      ${messagingData.corePromise ? `<reference>Reference their Messaging Strategy tone and values.</reference>` : ''}
+      <source>From their answer: ${insights.authenticVoice}</source>
+      <example_format>
+        <bullet>Speak like a mentor, not a guru</bullet>
+        <bullet>Mix empathy with directness</bullet>
+        <bullet>Use stories and real examples over theory</bullet>
+      </example_format>
+    </section>
+  </content_strategy_plan>
+  
+  <formatting_instructions>
+    <instruction>Use clear section headers with numbers (1., 2., 3., etc.)</instruction>
+    <instruction>Keep each section concise and actionable</instruction>
+    <instruction>Use the exact data provided (platforms, frequency, adjectives)</instruction>
+    <instruction>Reference Messaging Strategy elements directly when available</instruction>
+    <instruction>Make the tone match their brand voice</instruction>
+    <instruction>Do NOT add extra commentary or sections beyond these 9</instruction>
+  </formatting_instructions>
+  
+  <output>
+    <requirement>Use language tied directly to the Messaging Strategy</requirement>
+    <requirement>Be short, specific, emotionally intelligent, and strategic</requirement>
+    <requirement>Make it feel custom and personal — not generic AI text</requirement>
+    <instruction>Output the complete Content Strategy Plan now</instruction>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -722,63 +739,73 @@ export async function generateContentIdeas(
   try {
     const messagingData = parseMessagingStrategy(messagingStrategy);
     
-    const prompt = `You are an expert content strategist creating 10 specific, disruptive, and emotionally grounded content ideas.
-
-CLIENT'S MESSAGING STRATEGY:
-
-**Core Promise:** ${messagingData.corePromise}
-
-**Ideal Customer:** ${messagingData.idealCustomer}
-
-**Differentiators:**
-${messagingData.differentiators.map((d: string) => `- ${d}`).join('\n')}
-
-**Belief Shifts:**
-${messagingData.beliefShifts.map((bs: any) => `- Old: ${bs.oldBelief} → New: ${bs.newBelief}`).join('\n')}
-
-**Messaging Pillars:**
-${messagingData.messagingPillars.map((p: any) => `- ${p.name}\n  ${p.talkingPoints.map((tp: string) => `  • ${tp}`).join('\n')}`).join('\n')}
-
-**Hooks & Angles:**
-${messagingData.hooksAndAngles.join('\n- ')}
-
-**Objection Handling:**
-${messagingData.objectionHandlingFAQSeeds.join('\n- ')}
-
-${contentPreferences ? `
-**Content Preferences:**
-- Platform: ${contentPreferences.platforms?.join(', ')}
-- Content Format: ${contentPreferences.contentTypes?.join(', ')}
-- Contrarian Takes: ${contentPreferences.contrarianTakes}
-- Common Objections: ${contentPreferences.commonObjections}
-- Belief Shifts: ${contentPreferences.beliefShifts}
-- Authentic Truths: ${contentPreferences.authenticTruths}
-` : ''}
-
-Generate 10 content ideas that align with the strategy above. Each idea must include all 5 elements:
-
-1. **Title / Hook**: A scroll-stopping headline or video intro line
-2. **Core Message**: The key belief, truth, or myth being addressed
-3. **Format Suggestion**: e.g., carousel, reel, video, podcast, story, email
-4. **Emotional Intention**: What the audience should feel (safe, seen, challenged, motivated, etc.)
-5. **Call-to-Action / Next Step**: Simple and natural (e.g., "Save this," "DM me for details," "Watch the full training")
-
-**REQUIRED DISTRIBUTION:**
-- 3+ must be contrarian or disruptive takes that challenge norms
-- 2+ must be emotional storytelling or belief-shift pieces
-- 2+ must be practical, actionable tip/framework posts
-- 1 must be a bold "rooftop truth"
-- 1 must rebut a common objection or misconception
-
-**QUALITY STANDARDS:**
-✅ Be specific — avoid vague prompts like "share your story" or "talk about mindset"
-✅ Be emotionally grounded — tie each idea to how the audience feels or what belief it shifts
-✅ Be disruptive — expose myths, challenge assumptions, or say what others are afraid to
-✅ Be connected to the offer — naturally reinforce the transformation or philosophy behind the user's program
-✅ Be authentic — reflect the brand's voice, not generic advice
-
-**OUTPUT FORMAT:**
-Return exactly 10 ideas as a JSON object with an "ideas" key (array of idea objects):
+    const prompt = `<prompt>
+  <task>Create 10 specific, disruptive, and emotionally grounded content ideas as an expert content strategist.</task>
+  
+  <inputs>
+    <client_messaging_strategy>
+      <core_promise>${messagingData.corePromise}</core_promise>
+      <ideal_customer>${messagingData.idealCustomer}</ideal_customer>
+      <differentiators>
+        ${messagingData.differentiators.map((d: string) => `<differentiator>${d}</differentiator>`).join('\n        ')}
+      </differentiators>
+      <belief_shifts>
+        ${messagingData.beliefShifts.map((bs: any) => `<shift>
+          <old>${bs.oldBelief}</old>
+          <new>${bs.newBelief}</new>
+        </shift>`).join('\n        ')}
+      </belief_shifts>
+      <messaging_pillars>
+        ${messagingData.messagingPillars.map((p: any) => `<pillar name="${p.name}">
+          ${p.talkingPoints.map((tp: string) => `<talking_point>${tp}</talking_point>`).join('\n          ')}
+        </pillar>`).join('\n        ')}
+      </messaging_pillars>
+      <hooks_angles>
+        ${messagingData.hooksAndAngles.map((h: string) => `<hook>${h}</hook>`).join('\n        ')}
+      </hooks_angles>
+      <objection_handling>
+        ${messagingData.objectionHandlingFAQSeeds.map((o: string) => `<objection>${o}</objection>`).join('\n        ')}
+      </objection_handling>
+    </client_messaging_strategy>
+    ${contentPreferences ? `<content_preferences>
+      <platforms>${contentPreferences.platforms?.join(', ')}</platforms>
+      <content_types>${contentPreferences.contentTypes?.join(', ')}</content_types>
+      <contrarian_takes>${contentPreferences.contrarianTakes}</contrarian_takes>
+      <common_objections>${contentPreferences.commonObjections}</common_objections>
+      <belief_shifts>${contentPreferences.beliefShifts}</belief_shifts>
+      <authentic_truths>${contentPreferences.authenticTruths}</authentic_truths>
+    </content_preferences>` : ''}
+  </inputs>
+  
+  <idea_requirements>
+    <element number="1" name="Title / Hook">A scroll-stopping headline or video intro line</element>
+    <element number="2" name="Core Message">The key belief, truth, or myth being addressed</element>
+    <element number="3" name="Format Suggestion">e.g., carousel, reel, video, podcast, story, email</element>
+    <element number="4" name="Emotional Intention">What the audience should feel (safe, seen, challenged, motivated, etc.)</element>
+    <element number="5" name="Call-to-Action / Next Step">Simple and natural (e.g., "Save this," "DM me for details," "Watch the full training")</element>
+  </idea_requirements>
+  
+  <required_distribution>
+    <requirement>3+ must be contrarian or disruptive takes that challenge norms</requirement>
+    <requirement>2+ must be emotional storytelling or belief-shift pieces</requirement>
+    <requirement>2+ must be practical, actionable tip/framework posts</requirement>
+    <requirement>1 must be a bold "rooftop truth"</requirement>
+    <requirement>1 must rebut a common objection or misconception</requirement>
+  </required_distribution>
+  
+  <quality_standards>
+    <standard>Be specific — avoid vague prompts like "share your story" or "talk about mindset"</standard>
+    <standard>Be emotionally grounded — tie each idea to how the audience feels or what belief it shifts</standard>
+    <standard>Be disruptive — expose myths, challenge assumptions, or say what others are afraid to</standard>
+    <standard>Be connected to the offer — naturally reinforce the transformation or philosophy behind the user's program</standard>
+    <standard>Be authentic — reflect the brand's voice, not generic advice</standard>
+  </quality_standards>
+  
+  <output_format>
+    <format>JSON</format>
+    <count>Exactly 10 ideas</count>
+    <schema>
+      <![CDATA[
 {
   "ideas": [
     {
@@ -791,11 +818,12 @@ Return exactly 10 ideas as a JSON object with an "ideas" key (array of idea obje
     }
   ]
 }
-
-Category must be one of: "contrarian", "emotional", "practical", "rooftop", "objection".
-Ensure the distribution requirements are met.
-
-Return ONLY the JSON object, no markdown or code blocks.`;
+      ]]>
+    </schema>
+    <category_options>contrarian, emotional, practical, rooftop, objection</category_options>
+    <instruction>Return ONLY the JSON object, no markdown or code blocks</instruction>
+  </output_format>
+</prompt>`;
 
     const responseObj = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

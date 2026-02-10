@@ -231,9 +231,42 @@ export async function createOptimizationSuggestions(
       return res.status(400).json({ message: "Invalid launch ID" });
     }
 
+    // Get userId from session or request body
+    const userId = req.session?.userId || req.body.userId;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Map 'type' to 'suggestionType' if needed, and ensure all required fields are present
+    const { type, suggestionType, title, issue, actions, metricsSnapshot } = req.body;
+
+    // suggestionType is required - use 'type' if 'suggestionType' is not provided
+    const finalSuggestionType = suggestionType || type;
+    if (!finalSuggestionType) {
+      return res.status(400).json({ 
+        message: "suggestionType (or type) is required. Valid values: 'success', 'warning', 'danger'" 
+      });
+    }
+
+    // Validate other required fields
+    if (!title) {
+      return res.status(400).json({ message: "title is required" });
+    }
+    if (!issue) {
+      return res.status(400).json({ message: "issue is required" });
+    }
+    if (!actions || !Array.isArray(actions)) {
+      return res.status(400).json({ message: "actions is required and must be an array" });
+    }
+
     const suggestion = await storage.createLiveLaunchOptimizationSuggestion({
-      ...req.body,
+      userId: parseInt(userId.toString()),
       liveLaunchId,
+      suggestionType: finalSuggestionType,
+      title,
+      issue,
+      actions,
+      metricsSnapshot: metricsSnapshot || null,
     });
     res.status(201).json(suggestion);
   } catch (error) {

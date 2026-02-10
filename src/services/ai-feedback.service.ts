@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getTextFromAnthropicContent } from "../utils/ai-response";
+import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { z } from "zod";
 import { 
   evaluateUniquePositioning, 
   evaluateBrandVoice, 
@@ -383,6 +384,113 @@ function mapSectionToContext(sectionTitle: string): string {
   return cleanTitle;
 }
 
+/**
+ * AI-based evaluation function that replaces regex-based evaluation.
+ * Uses Anthropic to contextually evaluate user responses.
+ */
+async function evaluateResponseWithAI(
+  section: string,
+  question: string,
+  response: string,
+  userContext: any
+): Promise<FeedbackAnalysis> {
+  try {
+    const contextKey = mapSectionToContext(section);
+    const context = TRAINING_CONTEXT[contextKey as keyof typeof TRAINING_CONTEXT];
+    
+    const systemPrompt = `You are an expert business coach evaluating entrepreneur responses. Provide constructive, encouraging feedback that helps them deepen their answers.`;
+
+    const userPrompt = `<prompt>
+  <task>Evaluate a user's response to a business strategy question and provide constructive feedback.</task>
+  
+  <inputs>
+    <section>${section}</section>
+    <question>${question}</question>
+    <user_response>
+      <![CDATA[
+${response}
+      ]]>
+    </user_response>
+    ${userContext.messagingStrategy ? `<messaging_strategy_context>
+      <![CDATA[
+${userContext.messagingStrategy.content?.substring(0, 300)}...
+      ]]>
+    </messaging_strategy_context>` : ''}
+    ${context ? `<best_practices>
+      ${context.bestPractices.map(bp => `<practice>${bp}</practice>`).join('\n      ')}
+    </best_practices>
+    <common_mistakes>
+      ${context.commonMistakes.map(cm => `<mistake>${cm}</mistake>`).join('\n      ')}
+    </common_mistakes>` : ''}
+  </inputs>
+  
+  <evaluation_criteria>
+    <criterion name="Depth & Specificity">Does it include concrete examples, numbers, timeframes, or specific details?</criterion>
+    <criterion name="Emotional Resonance">Does it connect emotionally or show personal experience?</criterion>
+    <criterion name="Alignment">Does it answer the question directly and comprehensively?</criterion>
+    <criterion name="Uniqueness">Does it reveal what makes this person/business different?</criterion>
+  </evaluation_criteria>
+  
+  <output_format>
+    <format>JSON</format>
+    <schema>
+      <![CDATA[
+{
+  "level": "needs-more-detail" | "good-start" | "excellent-depth",
+  "levelDescription": "brief assessment",
+  "feedback": "specific, encouraging feedback (2-3 sentences)",
+  "suggestions": ["specific suggestion 1", "suggestion 2", "suggestion 3"],
+  "specificIssues": ["issue 1", "issue 2"],
+  "encouragement": "motivating closing statement"
+}
+      ]]>
+    </schema>
+    <rules>
+      <rule>Return ONLY valid JSON with no markdown formatting</rule>
+    </rules>
+  </output_format>
+</prompt>`;
+
+    const aiResponse = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 800,
+      temperature: 0.7,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON with no markdown formatting." }],
+    });
+
+    const contentText = getTextFromAnthropicContent(aiResponse.content);
+    
+    // Use Zod validation instead of raw JSON.parse
+    const feedbackEvaluationSchema = z.object({
+      level: z.enum(["needs-more-detail", "good-start", "excellent-depth"]),
+      levelDescription: z.string(),
+      feedback: z.string(),
+      suggestions: z.array(z.string()),
+      specificIssues: z.array(z.string()),
+      encouragement: z.string(),
+    });
+    
+    const parsed = parseAndValidateAiJson(contentText, feedbackEvaluationSchema, {
+      context: "AI feedback evaluation",
+      fallback: {
+        level: "good-start" as const,
+        levelDescription: "Response evaluated",
+        feedback: "Your response shows good thinking. Consider adding more specific details.",
+        suggestions: ["Add more specific details", "Include examples or stories"],
+        specificIssues: [],
+        encouragement: "Keep developing your thoughts - you're on the right track!"
+      }
+    });
+    
+    return parsed;
+  } catch (error) {
+    console.error("AI evaluation failed, falling back to regex evaluator:", error);
+    // Fallback to regex-based evaluation if AI fails
+    return getQuestionSpecificEvaluationWithContext(section, response, userContext);
+  }
+}
+
 export async function analyzeResponse(
   section: string,
   prompt: string,
@@ -476,9 +584,9 @@ export async function analyzeResponse(
       console.log("Could not gather user context:", contextError);
     }
 
-    // Always use comprehensive question evaluator with enhanced context
-    console.log("Using comprehensive question evaluator with user context for enhanced results");
-    const result = getQuestionSpecificEvaluationWithContext(section, response, userContext);
+    // Use AI-based evaluation instead of regex-based evaluation
+    console.log("Using AI-based evaluation with user context for enhanced results");
+    const result = await evaluateResponseWithAI(section, prompt, response, userContext);
     
     console.log("Evaluation result level:", result.level);
     console.log("Evaluation result feedback:", result.feedback.substring(0, 100) + "...");
@@ -542,40 +650,47 @@ export async function expandAndDeepen(initialResponse: string, questionContext: 
     
     const bestPractices = trainingData?.bestPractices || [];
 
-    const prompt = `
-You are an expert business coach helping entrepreneurs develop deeper, more compelling responses. Help them expand their thoughts with depth and emotion.
-
-Question: "${questionContext}"
-Section: "${questionType}"
-Initial Response: "${initialResponse}"
-
-Best Practices for this question:
-${bestPractices.join('\n- ')}
-
-COMPREHENSIVE USER CONTEXT (use this information to provide highly personalized and relevant expansion):
-- User Profile: This entrepreneur is building their business strategy and messaging
-- Business Development Stage: Currently working through their foundational business elements
-- Response History: Part of a systematic approach to developing their business positioning
-- Goal: Create authentic, compelling content that resonates with their ideal customers
-
-Your task is to help them expand this response with much more depth and emotion by:
-
-1. PULL OUT THE STORY: Ask follow-up questions in your mind and then answer them based on what they started. What's the personal story behind this? What specific moment or experience shaped this?
-
-2. ADD EMOTIONAL DEPTH: What emotions drive this? What fears, desires, or motivations are underneath? Help them connect to the emotional core.
-
-3. GET SPECIFIC: Replace any vague language with concrete examples, numbers, timeframes, and specific details.
-
-4. SHOW DON'T TELL: Instead of saying "I'm experienced," show through specific examples and stories.
-
-5. CONNECT TO CUSTOMER VALUE: How does this specifically help their ideal customer? What transformation does it create?
-
-6. ADD VULNERABILITY: What challenges did they overcome? What did they learn the hard way?
-
-Expand their response to be 3-4x longer with rich detail, specific examples, personal stories, and emotional depth. Write in their voice but make it much more compelling and complete.
-
-Return only the expanded response, ready to use.
-`;
+    const prompt = `<prompt>
+  <task>Expand and deepen an entrepreneur's response with more depth, emotion, and specificity while maintaining their authentic voice.</task>
+  
+  <inputs>
+    <question>${questionContext}</question>
+    <section>${questionType}</section>
+    <initial_response>
+      <![CDATA[
+${initialResponse}
+      ]]>
+    </initial_response>
+    <best_practices>
+      ${bestPractices.map(bp => `<practice>${bp}</practice>`).join('\n      ')}
+    </best_practices>
+  </inputs>
+  
+  <user_context>
+    <profile>This entrepreneur is building their business strategy and messaging</profile>
+    <development_stage>Currently working through their foundational business elements</development_stage>
+    <response_history>Part of a systematic approach to developing their business positioning</response_history>
+    <goal>Create authentic, compelling content that resonates with their ideal customers</goal>
+  </user_context>
+  
+  <expansion_strategy>
+    <step number="1" name="Pull Out The Story">Ask follow-up questions in your mind and then answer them based on what they started. What's the personal story behind this? What specific moment or experience shaped this?</step>
+    <step number="2" name="Add Emotional Depth">What emotions drive this? What fears, desires, or motivations are underneath? Help them connect to the emotional core.</step>
+    <step number="3" name="Get Specific">Replace any vague language with concrete examples, numbers, timeframes, and specific details.</step>
+    <step number="4" name="Show Don't Tell">Instead of saying "I'm experienced," show through specific examples and stories.</step>
+    <step number="5" name="Connect To Customer Value">How does this specifically help their ideal customer? What transformation does it create?</step>
+    <step number="6" name="Add Vulnerability">What challenges did they overcome? What did they learn the hard way?</step>
+  </expansion_strategy>
+  
+  <output>
+    <length>3-4x longer than original</length>
+    <requirements>
+      <requirement>Rich detail, specific examples, personal stories, and emotional depth</requirement>
+      <requirement>Write in their voice but make it much more compelling and complete</requirement>
+      <requirement>Return only the expanded response, ready to use</requirement>
+    </requirements>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -608,23 +723,33 @@ Consider expanding your response with these elements to make it more compelling 
 
 export async function cleanupAudioTranscript(transcript: string, questionContext: string): Promise<string> {
   try {
-    const prompt = `
-You are an expert editor helping entrepreneurs refine their verbal responses. Clean up this audio transcript while preserving the speaker's authentic voice and key insights.
-
-Question Context: "${questionContext}"
-Raw Transcript: "${transcript}"
-
-Your task:
-1. Fix grammar, remove filler words (um, uh, like), and improve sentence structure
-2. Maintain the speaker's authentic voice and personality
-3. Preserve all key insights and specific details
-4. Organize thoughts into clear, coherent paragraphs
-5. Keep the conversational, personal tone but make it professional
-6. Don't add information that wasn't mentioned
-7. If the response seems incomplete for the question, preserve what was said but don't fabricate
-
-Return only the cleaned-up text, ready to be used as their written response.
-`;
+    const prompt = `<prompt>
+  <task>Clean up an audio transcript while preserving the speaker's authentic voice and key insights.</task>
+  
+  <inputs>
+    <question_context>${questionContext}</question_context>
+    <raw_transcript>
+      <![CDATA[
+${transcript}
+      ]]>
+    </raw_transcript>
+  </inputs>
+  
+  <editing_tasks>
+    <task number="1">Fix grammar, remove filler words (um, uh, like), and improve sentence structure</task>
+    <task number="2">Maintain the speaker's authentic voice and personality</task>
+    <task number="3">Preserve all key insights and specific details</task>
+    <task number="4">Organize thoughts into clear, coherent paragraphs</task>
+    <task number="5">Keep the conversational, personal tone but make it professional</task>
+    <task number="6">Don't add information that wasn't mentioned</task>
+    <task number="7">If the response seems incomplete for the question, preserve what was said but don't fabricate</task>
+  </editing_tasks>
+  
+  <output>
+    <format>Cleaned-up text ready to be used as written response</format>
+    <instruction>Return only the cleaned-up text, ready to be used as their written response</instruction>
+  </output>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

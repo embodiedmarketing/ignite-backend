@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
+import { getTextFromAnthropicContent, parseAndValidateAiJson, repairTruncatedEmailSequenceJson } from "../utils/ai-response";
 import { emailSequenceResponseSchema } from "../utils/ai-response-schemas";
+import { SYSTEM_EMAIL_SEQUENCE_GENERATOR } from "../shared/prompts";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -47,173 +48,156 @@ export async function generateEmailSequence(input: EmailSequenceInput): Promise<
   const MAX_RETRIES = 7; // Increased from 5 to 7 for better reliability
   const BASE_DELAY = 2000; // 2 seconds
   
-  const systemPrompt = `You are an expert email copywriter specializing in creating authentic, relationship-building email sequences for entrepreneurs and coaches. Your emails should feel personal, warm, and conversational—like a friend writing with genuine insight and excitement.
-
-KEY PRINCIPLES:
-- Connection over conversion
-- Short paragraphs with double line breaks between them for readability
-- Conversational, human, and emotionally intelligent tone
-- Under 500 words per email
-- Scannable structure
-- One clear, soft CTA per email
-- Include stories or examples in at least 3 of the 5 emails
-- Stay consistent with the brand voice and messaging strategy provided
-
-CRITICAL REQUIREMENT: You MUST generate EXACTLY 5 emails following the exact template structure provided. Each email must follow its designated purpose and structure. No more, no less.
-
-Each paragraph in the email body MUST be separated by double newlines (\\n\\n) for proper white space and readability.`;
   // Check if messaging strategy contains interview-enhanced fields
-  // messagingStrategy is a markdown string, so we check for interview field keywords in the text
   const messagingStrategyText = typeof input.messagingStrategy === 'string' 
     ? input.messagingStrategy 
     : JSON.stringify(input.messagingStrategy || {});
   
-  // Check for interview-enhanced field keywords in the markdown text
-  const hasInterviewData = messagingStrategyText && typeof messagingStrategyText === 'string' && (
-    messagingStrategyText.toLowerCase().includes('frustrations') ||
-    messagingStrategyText.toLowerCase().includes('nighttime_worries') ||
-    messagingStrategyText.toLowerCase().includes('nighttime worries') ||
-    messagingStrategyText.toLowerCase().includes('secret_fears') ||
-    messagingStrategyText.toLowerCase().includes('secret fears') ||
-    messagingStrategyText.toLowerCase().includes('magic_solution') ||
-    messagingStrategyText.toLowerCase().includes('magic solution') ||
-    messagingStrategyText.toLowerCase().includes('failed_solutions') ||
-    messagingStrategyText.toLowerCase().includes('failed solutions') ||
-    messagingStrategyText.toLowerCase().includes('blockers') ||
-    messagingStrategyText.toLowerCase().includes('decision_making') ||
-    messagingStrategyText.toLowerCase().includes('decision making') ||
-    messagingStrategyText.toLowerCase().includes('investment_criteria') ||
-    messagingStrategyText.toLowerCase().includes('investment criteria') ||
-    messagingStrategyText.toLowerCase().includes('success_measures') ||
-    messagingStrategyText.toLowerCase().includes('success measures')
-  );
+  // Simplified interview data detection
+  const hasInterviewData = messagingStrategyText && typeof messagingStrategyText === 'string' && 
+    /(frustrations|nighttime_worries|secret_fears|magic_solution|failed_solutions|blockers|decision_making|investment_criteria|success_measures)/i.test(messagingStrategyText);
 
-  const userPrompt = `Generate a 5-part lead nurture email sequence for the following business:
+  // Optimized prompt: condensed structure
+  const interviewNote = hasInterviewData ? `
+⭐ INTERVIEW DATA: Use customer's EXACT WORDS. Show moments: "They've been posting for months — still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'" Make it visceral and authentic.\n` : '';
 
-## LEAD MAGNET INFORMATION
-**Title**: ${input.leadMagnetTitle}
-**Transformation Promised**: ${input.transformation}
-**Problem It Solves**: ${input.problemSolved}
+//   const userPrompt = `Generate 5-part email sequence:
+// LEAD MAGNET: ${input.leadMagnetTitle} | Transformation: ${input.transformation} | Problem: ${input.problemSolved}
+// TRIPWIRE: ${input.tripwireTitle} (${input.tripwireType}) | Outcome: ${input.tripwireOutcome} | Price: $${input.tripwirePrice}
+// STRATEGY: Belief shift: ${input.coreBeliefShift} | Objections: ${input.objectionsDoubts} | Stories: ${input.storiesExamples}
+// MESSAGING: ${messagingStrategyText.substring(0, 1000)}${messagingStrategyText.length > 1000 ? '...' : ''}
+// ${input.idealCustomerProfile ? `CUSTOMER: ${input.idealCustomerProfile}` : ''}
+// ${interviewNote}
+// STRUCTURE:  
+// 1. Delivery & Welcome: Thank, deliver lead magnet, share why created, introduce credibility, set expectations
+// 2. Problem Awareness: Describe pain vividly, normalize struggle, hint at unique solution
+// 3. Small Win: Share quick tip/framework with example, reinforce it's part of larger system
+// 4. Disruptive Beliefs: Challenge common belief, explain why wrong, share your core belief
+// 5. Belief Shift: Identify misconception, replace with empowering truth, use story/metaphor, tie to system
 
-## TRIPWIRE OFFER INFORMATION
-**Product Name**: ${input.tripwireTitle}
-**Product Type**: ${input.tripwireType}
-**Core Outcome**: ${input.tripwireOutcome}
-**Price**: $${input.tripwirePrice}
 
-## EMAIL STRATEGY
-**Core Belief/Mindset Shift**: ${input.coreBeliefShift}
-**Objections to Address**: ${input.objectionsDoubts}
-**Stories & Examples**: ${input.storiesExamples}
-**Content to Highlight**: ${input.contentHighlight}
-**Content Flow**: ${input.contentOrder}
 
-## BRAND VOICE & MESSAGING
-${messagingStrategyText}
 
-${hasInterviewData ? `\n⭐ CRITICAL: This messaging strategy contains INTERVIEW-ENHANCED insights from customer interview transcripts.
-These fields (frustrations, nighttime_worries, secret_fears, magic_solution, etc.) contain the customer's EXACT WORDS and authentic emotional expressions.
+// <principles>
+// - Connection over conversion
+// - Conversational, warm tone
+// - Under 400 words per email
+// - One clear, soft CTA per email
+// - Stories in at
 
-YOU MUST:
-1. Use CINEMATIC, MOMENT-BY-MOMENT language from these interview insights in your emails
-2. Include customer's exact words, internal dialogue ("wondering, 'What am I missing?'")
-3. Add SPECIFIC, TANGIBLE outcomes with numbers and timeframes
-4. Show sensory details and specific moments ("Each time they open Instagram...")
-5. Make emails VISCERAL and AUTHENTIC - like you're talking directly to the customer using their own language
 
-EXAMPLE TRANSFORMATION:
-❌ Generic: "They feel stuck and overwhelmed"
-✅ Interview-enhanced: "They've been showing up online for months — posting, tweaking, trying every hack — and still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'"
+// <output_format>
+// Return a JSON array of exactly 5 email objects:
+// [
+// {
+// "emailNumber": 1,
+// "subject": "string",
+// "purpose": "string (one sentence)",
+// "body": "string (email content with \\n\\n between paragraphs)"
+// }
+// ]
+// Do not wrap in markdown. Return only the JSON array.
+// </output_format>;
 
-PRIORITIZE these interview-enhanced fields. Use the customer's exact language throughout your emails.\n` : ''}
+// `;
 
-## IDEAL CUSTOMER PROFILE
-${input.idealCustomerProfile}
+const userPrompt = `
+<prompt>
 
----
+  <task>
+    Generate a 5-part email sequence based on the inputs below.
+  </task>
 
-## SEQUENCE STRUCTURE TO FOLLOW
+  <inputs>
 
-**Email 1: Delivery & Welcome**
-- **Purpose**: Deliver the lead magnet and set the tone for the relationship
-- **Tone**: Grateful, excited, confident, human
-- **Include**:
-  • Thank them for joining and confirm they're in the right place
-  • Deliver the lead magnet link or access info
-  • Share why you created this resource (connect with their struggle)
-  • Reinforce the transformation/result promised by the lead magnet
-  • Briefly introduce who you help and your credibility
-  • Set expectations for what's coming next
-- **CTA**: Access the lead magnet (and optionally reference the tripwire product)
+    <lead_magnet>
+      <title>${input.leadMagnetTitle}</title>
+      <transformation>${input.transformation}</transformation>
+      <problem_solved>${input.problemSolved}</problem_solved>
+    </lead_magnet>
 
-**Email 2: Problem Awareness**
-- **Purpose**: Help them feel seen and understood by articulating their core frustration
-- **Tone**: Empathetic, validating, grounded
-- **Include**:
-  • Describe their current pain or frustration in vivid, emotional terms
-  • Normalize the struggle and show you understand why it happens
-  • Highlight what's possible when this problem is solved
-  • Subtly hint that your approach offers a unique or refreshing path forward
-- **CTA**: Link to a related content piece, mention the tripwire, or invite them to DM/reply
+    <tripwire>
+      <title>${input.tripwireTitle}</title>
+      <type>${input.tripwireType}</type>
+      <outcome>${input.tripwireOutcome}</outcome>
+      <price currency="USD">${input.tripwirePrice}</price>
+    </tripwire>
 
-**Email 3: Small Win / Quick Tip**
-- **Purpose**: Deliver quick value while reinforcing your authority and system
-- **Tone**: Encouraging, practical, supportive
-- **Include**:
-  • Share a simple action, framework, or mindset shift that brings an immediate win
-  • If possible, include a micro case study or personal example
-  • Reinforce that this tip is one piece of a larger system
-  • Encourage them to take action today
-- **CTA**: Invite them to consume a related piece of content or reply with their takeaway
+    <strategy>
+      <belief_shift>${input.coreBeliefShift}</belief_shift>
+      <objections>${input.objectionsDoubts}</objections>
+      <stories>${input.storiesExamples}</stories>
+    </strategy>
 
-**Email 4: Your Disruptive Beliefs**
-- **Purpose**: Challenge industry norms or outdated thinking
-- **Tone**: Bold, thought-provoking, confident
-- **Include**:
-  • Call out a common belief or strategy that keeps people stuck
-  • Explain why it's wrong or incomplete
-  • Share your core belief and how it changes the game
-  • Anchor this belief in your brand philosophy or method
-- **CTA**: Invite them to engage (comment, reply, or consume a content piece expanding on this idea)
+    <messaging_strategy>
+      ${messagingStrategyText.substring(0, 1000)}${messagingStrategyText.length > 1000 ? '...' : ''}
+    </messaging_strategy>
 
-**Email 5: Belief Shift**
-- **Purpose**: End the sequence by opening their mind to what's truly possible
-- **Tone**: Hopeful, visionary, grounded in truth
-- **Include**:
-  • Identify a final misconception holding them back
-  • Replace it with a more empowering truth
-  • Use a story, metaphor, or analogy to make the shift feel real
-  • Tie it back to your bigger system or method (without pitching)
-  • Reinforce that the journey they started with your lead magnet is just the beginning
-- **CTA**: Invite them to stay engaged—read a post, reply, or follow on social media
+    <customer_profile optional="true">
+      ${input.idealCustomerProfile}
+    </customer_profile>
 
----
+    <interview_notes>
+      ${interviewNote}
+    </interview_notes>
 
-## OUTPUT FORMAT
+  </inputs>
 
-For each email, provide:
-1. **Subject Line**: Compelling, curiosity-driving subject line
-2. **Email Body**: Full email copy following the structure above
+  <email_structure>
+    <email number="1">
+      Delivery and welcome: thank the reader, deliver the lead magnet, explain why it was created, establish credibility, and set expectations.
+    </email>
+    <email number="2">
+      Problem awareness: vividly describe the pain, normalize the struggle, and hint at a unique solution.
+    </email>
+    <email number="3">
+      Small win: share a quick tip or framework with an example and reinforce that it is part of a larger system.
+    </email>
+    <email number="4">
+      Disruptive beliefs: challenge a common belief, explain why it is wrong, and introduce your core belief.
+    </email>
+    <email number="5">
+      Belief shift: identify a misconception, replace it with an empowering truth, use a story or metaphor, and tie it to your system.
+    </email>
+  </email_structure>
 
-Return the emails in JSON format as an array of objects with this structure:
-{
-  "emails": [
-    {
-      "emailNumber": 1,
-      "subject": "Subject line here",
-      "body": "Full email body here..."
-    },
-    ...
-  ]
-}
+  <principles>
+    <principle>Connection over conversion</principle>
+    <principle>Conversational and warm tone</principle>
+    <principle>Maximum 400 words per email</principle>
+    <principle>Exactly one clear, soft call-to-action per email</principle>
+    <principle>Stories must appear in at least 3 of the 5 emails</principle>
+  </principles>
 
-Remember:
-- Keep each email under 500 words
-- Use short paragraphs with white space
-- Write in a personal, conversational tone matching the brand voice
-- Include stories/examples in at least 3 emails
-- One clear, natural CTA per email
-- No hard sales—focus on connection and value`;
+  <output_contract>
+    <format>JSON</format>
+    <rules>
+      <rule>Return a JSON array of exactly 5 email objects</rule>
+      <rule>Do not include markdown</rule>
+      <rule>Do not include commentary or explanations</rule>
+      <rule>Return ONLY valid JSON</rule>
+    </rules>
+    <schema>
+      <![CDATA[
+      [
+        {
+          "emailNumber": 1,
+          "subject": "string",
+          "purpose": "string (one sentence)",
+          "body": "string (use \\n\\n between paragraphs)"
+        }
+      ]
+      ]]>
+    </schema>
+  </output_contract>
+
+  <validation>
+    If the output does not match the schema or is not valid JSON, regenerate silently until it does.
+  </validation>
+
+</prompt>
+`;
+
 
   // Retry loop with exponential backoff
   let lastError: Error | null = null;
@@ -226,23 +210,36 @@ Remember:
       const completion = await anthropic.messages.create(
         {
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          max_tokens: 2200,
           temperature: 0.7,
-          system: systemPrompt,
+          system: SYSTEM_EMAIL_SEQUENCE_GENERATOR,
           messages: [
-            { role: "user", content: userPrompt }
+            { role: "user", content: userPrompt}
           ],
         }
-      );
+        );
 
       const content = getTextFromAnthropicContent(completion.content);
       if (!content) {
         throw new Error("No content received from Anthropic");
       }
 
-      const result = parseAndValidateAiJson(content, emailSequenceResponseSchema, {
-        context: "email sequence",
-      });
+      let result: { emails: Array<{ emailNumber: number; subject: string; body: string }> };
+      try {
+        result = parseAndValidateAiJson(content, emailSequenceResponseSchema, {
+          context: "email sequence",
+        });
+      } catch (parseError: unknown) {
+        const msg = parseError instanceof Error ? parseError.message : String(parseError);
+        if (msg.toLowerCase().includes("unterminated string")) {
+          const repaired = repairTruncatedEmailSequenceJson(content);
+          result = parseAndValidateAiJson(repaired, emailSequenceResponseSchema, {
+            context: "email sequence (repaired)",
+          });
+        } else {
+          throw parseError;
+        }
+      }
 
       const emails = result.emails.map((email) => ({
         ...email,

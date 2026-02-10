@@ -15,35 +15,44 @@ export async function parseInterviewTranscript(
   transcript: string
 ): Promise<ParsedAnswers> {
   try {
-    const prompt = `You are an expert interview analyst. I need you to analyze this customer interview transcript and extract specific answers to predefined questions.
-
-Please extract the customer's responses to these specific questions from the transcript:
-
-1. "frustrations" - Their biggest frustration/challenge
-2. "nighttime_worries" - What keeps them awake at night
-3. "secret_fears" - What they're secretly afraid of
-4. "magic_solution" - Their ideal solution/perfect day scenario
-5. "demographics" - Age range, income level, job title/role
-6. "failed_solutions" - What they've tried that didn't work
-7. "blockers" - What's currently blocking them
-8. "info_sources" - Where they go for advice/information
-9. "decision_making" - How they make purchasing decisions
-10. "investment_criteria" - What would make them invest in a solution
-11. "success_measures" - How they would measure success
-12. "referral_outcomes" - What would make them recommend to others
-13. "additional_insights" - Any other important information they shared
-
-TRANSCRIPT:
+    const prompt = `<prompt>
+  <task>Analyze a customer interview transcript and extract specific answers to predefined questions.</task>
+  
+  <extraction_fields>
+    <field key="frustrations">Their biggest frustration/challenge</field>
+    <field key="nighttime_worries">What keeps them awake at night</field>
+    <field key="secret_fears">What they're secretly afraid of</field>
+    <field key="magic_solution">Their ideal solution/perfect day scenario</field>
+    <field key="demographics">Age range, income level, job title/role</field>
+    <field key="failed_solutions">What they've tried that didn't work</field>
+    <field key="blockers">What's currently blocking them</field>
+    <field key="info_sources">Where they go for advice/information</field>
+    <field key="decision_making">How they make purchasing decisions</field>
+    <field key="investment_criteria">What would make them invest in a solution</field>
+    <field key="success_measures">How they would measure success</field>
+    <field key="referral_outcomes">What would make them recommend to others</field>
+    <field key="additional_insights">Any other important information they shared</field>
+  </extraction_fields>
+  
+  <transcript>
+    <![CDATA[
 ${transcript}
-
-INSTRUCTIONS:
-1. Extract the customer's actual words and responses for each category
-2. If a specific answer isn't found, return an empty string for that key
-3. Preserve the customer's original language and tone
-4. Focus on emotional and specific details
-5. Return only the customer's responses, not the interviewer's questions
-
-Return a JSON object with the extracted answers using the keys listed above.`;
+    ]]>
+  </transcript>
+  
+  <instructions>
+    <instruction number="1">Extract the customer's actual words and responses for each category</instruction>
+    <instruction number="2">If a specific answer isn't found, return an empty string for that key</instruction>
+    <instruction number="3">Preserve the customer's original language and tone</instruction>
+    <instruction number="4">Focus on emotional and specific details</instruction>
+    <instruction number="5">Return only the customer's responses, not the interviewer's questions</instruction>
+  </instructions>
+  
+  <output_format>
+    <format>JSON object</format>
+    <keys>Use the keys listed in extraction_fields above</keys>
+  </output_format>
+</prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
