@@ -2886,8 +2886,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLiveLaunch(id: number): Promise<boolean> {
+    // Delete related rows first (FK constraints). Run sequentially so each is committed before the next.
+    await db.execute(
+      sql`DELETE FROM email_tracking WHERE live_launch_id = ${id}`
+    );
+    await db
+      .delete(liveLaunchOptimizationSuggestions)
+      .where(eq(liveLaunchOptimizationSuggestions.liveLaunchId, id));
+    await db
+      .delete(liveLaunchFunnelMetrics)
+      .where(eq(liveLaunchFunnelMetrics.liveLaunchId, id));
+    await db
+      .delete(liveLaunchOrganicMetrics)
+      .where(eq(liveLaunchOrganicMetrics.liveLaunchId, id));
     const result = await db.delete(liveLaunches).where(eq(liveLaunches.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Live Launch Optimization Suggestions operations

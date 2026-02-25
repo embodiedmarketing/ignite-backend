@@ -39,9 +39,9 @@ export async function createApp() {
     })
   );
 
-  // Body parsing middleware
-  app.use(express.json({ limit: "2mb" }));
-  app.use(express.urlencoded({ extended: false, limit: "2mb" }));
+  // Body parsing middleware (15mb to allow forum thread/post bodies with base64 attachments; 10mb file ≈ 13.3mb as base64)
+  app.use(express.json({ limit: "15mb" }));
+  app.use(express.urlencoded({ extended: false, limit: "15mb" }));
 
   // Security headers
   app.use((req, res, next) => {
