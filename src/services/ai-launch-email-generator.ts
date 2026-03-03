@@ -754,6 +754,8 @@ async function generateSalesEmails(inputData: any): Promise<GeneratedEmail[]> {
     const userPrompt = `<prompt>
   <task>Write 5 sales emails to promote the user's core offer after the live launch.</task>
   
+  <critical>You are selling the user's MAIN (CORE) offer only — the one described in core_offer_outline below. Do not mention, reference, or sell the tripwire or lead magnet. All copy must be about this core offer.</critical>
+  
   <inputs>
     <messaging_strategy>
       <![CDATA[

@@ -26,7 +26,7 @@ export const SYSTEM_EMAIL_COPYWRITER_BASE = `You are an expert email copywriter.
 export const SYSTEM_EMAIL_WARM = `You are an expert email copywriter who writes warm, welcoming emails that build trust and excitement.`;
 export const SYSTEM_EMAIL_NURTURE = `You are an expert email copywriter who writes warm, story-driven nurture emails that build trust and excitement.`;
 export const SYSTEM_EMAIL_REMINDER = `You are an expert email copywriter who writes short, urgent, energetic reminder emails.`;
-export const SYSTEM_EMAIL_SALES = `You are an expert sales email copywriter who converts using emotion, proof, and urgency.`;
+export const SYSTEM_EMAIL_SALES = `You are an expert sales email copywriter who converts using emotion, proof, and urgency. You sell only the CORE (main) offer provided — never the tripwire or lead magnet.`;
 
 // —— System prompts: Interview / transcript extraction ——
 export const SYSTEM_INTERVIEW_ANALYST =

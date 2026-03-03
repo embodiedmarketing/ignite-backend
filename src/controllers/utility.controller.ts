@@ -1159,6 +1159,29 @@ ${thankYouPage}`;
 }
 
 /**
+ * Select the core offer outline from a list (for sales page & launch emails).
+ * Title is the source of truth: prefer outline whose title indicates Core (not Tripwire).
+ * offerNumber is not reliable (some DBs have Tripwire stored as offerNumber 2).
+ */
+function selectCoreOfferOutline<T extends { offerNumber?: number | null; title?: string | null }>(
+  outlines: T[]
+): T | null {
+  if (!outlines.length) return null;
+  const byTitle = outlines.find(
+    (o) =>
+      (o.title?.toLowerCase().includes("core") ?? false) &&
+      !(o.title?.toLowerCase().includes("tripwire") ?? false)
+  );
+  if (byTitle) return byTitle;
+  const byOfferNumber = outlines.find((o) => o.offerNumber === 2);
+  if (byOfferNumber) return byOfferNumber;
+  console.warn(
+    "[SALES PAGE] No outline with title 'Core' or offerNumber=2; using first outline. Ensure core offer is used for sales copy."
+  );
+  return outlines[0];
+}
+
+/**
  * Generate Launch Sales Page Copy
  */
 export async function generateLaunchSalesPageCopy(req: Request, res: Response) {
@@ -1192,9 +1215,9 @@ export async function generateLaunchSalesPageCopy(req: Request, res: Response) {
         .json({ message: "Please complete your messaging strategy first" });
     }
 
-    // Fetch user's core offer outline (most recent one, regardless of active status)
+    // Fetch user's core offer outline (must be Core offer, not Tripwire — sales page is for main offer)
     const allOutlines = await storage.getUserOfferOutlinesByUser(userId);
-    const coreOfferOutline = allOutlines.length > 0 ? allOutlines[0] : null;
+    const coreOfferOutline = selectCoreOfferOutline(allOutlines);
     if (!coreOfferOutline) {
       return res
         .status(400)
@@ -1461,17 +1484,23 @@ export async function generateLaunchEmailSequence(req: Request, res: Response) {
         `[LAUNCH EMAILS] Step 2: Found messaging strategy ID ${messagingStrategy.id}`
       );
 
-      // Fetch user's core offer outline (optional - most recent one if available)
+      // Fetch user's core offer outline (must be Core offer, not Tripwire — sales emails are for main offer)
       console.log(
         `[LAUNCH EMAILS] Step 3: Fetching core offer outlines for user ${userId}`
       );
       const allOutlines = await storage.getUserOfferOutlinesByUser(userId);
-      const coreOfferOutline = allOutlines.length > 0 ? allOutlines[0] : null;
+      const coreOfferOutline = selectCoreOfferOutline(allOutlines);
       console.log(
         `[LAUNCH EMAILS] Step 3: Found ${allOutlines.length} outlines, using: ${
           coreOfferOutline?.id || "none"
         }`
       );
+      if (!coreOfferOutline) {
+        return res.status(400).json({
+          message:
+            "Please create your core offer outline first (offer 2 or titled Core). Launch emails are generated from the core offer, not the tripwire.",
+        });
+      }
 
       // Fetch launch registration funnel data for live launch details and sales page urgency
       console.log(

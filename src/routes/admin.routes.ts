@@ -46,7 +46,6 @@ router.get("/users/:userId/progress", isAdmin, getUserProgress);
 router.post("/users/:userId/reset-progress", isAdmin, resetUserProgress);
 router.get("/users", isAdmin, getAdminUsers);
 router.get("/users/:userId", isAdmin, getAdminUserDetails);
-router.get("/users/:userId/progress", isAdmin, getUserProgress);
 router.post("/users/:userId/reset-progress", isAdmin, resetUserProgress);
 router.get("/messaging-strategies", isAdmin, getAdminMessagingStrategies);
 router.get("/messaging-strategies/:id", isAdmin, getAdminMessagingStrategy);
