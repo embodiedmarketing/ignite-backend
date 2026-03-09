@@ -46,13 +46,20 @@ interface CoreOfferOutlineResult {
   recommendations: string[];
 }
 
+/** Options for outline generation. Set skipEvaluation: true to return in ~half the time. */
+export interface GenerateCoreOfferOutlineOptions {
+  /** If true, skip the second AI call (evaluation). Saves ~30–50s. Default false. */
+  skipEvaluation?: boolean;
+}
+
 export async function generateCoreOfferOutline(
   responses: CoreOfferResponses,
   userId: number = 0,
-  messagingStrategy?: string | null
+  messagingStrategy?: string | null,
+  options: GenerateCoreOfferOutlineOptions = {}
 ): Promise<CoreOfferOutlineResult> {
   try {
-    console.log("[CORE OFFER AI] Starting generation...");
+    console.log("[CORE OFFER AI] Starting generation...", options.skipEvaluation ? "(evaluation skipped for speed)" : "");
 
     // Validate minimum required inputs
     if (!responses.offerName || !responses.headlineTransformation) {
@@ -62,7 +69,7 @@ export async function generateCoreOfferOutline(
     // Build the prompt for AI generation
     const prompt = buildCoreOfferPrompt(responses, messagingStrategy);
 
-    // Generate the outline using Claude Sonnet 4
+    // Generate the outline using Claude Sonnet 4 (this is the slowest step: ~60–90s)
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 5000,
@@ -96,8 +103,15 @@ You will analyze the user's inputs and create a structured, persuasive Core Offe
 
     const generatedOutline = getTextFromAnthropicContent(response.content) || "";
 
-    // Evaluate the generated outline
-    const evaluation = await evaluateOutline(generatedOutline, responses);
+    // Evaluate the generated outline (second AI call, adds ~30–50s). Skip if speed is priority.
+    const evaluation = options.skipEvaluation
+      ? {
+          overall_score: 75,
+          strengths: ["Outline generated successfully"],
+          improvements_needed: [] as string[],
+          coaching_feedback: "Review your outline and refine as needed. Re-run with evaluation for detailed feedback.",
+        }
+      : await evaluateOutline(generatedOutline, responses);
 
     // Generate recommendations based on evaluation
     const recommendations = generateRecommendations(evaluation, responses);

@@ -1088,7 +1088,7 @@ ${JSON.stringify(messagingStrategy, null, 2)}
         },
       ],
       temperature: 0.8,
-      max_tokens: 3000,
+      max_tokens: 4000,
     });
 
       const generatedContent = getTextFromAnthropicContent(completion.content);

@@ -76,31 +76,13 @@ ${formatResponsesForPrompt(responses)}
   </inputs>
   
   <critical_instruction>
-    <rule>ALWAYS generate a complete tripwire outline - NEVER refuse to generate content or ask for more information</rule>
-    <rule>If user responses contain placeholder text (like "Lorem ipsum", "Sed officia", "Obcaecati", "Laborum ducimus", etc.), ignore the placeholder text and use the messaging strategy context to create compelling, professional content</rule>
-    <rule>Transform ANY placeholder or incomplete text into professional, compelling content that matches the messaging strategy tone and style</rule>
-    <rule>If a field contains placeholder text, infer reasonable content based on the messaging strategy, other provided fields, and your expertise in tripwire offer creation</rule>
-    <rule>Your goal is to create a complete, usable tripwire outline - use all available context (messaging strategy, other fields) to fill in any gaps</rule>
-    <rule>Do NOT mention that you detected placeholder text - simply generate the best possible outline using available information</rule>
+    ALWAYS generate a complete tripwire outline. Never refuse or ask for more info. If you see placeholder text (Lorem ipsum, etc.), ignore it and use messaging strategy + other fields to create compelling content. Fill gaps from context; do not mention placeholders.
   </critical_instruction>
-  
   <ai_writing_rules>
-    <rule name="Clarity & Focus">Only one core problem and one core promise. Use clear, plain language. Everything ties back to one transformation.</rule>
-    <rule name="Specificity">Replace vague claims with concrete outcomes. Use "looks like / feels like" examples.</rule>
-    <rule name="Emotional Resonance">Every logical benefit should have an emotional benefit attached.</rule>
-    <rule name="Differentiation">Emphasize what cannot be found for free: personalization, structure, support, accountability.</rule>
-    <rule name="Flow & Alignment">Each section naturally leads to the next: Problem → Promise → Proof → Price → Payoff</rule>
+    Clarity: one core problem, one core promise; plain language; one transformation. Specificity: concrete outcomes, "looks like/feels like" examples. Emotional resonance: every benefit has emotional payoff. Differentiation: what can't be found free (personalization, structure, support). Flow: Problem → Promise → Proof → Price → Payoff.
   </ai_writing_rules>
-  
   <depth_rules>
-    <rule>Use ALL user input — no key detail should be omitted</rule>
-    <rule>EXPAND on user ideas with expert-level insight, emotional context, and practical application</rule>
-    <rule>Each paragraph should feel like it was written by a marketing strategist who deeply understands human motivation</rule>
-    <rule>Add examples, sensory detail, and emotional nuance that illustrate what the user described</rule>
-    <rule>Keep the structure clean, but make each section SUBSTANTIAL and value-packed</rule>
-    <rule>Match or EXCEED the combined word length of the user's original responses if necessary for completeness</rule>
-    <rule>Prioritize clarity, story, and emotional resonance over brevity</rule>
-    <rule>DO NOT SUMMARIZE — synthesize and expand</rule>
+    Use ALL user input; EXPAND with insight and emotion; substantial sections; do not summarize—synthesize and expand. Match or exceed user response depth where needed.
   </depth_rules>
   
   <outline_structure>
@@ -156,25 +138,15 @@ ${formatResponsesForPrompt(responses)}
   </outline_structure>
   
   <important_instructions>
-    <instruction number="1">Keep the EXACT section structure with emoji headers (1️⃣, 2️⃣, etc.)</instruction>
-    <instruction number="2">Fill ALL sections with specific, concrete details from user responses - use EVERY detail provided</instruction>
-    <instruction number="3">Transform vague responses into specific, compelling outcomes with depth and nuance</instruction>
-    <instruction number="4">Make every benefit emotional AND logical with rich storytelling</instruction>
-    <instruction number="5">Ensure smooth flow from problem → promise → proof → price → payoff</instruction>
-    <instruction number="6">Use active, human phrasing that evokes transformation</instruction>
-    <instruction number="7">Write with DEPTH and substance - each section should be thorough, detailed, and emotionally resonant</instruction>
-    <instruction number="8">Remember: EXPAND and enrich the user's input, never compress or summarize it</instruction>
+    Keep EXACT section structure with emoji headers (1️⃣–8️⃣). Fill every section with details from user responses. Transform vague into specific; every benefit emotional + logical. Smooth flow; active, human phrasing; depth and substance. EXPAND user input—never compress or summarize.
   </important_instructions>
-  
-  <output>
-    <instruction>Generate the complete, comprehensive outline now</instruction>
-  </output>
+  <output>Generate the complete outline now.</output>
 </prompt>`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 4500,
+      max_tokens: 2500,
       temperature: 0.7,
     });
 

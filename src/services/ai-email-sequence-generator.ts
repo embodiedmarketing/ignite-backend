@@ -61,45 +61,7 @@ export async function generateEmailSequence(input: EmailSequenceInput): Promise<
   const interviewNote = hasInterviewData ? `
 ⭐ INTERVIEW DATA: Use customer's EXACT WORDS. Show moments: "They've been posting for months — still hearing crickets. Each time they open Instagram, they see competitors thriving and wonder, 'What am I missing?'" Make it visceral and authentic.\n` : '';
 
-//   const userPrompt = `Generate 5-part email sequence:
-// LEAD MAGNET: ${input.leadMagnetTitle} | Transformation: ${input.transformation} | Problem: ${input.problemSolved}
-// TRIPWIRE: ${input.tripwireTitle} (${input.tripwireType}) | Outcome: ${input.tripwireOutcome} | Price: $${input.tripwirePrice}
-// STRATEGY: Belief shift: ${input.coreBeliefShift} | Objections: ${input.objectionsDoubts} | Stories: ${input.storiesExamples}
-// MESSAGING: ${messagingStrategyText.substring(0, 1000)}${messagingStrategyText.length > 1000 ? '...' : ''}
-// ${input.idealCustomerProfile ? `CUSTOMER: ${input.idealCustomerProfile}` : ''}
-// ${interviewNote}
-// STRUCTURE:  
-// 1. Delivery & Welcome: Thank, deliver lead magnet, share why created, introduce credibility, set expectations
-// 2. Problem Awareness: Describe pain vividly, normalize struggle, hint at unique solution
-// 3. Small Win: Share quick tip/framework with example, reinforce it's part of larger system
-// 4. Disruptive Beliefs: Challenge common belief, explain why wrong, share your core belief
-// 5. Belief Shift: Identify misconception, replace with empowering truth, use story/metaphor, tie to system
 
-
-
-
-// <principles>
-// - Connection over conversion
-// - Conversational, warm tone
-// - Under 400 words per email
-// - One clear, soft CTA per email
-// - Stories in at
-
-
-// <output_format>
-// Return a JSON array of exactly 5 email objects:
-// [
-// {
-// "emailNumber": 1,
-// "subject": "string",
-// "purpose": "string (one sentence)",
-// "body": "string (email content with \\n\\n between paragraphs)"
-// }
-// ]
-// Do not wrap in markdown. Return only the JSON array.
-// </output_format>;
-
-// `;
 
 const userPrompt = `
 <prompt>

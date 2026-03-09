@@ -4,6 +4,23 @@ import { insertCoachingCallRecordingSchema, insertCoachingCallScheduleSchema } f
 import { handleControllerError, parseIdParam } from "../utils/controller-error";
 import { z } from "zod";
 
+/** In-memory cache for GET /schedule to avoid repeated DB hits. TTL 30s; invalidated on create/update/delete. */
+const SCHEDULE_CACHE_TTL_MS = 30_000;
+let scheduleCache: { data: unknown[]; expiresAt: number } | null = null;
+
+function getCachedSchedule(): unknown[] | null {
+  if (scheduleCache && Date.now() < scheduleCache.expiresAt) return scheduleCache.data;
+  return null;
+}
+
+function setCachedSchedule(data: unknown[]) {
+  scheduleCache = { data, expiresAt: Date.now() + SCHEDULE_CACHE_TTL_MS };
+}
+
+function invalidateScheduleCache() {
+  scheduleCache = null;
+}
+
 /**
  * Get all coaching call recordings
  */
@@ -148,7 +165,7 @@ export async function deleteCoachingCallRecording(req: Request, res: Response) {
 // ============================================
 
 /**
- * Get all scheduled coaching calls
+ * Get all scheduled coaching calls (cached 30s for performance)
  */
 export async function getCoachingCallsSchedule(req: Request, res: Response) {
   try {
@@ -157,7 +174,13 @@ export async function getCoachingCallsSchedule(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const cached = getCachedSchedule();
+    if (cached !== null) {
+      return res.json(cached);
+    }
+
     const calls = await storage.getAllCoachingCallsSchedule();
+    setCachedSchedule(calls);
     res.json(calls);
   } catch (error) {
     handleControllerError(error, res, {
@@ -194,11 +217,13 @@ export async function createCoachingCallSchedule(req: Request, res: Response) {
       }
 
       const calls = await storage.createCoachingCallSchedules(validated);
+      invalidateScheduleCache();
       res.status(201).json(calls);
     } else {
       // Validate single schedule (backward compatibility)
       const validated = insertCoachingCallScheduleSchema.parse(req.body);
       const call = await storage.createCoachingCallSchedule(validated);
+      invalidateScheduleCache();
       res.status(201).json(call);
     }
   } catch (error) {
@@ -235,7 +260,7 @@ export async function updateCoachingCallSchedule(req: Request, res: Response) {
     if (!updated) {
       return res.status(404).json({ message: "Call not found" });
     }
-
+    invalidateScheduleCache();
     res.json(updated);
   } catch (error) {
     handleControllerError(error, res, {
@@ -268,7 +293,7 @@ export async function deleteCoachingCallSchedule(req: Request, res: Response) {
     if (!deleted) {
       return res.status(404).json({ message: "Call not found" });
     }
-
+    invalidateScheduleCache();
     res.json({ message: "Call deleted successfully", id: id.toString() });
   } catch (error) {
     handleControllerError(error, res, {

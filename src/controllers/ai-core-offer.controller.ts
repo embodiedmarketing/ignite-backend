@@ -500,10 +500,14 @@ export async function generateCoreOfferOutline(req: Request, res: Response) {
       "../services/ai-core-offer-outline"
     );
 
+    // skipEvaluation=true returns in ~half the time (skips second AI call)
+    const skipEvaluation = req.query.skipEvaluation === "true" || req.body.skipEvaluation === true;
+
     const result = await generateCoreOfferOutline(
       coreResponses,
       userId || 0,
-      messagingStrategy?.content || null
+      messagingStrategy?.content || null,
+      { skipEvaluation }
     );
 
     console.log("✅ Core offer outline generated successfully");
