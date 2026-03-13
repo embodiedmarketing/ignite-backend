@@ -1370,6 +1370,7 @@ export const coachingCallsSchedule = pgTable("coaching_calls_schedule", {
   cancelReason: text("cancel_reason"),
   recurring: boolean("recurring").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  week: integer("week").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   dateIdx: index("idx_coaching_calls_schedule_date").on(table.date),
