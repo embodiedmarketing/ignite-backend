@@ -237,38 +237,66 @@ export async function createOptimizationSuggestions(
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    // Map 'type' to 'suggestionType' if needed, and ensure all required fields are present
-    const { type, suggestionType, title, issue, actions, metricsSnapshot } = req.body;
+    // Support both a single suggestion object and an array of suggestions
+    const suggestionsInput = Array.isArray(req.body.suggestions)
+      ? req.body.suggestions
+      : [req.body];
 
-    // suggestionType is required - use 'type' if 'suggestionType' is not provided
-    const finalSuggestionType = suggestionType || type;
-    if (!finalSuggestionType) {
-      return res.status(400).json({ 
-        message: "suggestionType (or type) is required. Valid values: 'success', 'warning', 'danger'" 
+    if (suggestionsInput.length === 0) {
+      return res.status(400).json({
+        message: "At least one suggestion is required",
       });
     }
 
-    // Validate other required fields
-    if (!title) {
-      return res.status(400).json({ message: "title is required" });
-    }
-    if (!issue) {
-      return res.status(400).json({ message: "issue is required" });
-    }
-    if (!actions || !Array.isArray(actions)) {
-      return res.status(400).json({ message: "actions is required and must be an array" });
+    const createdSuggestions = [];
+    for (const raw of suggestionsInput) {
+      const {
+        type,
+        suggestionType,
+        title,
+        issue,
+        actions,
+        metricsSnapshot,
+      } = raw;
+
+      const finalSuggestionType = suggestionType || type;
+      if (!finalSuggestionType) {
+        return res.status(400).json({
+          message:
+            "suggestionType (or type) is required. Valid values: 'success', 'warning', 'danger'",
+        });
+      }
+
+      if (!title) {
+        return res.status(400).json({ message: "title is required" });
+      }
+      if (!issue) {
+        return res.status(400).json({ message: "issue is required" });
+      }
+      if (!actions || !Array.isArray(actions)) {
+        return res.status(400).json({
+          message: "actions is required and must be an array",
+        });
+      }
+
+      const suggestion = await storage.createLiveLaunchOptimizationSuggestion({
+        userId: parseInt(userId.toString()),
+        liveLaunchId,
+        suggestionType: finalSuggestionType,
+        title,
+        issue,
+        actions,
+        metricsSnapshot: metricsSnapshot || null,
+      });
+      createdSuggestions.push(suggestion);
     }
 
-    const suggestion = await storage.createLiveLaunchOptimizationSuggestion({
-      userId: parseInt(userId.toString()),
-      liveLaunchId,
-      suggestionType: finalSuggestionType,
-      title,
-      issue,
-      actions,
-      metricsSnapshot: metricsSnapshot || null,
-    });
-    res.status(201).json(suggestion);
+    // If original payload was a single object, keep response backwards-compatible
+    res.status(201).json(
+      Array.isArray(req.body.suggestions)
+        ? createdSuggestions
+        : createdSuggestions[0]
+    );
   } catch (error) {
     console.error("Error creating optimization suggestion:", error);
     res.status(500).json({ message: "Internal server error" });
