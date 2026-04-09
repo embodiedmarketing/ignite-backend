@@ -30,18 +30,22 @@ import {
   deleteChecklistDefinition,
   toggleUserActive,
   toggleUserAdmin,
+  impersonateUser,
+  stopImpersonation,
 } from "../controllers/admin.controller";
 import { isAdmin } from "../middlewares/admin.middleware";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 
 const router = Router();
 
 // Admin login (no middleware required)
 router.post("/login", adminLogin);
-router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
 // Admin routes (require isAdmin middleware)
 // Specific routes first (before generic :userId route)
 router.put("/users/:userId/toggle-active", isAdmin, toggleUserActive);
 router.put("/users/:userId/toggle-admin", isAdmin, toggleUserAdmin);
+router.post("/users/:userId/impersonate", isAdmin, impersonateUser);
+router.post("/impersonation/stop", isAuthenticated, stopImpersonation);
 router.get("/users/:userId/progress", isAdmin, getUserProgress);
 router.post("/users/:userId/reset-progress", isAdmin, resetUserProgress);
 router.get("/users", isAdmin, getAdminUsers);

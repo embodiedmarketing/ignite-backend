@@ -22,6 +22,120 @@ import { hashPassword, verifyPassword } from "../services/auth.service";
 import { insertTrainingVideoSchema, insertPlatformResourceSchema, insertChecklistStepDefinitionSchema } from "../models";
 import { z } from "zod";
 
+const impersonateUserParamsSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+});
+
+/**
+ * Admin impersonation: swap session userId to target user.
+ * Stores the original admin id in session so we can stop impersonating later.
+ */
+export async function impersonateUser(req: Request, res: Response) {
+  try {
+    const { userId: targetUserId } = impersonateUserParamsSchema.parse(req.params);
+
+    const adminId = req.session?.userId;
+    if (!adminId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Prevent nested impersonation
+    if (req.session?.impersonatorAdminId) {
+      return res.status(400).json({ message: "Already impersonating a user" });
+    }
+
+    const adminUser = await storage.getUser(adminId);
+    if (!adminUser || !adminUser.isAdmin) {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+
+    const targetUser = await storage.getUser(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Target user not found" });
+    }
+
+    // Optional safety: don't allow impersonating other admins
+    if (targetUser.isAdmin) {
+      return res.status(400).json({ message: "Cannot impersonate an admin user" });
+    }
+
+    // Check if target user is active
+    if (targetUser.isActive === false) {
+      return res.status(400).json({ message: "Cannot impersonate a deactivated user" });
+    }
+
+    req.session!.impersonatorAdminId = adminId;
+    req.session!.userId = targetUser.id;
+
+    req.session!.save((err) => {
+      if (err) {
+        console.error("Error saving impersonation session:", err);
+        return res.status(500).json({ message: "Failed to start impersonation" });
+      }
+
+      const { passwordHash, ...targetUserWithoutPassword } = targetUser as any;
+      return res.json({
+        message: "Impersonation started",
+        user: {
+          ...targetUserWithoutPassword,
+          impersonatorAdminId: adminId,
+          isImpersonating: true,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid request", errors: error.errors });
+    }
+    console.error("Error starting impersonation:", error);
+    res.status(500).json({ message: "Failed to start impersonation" });
+  }
+}
+
+/**
+ * Stop impersonation: restore session userId to the original admin.
+ * This is intentionally NOT protected by isAdmin middleware because while impersonating,
+ * session userId is the target user and would fail admin checks.
+ */
+export async function stopImpersonation(req: Request, res: Response) {
+  try {
+    const adminId = req.session?.impersonatorAdminId;
+    if (!adminId) {
+      return res.status(400).json({ message: "Not currently impersonating" });
+    }
+
+    const adminUser = await storage.getUser(adminId);
+    if (!adminUser || !adminUser.isAdmin) {
+      // Safety: if the stored admin no longer exists/is not admin, destroy session
+      req.session.destroy(() => {});
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    req.session!.userId = adminId;
+    delete req.session!.impersonatorAdminId;
+
+    req.session!.save((err) => {
+      if (err) {
+        console.error("Error saving stop-impersonation session:", err);
+        return res.status(500).json({ message: "Failed to stop impersonation" });
+      }
+
+      const { passwordHash, ...adminWithoutPassword } = adminUser as any;
+      return res.json({
+        message: "Impersonation stopped",
+        user: {
+          ...adminWithoutPassword,
+          impersonatorAdminId: null,
+          isImpersonating: false,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Error stopping impersonation:", error);
+    res.status(500).json({ message: "Failed to stop impersonation" });
+  }
+}
+
 /**
  * Admin login
  */

@@ -200,7 +200,11 @@ export async function getCurrentUser(req: Request, res: Response) {
 
     // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    res.json({
+      ...userWithoutPassword,
+      impersonatorAdminId: req.session?.impersonatorAdminId ?? null,
+      isImpersonating: Boolean(req.session?.impersonatorAdminId),
+    });
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ message: "Failed to fetch user" });
