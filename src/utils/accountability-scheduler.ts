@@ -1,6 +1,6 @@
 // TODO: Update when storage.service.ts is moved
 import { storage } from "../services/storage.service";
-import { format, startOfWeek, endOfWeek, addWeeks, isSameDay } from "date-fns";
+import { format, startOfWeek, endOfWeek, isSameDay, startOfDay } from "date-fns";
 
 // System user ID for creating accountability threads (using platform admin)
 // const SYSTEM_USER_ID = 119; // morgan@embodiedmarketing.com
@@ -40,9 +40,9 @@ export async function checkAndCreateWeeklyThread(): Promise<void> {
     const dayOfWeek = now.getDay();
     
     // Only run on Mondays (0 = Sunday, 1 = Monday, etc.)
-    if (dayOfWeek !== 1) {
-      return;
-    }
+    // if (dayOfWeek !== 1) {
+    //   return;
+    // }
     
     const weekMonday = getCurrentWeekMonday();
     const weekSunday = getCurrentWeekSunday();
@@ -51,26 +51,27 @@ export async function checkAndCreateWeeklyThread(): Promise<void> {
     const activeThread = await storage.getActiveAccountabilityThread();
     
     if (activeThread) {
-      const activeThreadWeekStart = new Date(activeThread.weekStartDate);
-      activeThreadWeekStart.setHours(0, 0, 0, 0);
-      
-      // If the active thread is for the current week, check if it has the correct userId 
-      // if (isSameDay(activeThreadWeekStart, weekMonday)) {
-        // Get the forum thread to check its userId
+      // Compare calendar week using start-of-day so DB timestamps (UTC) match local weekMonday
+      const activeWeekMonday = startOfDay(new Date(activeThread.weekStartDate));
+      const thisWeekMonday = startOfDay(weekMonday);
+
+      if (isSameDay(activeWeekMonday, thisWeekMonday)) {
         const threadData = await storage.getThreadWithPosts(activeThread.threadId);
-        
+
         if (threadData && threadData.thread.userId !== SYSTEM_USER_ID) {
-          // Update the thread's userId to the correct system user
           await storage.updateAccountabilityThreadUserId(
             activeThread.threadId,
             SYSTEM_USER_ID
           );
-          console.log(`[ACCOUNTABILITY SCHEDULER] Updated thread ${activeThread.threadId} userId to ${SYSTEM_USER_ID}`);
-        } else {
-          console.log('[ACCOUNTABILITY SCHEDULER] Thread already exists for this week');
+          console.log(
+            `[ACCOUNTABILITY SCHEDULER] Updated thread ${activeThread.threadId} userId to ${SYSTEM_USER_ID}`
+          );
         }
+        console.log(
+          `[ACCOUNTABILITY SCHEDULER] No new weekly row: week ${format(thisWeekMonday, "yyyy-MM-dd")} already has active accountability id=${activeThread.id} (forum thread ${activeThread.threadId}). createWeeklyAccountabilityThread is skipped.`
+        );
         return;
-      // }
+      }
       
       // Mark previous threads as inactive
       await storage.markPreviousThreadsInactive();
