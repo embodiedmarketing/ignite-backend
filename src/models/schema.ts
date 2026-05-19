@@ -1355,6 +1355,43 @@ export const insertCoachingCallRecordingSchema = createInsertSchema(coachingCall
 export type CoachingCallRecording = typeof coachingCallRecordings.$inferSelect;
 export type InsertCoachingCallRecording = z.infer<typeof insertCoachingCallRecordingSchema>;
 
+/** Normalize client date values to YYYY-MM-DD for coaching call schedule APIs */
+function normalizeScheduleDateInput(val: unknown): string | undefined {
+  if (val == null || val === "") return undefined;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const looseIso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (looseIso) {
+      const [, year, month, day] = looseIso;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    const isoDatePrefix = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoDatePrefix) return isoDatePrefix[1];
+    const usDate = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usDate) {
+      const [, month, day, year] = usDate;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  if (typeof val === "number" && Number.isFinite(val)) {
+    const parsed = new Date(val);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  return undefined;
+}
+
+const coachingCallScheduleDateSchema = z.preprocess(
+  (val) => normalizeScheduleDateInput(val) ?? val,
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+);
+
 // Coaching calls schedule table for managing scheduled calls
 export const coachingCallsSchedule = pgTable("coaching_calls_schedule", {
   id: serial("id").primaryKey(),
@@ -1390,7 +1427,7 @@ export const insertCoachingCallScheduleSchema = createInsertSchema(coachingCalls
     errorMap: () => ({ message: "Day must be a valid day of the week" })
   }),
   time: z.string().min(1, "Time is required"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  date: coachingCallScheduleDateSchema,
   description: z.string().optional().default(""),
   link: z.string().optional().default("").refine(
     (val) => !val || val === "" || z.string().url().safeParse(val).success,
