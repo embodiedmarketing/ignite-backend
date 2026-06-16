@@ -1659,10 +1659,10 @@ export async function getVimeoTranscript(req: Request, res: Response) {
 
     const transcript = await getVimeoTranscriptUtil(videoUrl, vimeoAccessToken);
 
-    let timestamps:any = [];
+    let timestamps = "";
     try {
       const completion = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         messages: [
           {
             role: "user",
