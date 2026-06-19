@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { outlineEvaluationSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -64,7 +65,7 @@ export async function generateCoreOfferOutline(
 
     // Generate the outline using Claude Sonnet 4
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 5000,
       temperature: 0.7,
       system: `You are an expert marketing strategist and business coach. Your role is to help entrepreneurs create compelling, conversion-ready Core Offer Outlines. Your specialty is transforming user responses into rich, emotionally compelling narratives that synthesize and EXPAND their input.
@@ -330,7 +331,7 @@ ${outline}
     const userPromptWithJson = evaluationPrompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: userPromptWithJson }],
       max_tokens: 1500,
       temperature: 0.3,

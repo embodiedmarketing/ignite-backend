@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { topicIdeasResponseSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -164,7 +165,7 @@ ${positioning}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 2000,
       temperature: 0.8

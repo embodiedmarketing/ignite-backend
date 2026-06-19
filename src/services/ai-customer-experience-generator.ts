@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { jsonObjectSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -131,7 +132,7 @@ ${JSON.stringify(offerOutline)}
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 800,
     temperature: 0.7,
@@ -184,7 +185,7 @@ ${JSON.stringify(offerOutline)}
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 1000,
     temperature: 0.7,
@@ -243,7 +244,7 @@ ${JSON.stringify(messagingStrategy)}
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 800,
     temperature: 0.7,
@@ -296,7 +297,7 @@ ${JSON.stringify(offerOutline)}
   const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
   
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     messages: [{ role: "user", content: userPromptWithJson }],
     max_tokens: 600,
     temperature: 0.7,

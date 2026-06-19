@@ -11,6 +11,7 @@ import {
   SYSTEM_MESSAGING_STRATEGY_REGENERATION,
   MESSAGING_REGENERATION_PREFIX,
 } from "@backend/shared";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -76,7 +77,7 @@ ${rawAnswers}
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1200, // Reduced from 2000 - emotional extraction doesn't need that much
       temperature: 0.5,
       system: SYSTEM_MESSAGING_EMOTIONAL_INSIGHTS,
@@ -331,7 +332,7 @@ ${focusAreas.length > 0 ? `\n**FOCUS AREAS:** ${focusAreas.join(", ")}` : ""}
     const strategyStartTime = Date.now();
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 3500, // Reduced from 4000 - still sufficient for 11 sections but faster
       temperature: 0.7, // Reduced from 0.8 - slightly faster, still creative
       system: systemMessage,

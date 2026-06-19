@@ -5,6 +5,7 @@ import {
   coreOfferRewriteResultSchema,
   coreOfferFinalSummarySchema,
 } from "../utils/ai-response-schemas";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -117,7 +118,7 @@ export async function coachQuestionResponse(
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 2000,
       temperature: 0.7,
       system: `You are a confident, warm, and collaborative business coach and marketing strategist. Your role is to evaluate user responses to Core Offer questions with a mentor's eye.
@@ -226,7 +227,7 @@ export async function generateRewrite(
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1200,
       temperature: 0.7,
       system: `You are a skilled marketing strategist and business coach helping entrepreneurs clarify and strengthen their Core Offer messaging.
@@ -305,7 +306,7 @@ export async function generateFinalSummary(
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1500,
       temperature: 0.7,
       system: `You are a business coach wrapping up a strategy session. Review the user's completed Core Offer and provide an encouraging, strategic summary.

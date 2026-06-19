@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent } from "../utils/ai-response";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -32,7 +33,7 @@ export async function getRealTimeFeedback(
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 600,
       temperature: 0.7,
       system: `You are a supportive, encouraging AI coach helping entrepreneurs develop their strategic messaging. Your role is to provide real-time, collaborative feedback as they write their responses.

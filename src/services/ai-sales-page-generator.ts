@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, validateAiText } from "../utils/ai-response";
 import { SYSTEM_SALES_PAGE_COPYWRITER, SALES_PAGE_STRUCTURE } from "../shared/prompts";
 import { salesPageOutputSchema } from "../utils/ai-response-schemas";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -134,7 +135,7 @@ ${interviewInstructions}
   const timeoutMs = 30000; // 30 seconds for long generations
   
   const apiCall = anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     max_tokens: 4000,
     temperature: 0.7,
     system: SYSTEM_SALES_PAGE_COPYWRITER,

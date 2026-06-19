@@ -19,6 +19,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent } from "../utils/ai-response";
 import DOMPurify from "isomorphic-dompurify";
 import { nanoid } from "nanoid";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 /**
  * Ontraport webhook endpoint
@@ -1075,7 +1076,7 @@ ${JSON.stringify(messagingStrategy, null, 2)}
 </prompt>`;
 
     const completion = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [
         {
           role: "assistant",
@@ -1354,7 +1355,7 @@ ${coreOfferOutline.content || ""}
 </prompt>`;
 
     const completion = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [
         {
           role: "assistant",
@@ -1662,7 +1663,7 @@ export async function getVimeoTranscript(req: Request, res: Response) {
     let timestamps = "";
     try {
       const completion = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
+        model: ANTHROPIC_MODEL,
         messages: [
           {
             role: "user",

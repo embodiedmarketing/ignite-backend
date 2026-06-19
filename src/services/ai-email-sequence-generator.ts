@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson, repairTruncatedEmailSequenceJson } from "../utils/ai-response";
 import { emailSequenceResponseSchema } from "../utils/ai-response-schemas";
 import { SYSTEM_EMAIL_SEQUENCE_GENERATOR } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -209,7 +210,7 @@ const userPrompt = `
       
       const completion = await anthropic.messages.create(
         {
-          model: "claude-sonnet-4-20250514",
+          model: ANTHROPIC_MODEL,
           max_tokens: 2200,
           temperature: 0.7,
           system: SYSTEM_EMAIL_SEQUENCE_GENERATOR,

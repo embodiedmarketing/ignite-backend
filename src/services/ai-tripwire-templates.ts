@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { tripwireFunnelPagesSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY, SYSTEM_FUNNEL_JSON } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -217,7 +218,7 @@ ${outlineText}
   try {
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: ANTHROPIC_MODEL,
       max_tokens: 2000,
       temperature: 0.7,
       system: SYSTEM_FUNNEL_JSON,

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { funnelCopyPagesSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY, SYSTEM_FUNNEL_JSON } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -314,7 +315,7 @@ export async function generateFunnelCopy(input: FunnelCopyInput): Promise<Funnel
       const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
       
       const responseObj = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: ANTHROPIC_MODEL,
         max_tokens: 8000,
         temperature: 0.8,
         system: SYSTEM_FUNNEL_JSON,

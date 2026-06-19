@@ -18,6 +18,7 @@ import {
 import { userMonitoring } from '../utils/user-monitoring';
 import { storage } from './storage.service';
 import { aiCoachingMonitor } from './ai-coaching-monitor';
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 // AI operations use a single provider (see config); all prompts use consistent expert-coach voice.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -452,7 +453,7 @@ ${userContext.messagingStrategy.content?.substring(0, 300)}...
 </prompt>`;
 
     const aiResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 800,
       temperature: 0.7,
       system: systemPrompt,
@@ -693,7 +694,7 @@ ${initialResponse}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 400,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.5,
@@ -752,7 +753,7 @@ ${transcript}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 300,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,

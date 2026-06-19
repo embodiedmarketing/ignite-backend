@@ -9,6 +9,7 @@ import {
   SYSTEM_EMAIL_REMINDER,
   SYSTEM_EMAIL_SALES,
 } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error("[LAUNCH EMAILS] ANTHROPIC_API_KEY is not set in environment variables");
@@ -486,7 +487,7 @@ ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
   const userPromptWithJson = userPrompt + PROMPT_JSON_ESCAPED;
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 3000,
       temperature: 0.7,
       system: SYSTEM_EMAIL_COPYWRITER_BASE,
@@ -565,7 +566,7 @@ ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
   }
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1500,
       temperature: 0.7,
       system: SYSTEM_EMAIL_WARM,
@@ -648,7 +649,7 @@ ${inputData.messagingStrategyEssentials}
   
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 3000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
       system: SYSTEM_EMAIL_NURTURE,
@@ -727,7 +728,7 @@ ${JSON.stringify(inputData.liveLaunchDetails, null, 2)}
   
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 3000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
       system: SYSTEM_EMAIL_REMINDER,
@@ -815,7 +816,7 @@ ${inputData.offerEssentials}
   
   const responseObj = await retryWithBackoff(() =>
     anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 3000, // Increased to handle 5 longer sales emails
       temperature: 0.7,
       system: SYSTEM_EMAIL_SALES,

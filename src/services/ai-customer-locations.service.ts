@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { recordOrObjectSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY, SYSTEM_CUSTOMER_LOCATIONS } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -104,7 +105,7 @@ ${existingLocations}
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1000,
       system: SYSTEM_CUSTOMER_LOCATIONS,
       messages: [

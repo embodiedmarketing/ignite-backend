@@ -3,8 +3,9 @@ import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai
 import { interactiveCoachingResponseSchema, improvedVersionsResponseSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY, PROMPT_JSON_IMPROVED_VERSIONS } from "../shared/prompts";
 import { getQuestionSpecificCoaching, evaluateResponseAgainstCoaching } from './question-specific-coaching';
+import { ANTHROPIC_MODEL } from "../config/ai";
 
-// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+// Using Claude Sonnet 4 (claude-sonnet-4-6) for all AI operations
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Enhanced question-specific coaching that uses our coaching database
@@ -138,7 +139,7 @@ ${coachingContext}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 800,
       temperature: 0.7,
@@ -237,7 +238,7 @@ ${typeof messagingStrategy === 'string' ? messagingStrategy : JSON.stringify(mes
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt + PROMPT_JSON_ONLY }],
       max_tokens: 800,
       temperature: 0.7,
@@ -413,7 +414,7 @@ ${questionSpecificPrompt}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt + PROMPT_JSON_IMPROVED_VERSIONS }],
       max_tokens: 500
     });
@@ -875,7 +876,7 @@ ${userResponse}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: [ { type: "text", text: prompt } ] }],
       max_tokens: 800,
       temperature: 0.7,
@@ -1038,7 +1039,7 @@ ${originalResponse}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 400,
       temperature: 0.7,

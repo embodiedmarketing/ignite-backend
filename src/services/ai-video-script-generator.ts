@@ -3,6 +3,7 @@ import type { IStorage } from "./storage.service";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { videoScriptOutputSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -165,7 +166,7 @@ ${messagingContext || "No existing messaging strategy found - create scripts bas
     const userPromptWithJson = userPrompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 2000,
       temperature: 0.7,
       system: systemPrompt,

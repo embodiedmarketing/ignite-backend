@@ -7,6 +7,7 @@ import {
   UserContextData,
   ClientContextData,
 } from "../utils/data-source-validator";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -205,7 +206,7 @@ ${transcript}
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1000,
       temperature: 0.1,
       system: SYSTEM_CUSTOMER_RESEARCH_ANALYST,
@@ -646,7 +647,7 @@ ${value}
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 1200,
       temperature: 0.4,
       system: SYSTEM_MESSAGING_SYNTHESIS,

@@ -2,8 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent, parseAndValidateAiJson } from "../utils/ai-response";
 import { avatarSynthesisSchema } from "../utils/ai-response-schemas";
 import { PROMPT_JSON_ONLY } from "../shared/prompts";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
-// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for all AI operations
+// Using Claude Sonnet 4 (claude-sonnet-4-6) for all AI operations
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface InterviewNotes {
@@ -90,7 +91,7 @@ export async function synthesizeCustomerAvatar(interviewNotes: InterviewNotes): 
     const userPromptWithJson = prompt + PROMPT_JSON_ONLY;
     
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: userPromptWithJson }],
       temperature: 0.3,
       max_tokens: 2000,

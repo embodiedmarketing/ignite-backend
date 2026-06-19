@@ -15,6 +15,7 @@ export const env = cleanEnv(process.env, {
   DATABASE_URL: str(),
   SESSION_SECRET: str({ default: "development-secret-change-in-production" }),
   ANTHROPIC_API_KEY: str(),
+  ANTHROPIC_MODEL: str({ default: "claude-sonnet-4-6" }),
   STRIPE_SECRET_KEY: str({ default: "" }),
   VITE_STRIPE_PUBLIC_KEY: str({ default: "" }),
   STRIPE_PUBLIC_KEY: str({ default: "" }),

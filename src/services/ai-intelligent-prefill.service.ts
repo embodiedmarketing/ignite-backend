@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getTextFromAnthropicContent } from "../utils/ai-response";
+import { ANTHROPIC_MODEL } from "../config/ai";
 
-// Using Claude Sonnet 4 (claude-sonnet-4-20250514) for high-quality prefill generation
+// Using Claude Sonnet 4 (claude-sonnet-4-6) for high-quality prefill generation
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface IntelligentPrefillResult {
@@ -63,7 +64,7 @@ ${questionType.examples}
 </prompt>`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 300,
       temperature: 0.7,
