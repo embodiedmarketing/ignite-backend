@@ -166,6 +166,14 @@ import {
   type OrientationVideo,
   type InsertOrientationVideo,
   type UpdateOrientationVideo,
+  businessIncubatorCustomerJourneyVideos,
+  type BusinessIncubatorCustomerJourneyVideo,
+  type InsertBusinessIncubatorCustomerJourneyVideo,
+  type UpdateBusinessIncubatorCustomerJourneyVideo,
+  businessIncubatorMessagingVideos,
+  type BusinessIncubatorMessagingVideo,
+  type InsertBusinessIncubatorMessagingVideo,
+  type UpdateBusinessIncubatorMessagingVideo,
 } from "../models";
 import { db } from "../config/db";
 import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
@@ -864,6 +872,38 @@ export interface IStorage {
     updates: Partial<UpdateOrientationVideo>
   ): Promise<OrientationVideo | undefined>;
   deleteOrientationVideo(id: number): Promise<boolean>;
+
+  // Business Incubator Customer Journey Videos operations
+  getAllBusinessIncubatorCustomerJourneyVideos(): Promise<
+    BusinessIncubatorCustomerJourneyVideo[]
+  >;
+  getBusinessIncubatorCustomerJourneyVideo(
+    id: number
+  ): Promise<BusinessIncubatorCustomerJourneyVideo | undefined>;
+  createBusinessIncubatorCustomerJourneyVideo(
+    video: InsertBusinessIncubatorCustomerJourneyVideo
+  ): Promise<BusinessIncubatorCustomerJourneyVideo>;
+  updateBusinessIncubatorCustomerJourneyVideo(
+    id: number,
+    updates: UpdateBusinessIncubatorCustomerJourneyVideo
+  ): Promise<BusinessIncubatorCustomerJourneyVideo | undefined>;
+  deleteBusinessIncubatorCustomerJourneyVideo(id: number): Promise<boolean>;
+
+  // Business Incubator Messaging Videos operations
+  getAllBusinessIncubatorMessagingVideos(): Promise<
+    BusinessIncubatorMessagingVideo[]
+  >;
+  getBusinessIncubatorMessagingVideo(
+    id: number
+  ): Promise<BusinessIncubatorMessagingVideo | undefined>;
+  createBusinessIncubatorMessagingVideo(
+    video: InsertBusinessIncubatorMessagingVideo
+  ): Promise<BusinessIncubatorMessagingVideo>;
+  updateBusinessIncubatorMessagingVideo(
+    id: number,
+    updates: UpdateBusinessIncubatorMessagingVideo
+  ): Promise<BusinessIncubatorMessagingVideo | undefined>;
+  deleteBusinessIncubatorMessagingVideo(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4656,6 +4696,108 @@ async searchUsersForMentions(query: string): Promise<
     const result = await db
       .delete(orientationVideos)
       .where(eq(orientationVideos.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Business Incubator Customer Journey Videos operations
+  async getAllBusinessIncubatorCustomerJourneyVideos(): Promise<
+    BusinessIncubatorCustomerJourneyVideo[]
+  > {
+    return db
+      .select()
+      .from(businessIncubatorCustomerJourneyVideos)
+      .orderBy(businessIncubatorCustomerJourneyVideos.order);
+  }
+
+  async getBusinessIncubatorCustomerJourneyVideo(
+    id: number
+  ): Promise<BusinessIncubatorCustomerJourneyVideo | undefined> {
+    const [video] = await db
+      .select()
+      .from(businessIncubatorCustomerJourneyVideos)
+      .where(eq(businessIncubatorCustomerJourneyVideos.id, id))
+      .limit(1);
+    return video;
+  }
+
+  async createBusinessIncubatorCustomerJourneyVideo(
+    video: InsertBusinessIncubatorCustomerJourneyVideo
+  ): Promise<BusinessIncubatorCustomerJourneyVideo> {
+    const [newVideo] = await db
+      .insert(businessIncubatorCustomerJourneyVideos)
+      .values(video)
+      .returning();
+    return newVideo;
+  }
+
+  async updateBusinessIncubatorCustomerJourneyVideo(
+    id: number,
+    updates: UpdateBusinessIncubatorCustomerJourneyVideo
+  ): Promise<BusinessIncubatorCustomerJourneyVideo | undefined> {
+    const [updated] = await db
+      .update(businessIncubatorCustomerJourneyVideos)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(businessIncubatorCustomerJourneyVideos.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBusinessIncubatorCustomerJourneyVideo(
+    id: number
+  ): Promise<boolean> {
+    const result = await db
+      .delete(businessIncubatorCustomerJourneyVideos)
+      .where(eq(businessIncubatorCustomerJourneyVideos.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Business Incubator Messaging Videos operations
+  async getAllBusinessIncubatorMessagingVideos(): Promise<
+    BusinessIncubatorMessagingVideo[]
+  > {
+    return db
+      .select()
+      .from(businessIncubatorMessagingVideos)
+      .orderBy(businessIncubatorMessagingVideos.order);
+  }
+
+  async getBusinessIncubatorMessagingVideo(
+    id: number
+  ): Promise<BusinessIncubatorMessagingVideo | undefined> {
+    const [video] = await db
+      .select()
+      .from(businessIncubatorMessagingVideos)
+      .where(eq(businessIncubatorMessagingVideos.id, id))
+      .limit(1);
+    return video;
+  }
+
+  async createBusinessIncubatorMessagingVideo(
+    video: InsertBusinessIncubatorMessagingVideo
+  ): Promise<BusinessIncubatorMessagingVideo> {
+    const [newVideo] = await db
+      .insert(businessIncubatorMessagingVideos)
+      .values(video)
+      .returning();
+    return newVideo;
+  }
+
+  async updateBusinessIncubatorMessagingVideo(
+    id: number,
+    updates: UpdateBusinessIncubatorMessagingVideo
+  ): Promise<BusinessIncubatorMessagingVideo | undefined> {
+    const [updated] = await db
+      .update(businessIncubatorMessagingVideos)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(businessIncubatorMessagingVideos.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBusinessIncubatorMessagingVideo(id: number): Promise<boolean> {
+    const result = await db
+      .delete(businessIncubatorMessagingVideos)
+      .where(eq(businessIncubatorMessagingVideos.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

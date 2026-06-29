@@ -1668,3 +1668,120 @@ export const updateOrientationVideoSchema = baseOrientationVideoSchema.partial()
 export type OrientationVideo = typeof orientationVideos.$inferSelect;
 export type InsertOrientationVideo = z.infer<typeof insertOrientationVideoSchema>;
 export type UpdateOrientationVideo = z.infer<typeof updateOrientationVideoSchema>;
+
+const vimeoIdSchema = z
+  .string()
+  .regex(/^\d+\/[a-zA-Z0-9]+$/, "Vimeo ID must be in format 'videoId/hash'");
+
+const baseBusinessIncubatorVideoFields = {
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  vimeoId: vimeoIdSchema,
+  order: z.number().int().min(0, "Order must be a non-negative integer"),
+};
+
+// Business Incubator Customer Journey Videos
+export const businessIncubatorCustomerJourneyVideos = pgTable(
+  "business_incubator_customer_journey_videos",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 255 }).notNull(),
+    vimeoId: varchar("vimeo_id", { length: 100 }).notNull(),
+    order: integer("order").default(0).notNull(),
+    stepNumber: integer("step_number").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIndex: index("idx_customer_journey_videos_order").on(table.order),
+  })
+);
+
+const baseCustomerJourneyVideoSchema = createInsertSchema(
+  businessIncubatorCustomerJourneyVideos,
+  {
+    ...baseBusinessIncubatorVideoFields,
+    stepNumber: z
+      .number()
+      .int()
+      .min(200, "Step number must be 200 or greater for customer journey videos"),
+  }
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBusinessIncubatorCustomerJourneyVideoSchema =
+  baseCustomerJourneyVideoSchema;
+
+export const updateBusinessIncubatorCustomerJourneyVideoSchema = z
+  .object({
+    title: z.string().min(3, "Title must be at least 3 characters").optional(),
+    vimeoId: vimeoIdSchema.optional(),
+  })
+  .refine((data) => data.title !== undefined || data.vimeoId !== undefined, {
+    message: "At least one field (title or vimeoId) is required",
+  });
+
+export type BusinessIncubatorCustomerJourneyVideo =
+  typeof businessIncubatorCustomerJourneyVideos.$inferSelect;
+export type InsertBusinessIncubatorCustomerJourneyVideo = z.infer<
+  typeof insertBusinessIncubatorCustomerJourneyVideoSchema
+>;
+export type UpdateBusinessIncubatorCustomerJourneyVideo = z.infer<
+  typeof updateBusinessIncubatorCustomerJourneyVideoSchema
+>;
+
+// Business Incubator Messaging Videos
+export const businessIncubatorMessagingVideos = pgTable(
+  "business_incubator_messaging_videos",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 255 }).notNull(),
+    vimeoId: varchar("vimeo_id", { length: 100 }).notNull(),
+    order: integer("order").default(0).notNull(),
+    stepNumber: integer("step_number").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIndex: index("idx_messaging_videos_order").on(table.order),
+  })
+);
+
+const baseMessagingVideoSchema = createInsertSchema(
+  businessIncubatorMessagingVideos,
+  {
+    ...baseBusinessIncubatorVideoFields,
+    stepNumber: z
+      .number()
+      .int()
+      .min(100, "Step number must be 100 or greater for messaging videos")
+      .max(199, "Step number must be less than 200 for messaging videos"),
+  }
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBusinessIncubatorMessagingVideoSchema =
+  baseMessagingVideoSchema;
+
+export const updateBusinessIncubatorMessagingVideoSchema = z
+  .object({
+    title: z.string().min(3, "Title must be at least 3 characters").optional(),
+    vimeoId: vimeoIdSchema.optional(),
+  })
+  .refine((data) => data.title !== undefined || data.vimeoId !== undefined, {
+    message: "At least one field (title or vimeoId) is required",
+  });
+
+export type BusinessIncubatorMessagingVideo =
+  typeof businessIncubatorMessagingVideos.$inferSelect;
+export type InsertBusinessIncubatorMessagingVideo = z.infer<
+  typeof insertBusinessIncubatorMessagingVideoSchema
+>;
+export type UpdateBusinessIncubatorMessagingVideo = z.infer<
+  typeof updateBusinessIncubatorMessagingVideoSchema
+>;
