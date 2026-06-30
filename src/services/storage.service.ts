@@ -174,9 +174,22 @@ import {
   type BusinessIncubatorMessagingVideo,
   type InsertBusinessIncubatorMessagingVideo,
   type UpdateBusinessIncubatorMessagingVideo,
+  bonusTrainingCategories,
+  bonusTrainingSeries,
+  bonusTrainingVideos,
+  type BonusTrainingCategory,
+  type InsertBonusTrainingCategory,
+  type UpdateBonusTrainingCategory,
+  type BonusTrainingSeries,
+  type InsertBonusTrainingSeries,
+  type UpdateBonusTrainingSeries,
+  type BonusTrainingVideo,
+  type InsertBonusTrainingVideo,
+  type UpdateBonusTrainingVideo,
 } from "../models";
 import { db } from "../config/db";
-import { eq, and, desc, or, lt, not, sql, ne } from "drizzle-orm";
+import { eq, and, desc, or, lt, not, sql, ne, asc, count } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export interface IStorage {
   // User operations for traditional auth
@@ -904,6 +917,57 @@ export interface IStorage {
     updates: UpdateBusinessIncubatorMessagingVideo
   ): Promise<BusinessIncubatorMessagingVideo | undefined>;
   deleteBusinessIncubatorMessagingVideo(id: number): Promise<boolean>;
+
+  // Bonus Training operations
+  getAllBonusTrainingCategories(): Promise<
+    Array<BonusTrainingCategory & { series: BonusTrainingSeriesWithCount[] }>
+  >;
+  getBonusTrainingCategory(
+    id: string
+  ): Promise<BonusTrainingCategory | undefined>;
+  createBonusTrainingCategory(
+    category: InsertBonusTrainingCategory
+  ): Promise<BonusTrainingCategory & { series: [] }>;
+  updateBonusTrainingCategory(
+    id: string,
+    updates: UpdateBonusTrainingCategory
+  ): Promise<BonusTrainingCategory | undefined>;
+  deleteBonusTrainingCategory(id: string): Promise<boolean>;
+
+  getBonusTrainingSeries(
+    seriesId: string
+  ): Promise<BonusTrainingSeriesWithCount | undefined>;
+  createBonusTrainingSeries(
+    categoryId: string,
+    series: InsertBonusTrainingSeries
+  ): Promise<BonusTrainingSeries>;
+  updateBonusTrainingSeries(
+    seriesId: string,
+    updates: UpdateBonusTrainingSeries
+  ): Promise<BonusTrainingSeries | undefined>;
+  deleteBonusTrainingSeries(seriesId: string): Promise<boolean>;
+
+  getBonusTrainingVideosBySeries(seriesId: string): Promise<BonusTrainingVideo[]>;
+  createBonusTrainingVideo(
+    seriesId: string,
+    video: InsertBonusTrainingVideo
+  ): Promise<BonusTrainingVideo>;
+  updateBonusTrainingVideo(
+    videoId: string,
+    updates: UpdateBonusTrainingVideo
+  ): Promise<BonusTrainingVideo | undefined>;
+  deleteBonusTrainingVideo(videoId: string): Promise<boolean>;
+}
+
+export interface BonusTrainingSeriesWithCount {
+  id: string;
+  categoryId: string;
+  title: string;
+  description: string;
+  themeColor: string;
+  order: number;
+  stepNumberBase: number;
+  videoCount: number;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4798,6 +4862,208 @@ async searchUsersForMentions(query: string): Promise<
     const result = await db
       .delete(businessIncubatorMessagingVideos)
       .where(eq(businessIncubatorMessagingVideos.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Bonus Training operations
+  async getAllBonusTrainingCategories(): Promise<
+    Array<BonusTrainingCategory & { series: BonusTrainingSeriesWithCount[] }>
+  > {
+    const categories = await db
+      .select()
+      .from(bonusTrainingCategories)
+      .orderBy(asc(bonusTrainingCategories.order));
+
+    const allSeries = await db
+      .select({
+        id: bonusTrainingSeries.id,
+        categoryId: bonusTrainingSeries.categoryId,
+        title: bonusTrainingSeries.title,
+        description: bonusTrainingSeries.description,
+        themeColor: bonusTrainingSeries.themeColor,
+        order: bonusTrainingSeries.order,
+        stepNumberBase: bonusTrainingSeries.stepNumberBase,
+        videoCount: count(bonusTrainingVideos.id),
+      })
+      .from(bonusTrainingSeries)
+      .leftJoin(
+        bonusTrainingVideos,
+        eq(bonusTrainingSeries.id, bonusTrainingVideos.seriesId)
+      )
+      .groupBy(bonusTrainingSeries.id)
+      .orderBy(asc(bonusTrainingSeries.order));
+
+    const seriesByCategory = new Map<string, BonusTrainingSeriesWithCount[]>();
+    for (const series of allSeries) {
+      const list = seriesByCategory.get(series.categoryId) ?? [];
+      list.push({ ...series, videoCount: Number(series.videoCount) });
+      seriesByCategory.set(series.categoryId, list);
+    }
+
+    return categories.map((category) => ({
+      ...category,
+      series: seriesByCategory.get(category.id) ?? [],
+    }));
+  }
+
+  async getBonusTrainingCategory(
+    id: string
+  ): Promise<BonusTrainingCategory | undefined> {
+    const [category] = await db
+      .select()
+      .from(bonusTrainingCategories)
+      .where(eq(bonusTrainingCategories.id, id))
+      .limit(1);
+    return category;
+  }
+
+  async createBonusTrainingCategory(
+    category: InsertBonusTrainingCategory
+  ): Promise<BonusTrainingCategory & { series: [] }> {
+    const id = randomUUID();
+    const [created] = await db
+      .insert(bonusTrainingCategories)
+      .values({ ...category, id })
+      .returning();
+    return { ...created, series: [] };
+  }
+
+  async updateBonusTrainingCategory(
+    id: string,
+    updates: UpdateBonusTrainingCategory
+  ): Promise<BonusTrainingCategory | undefined> {
+    const [updated] = await db
+      .update(bonusTrainingCategories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bonusTrainingCategories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBonusTrainingCategory(id: string): Promise<boolean> {
+    const result = await db
+      .delete(bonusTrainingCategories)
+      .where(eq(bonusTrainingCategories.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getBonusTrainingSeries(
+    seriesId: string
+  ): Promise<BonusTrainingSeriesWithCount | undefined> {
+    const [series] = await db
+      .select({
+        id: bonusTrainingSeries.id,
+        categoryId: bonusTrainingSeries.categoryId,
+        title: bonusTrainingSeries.title,
+        description: bonusTrainingSeries.description,
+        themeColor: bonusTrainingSeries.themeColor,
+        order: bonusTrainingSeries.order,
+        stepNumberBase: bonusTrainingSeries.stepNumberBase,
+        videoCount: count(bonusTrainingVideos.id),
+      })
+      .from(bonusTrainingSeries)
+      .leftJoin(
+        bonusTrainingVideos,
+        eq(bonusTrainingSeries.id, bonusTrainingVideos.seriesId)
+      )
+      .where(eq(bonusTrainingSeries.id, seriesId))
+      .groupBy(bonusTrainingSeries.id)
+      .limit(1);
+
+    if (!series) return undefined;
+    return { ...series, videoCount: Number(series.videoCount) };
+  }
+
+  async createBonusTrainingSeries(
+    categoryId: string,
+    series: InsertBonusTrainingSeries
+  ): Promise<BonusTrainingSeries> {
+    const id = randomUUID();
+    const [created] = await db
+      .insert(bonusTrainingSeries)
+      .values({ ...series, id, categoryId })
+      .returning();
+    return created;
+  }
+
+  async updateBonusTrainingSeries(
+    seriesId: string,
+    updates: UpdateBonusTrainingSeries
+  ): Promise<BonusTrainingSeries | undefined> {
+    const [updated] = await db
+      .update(bonusTrainingSeries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bonusTrainingSeries.id, seriesId))
+      .returning();
+    return updated;
+  }
+
+  async deleteBonusTrainingSeries(seriesId: string): Promise<boolean> {
+    const result = await db
+      .delete(bonusTrainingSeries)
+      .where(eq(bonusTrainingSeries.id, seriesId));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getBonusTrainingVideosBySeries(
+    seriesId: string
+  ): Promise<BonusTrainingVideo[]> {
+    return db
+      .select()
+      .from(bonusTrainingVideos)
+      .where(eq(bonusTrainingVideos.seriesId, seriesId))
+      .orderBy(asc(bonusTrainingVideos.order));
+  }
+
+  async createBonusTrainingVideo(
+    seriesId: string,
+    video: InsertBonusTrainingVideo
+  ): Promise<BonusTrainingVideo> {
+    const series = await this.getBonusTrainingSeries(seriesId);
+    if (!series) {
+      throw new Error(`Series with id "${seriesId}" not found`);
+    }
+
+    let order = video.order;
+    if (order === undefined) {
+      const [result] = await db
+        .select({
+          maxOrder: sql<number>`COALESCE(MAX(${bonusTrainingVideos.order}), -1)`,
+        })
+        .from(bonusTrainingVideos)
+        .where(eq(bonusTrainingVideos.seriesId, seriesId));
+      order = (result?.maxOrder ?? -1) + 1;
+    }
+
+    const stepNumber =
+      video.stepNumber !== undefined
+        ? video.stepNumber
+        : series.stepNumberBase + order;
+
+    const id = randomUUID();
+    const [created] = await db
+      .insert(bonusTrainingVideos)
+      .values({ ...video, id, seriesId, order, stepNumber })
+      .returning();
+    return created;
+  }
+
+  async updateBonusTrainingVideo(
+    videoId: string,
+    updates: UpdateBonusTrainingVideo
+  ): Promise<BonusTrainingVideo | undefined> {
+    const [updated] = await db
+      .update(bonusTrainingVideos)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bonusTrainingVideos.id, videoId))
+      .returning();
+    return updated;
+  }
+
+  async deleteBonusTrainingVideo(videoId: string): Promise<boolean> {
+    const result = await db
+      .delete(bonusTrainingVideos)
+      .where(eq(bonusTrainingVideos.id, videoId));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

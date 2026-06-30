@@ -1785,3 +1785,145 @@ export type InsertBusinessIncubatorMessagingVideo = z.infer<
 export type UpdateBusinessIncubatorMessagingVideo = z.infer<
   typeof updateBusinessIncubatorMessagingVideoSchema
 >;
+
+const bonusTrainingThemeColors = ["purple", "blue", "green", "orange"] as const;
+const bonusTrainingThemeColorSchema = z.enum(bonusTrainingThemeColors);
+
+// Bonus Training Categories
+export const bonusTrainingCategories = pgTable(
+  "bonus_training_categories",
+  {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: text("description").notNull(),
+    order: integer("order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIndex: index("idx_bonus_training_categories_order").on(table.order),
+  })
+);
+
+export const insertBonusTrainingCategorySchema = createInsertSchema(
+  bonusTrainingCategories,
+  {
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    order: z.number().int().min(0).optional(),
+  }
+).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateBonusTrainingCategorySchema =
+  insertBonusTrainingCategorySchema.partial();
+
+export type BonusTrainingCategory = typeof bonusTrainingCategories.$inferSelect;
+export type InsertBonusTrainingCategory = z.infer<
+  typeof insertBonusTrainingCategorySchema
+>;
+export type UpdateBonusTrainingCategory = z.infer<
+  typeof updateBonusTrainingCategorySchema
+>;
+
+// Bonus Training Series
+export const bonusTrainingSeries = pgTable(
+  "bonus_training_series",
+  {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    categoryId: varchar("category_id", { length: 255 })
+      .notNull()
+      .references(() => bonusTrainingCategories.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: text("description").notNull(),
+    themeColor: varchar("theme_color", { length: 50 })
+      .notNull()
+      .default("purple"),
+    order: integer("order").notNull().default(0),
+    stepNumberBase: integer("step_number_base").notNull().default(100),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    categoryIndex: index("idx_bonus_training_series_category").on(
+      table.categoryId
+    ),
+    orderIndex: index("idx_bonus_training_series_order").on(table.order),
+  })
+);
+
+export const insertBonusTrainingSeriesSchema = createInsertSchema(
+  bonusTrainingSeries,
+  {
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    themeColor: bonusTrainingThemeColorSchema,
+    order: z.number().int().min(0).optional(),
+    stepNumberBase: z.number().int().optional(),
+  }
+).omit({ id: true, categoryId: true, createdAt: true, updatedAt: true });
+
+export const updateBonusTrainingSeriesSchema =
+  insertBonusTrainingSeriesSchema.partial();
+
+export type BonusTrainingSeries = typeof bonusTrainingSeries.$inferSelect;
+export type InsertBonusTrainingSeries = z.infer<
+  typeof insertBonusTrainingSeriesSchema
+>;
+export type UpdateBonusTrainingSeries = z.infer<
+  typeof updateBonusTrainingSeriesSchema
+>;
+
+// Bonus Training Videos
+export const bonusTrainingVideos = pgTable(
+  "bonus_training_videos",
+  {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    seriesId: varchar("series_id", { length: 255 })
+      .notNull()
+      .references(() => bonusTrainingSeries.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 500 }).notNull(),
+    vimeoId: varchar("vimeo_id", { length: 255 }).notNull(),
+    order: integer("order").notNull().default(0),
+    stepNumber: integer("step_number"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    seriesIndex: index("idx_bonus_training_videos_series").on(table.seriesId),
+    orderIndex: index("idx_bonus_training_videos_order").on(table.order),
+  })
+);
+
+export const insertBonusTrainingVideoSchema = createInsertSchema(
+  bonusTrainingVideos,
+  {
+    title: z.string().min(3, "Title must be at least 3 characters"),
+    vimeoId: vimeoIdSchema,
+    order: z.number().int().min(0).optional(),
+    stepNumber: z.number().int().optional(),
+  }
+).omit({ id: true, seriesId: true, createdAt: true, updatedAt: true });
+
+export const updateBonusTrainingVideoSchema = z
+  .object({
+    title: z.string().min(3, "Title must be at least 3 characters").optional(),
+    vimeoId: vimeoIdSchema.optional(),
+    order: z.number().int().min(0).optional(),
+    stepNumber: z.number().int().optional(),
+  })
+  .refine(
+    (data) =>
+      data.title !== undefined ||
+      data.vimeoId !== undefined ||
+      data.order !== undefined ||
+      data.stepNumber !== undefined,
+    { message: "At least one field is required" }
+  );
+
+export type BonusTrainingVideo = typeof bonusTrainingVideos.$inferSelect;
+export type InsertBonusTrainingVideo = z.infer<
+  typeof insertBonusTrainingVideoSchema
+>;
+export type UpdateBonusTrainingVideo = z.infer<
+  typeof updateBonusTrainingVideoSchema
+>;

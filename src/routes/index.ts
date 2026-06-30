@@ -41,6 +41,7 @@ import faqsRoutes from "./faqs.routes";
 import journeyStepsRoutes from "./journey-steps.routes";
 import orientationVideoRoutes from "./orientation-video.routes";
 import businessIncubatorRoutes from "./business-incubator.routes";
+import bonusTrainingsRoutes from "./bonus-trainings.routes";
 
 /**
  * Register all routes with the Express app
@@ -91,6 +92,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/journey-steps", journeyStepsRoutes); // Journey steps routes
   app.use("/api/orientation-video", orientationVideoRoutes); // Orientation video routes
   app.use("/api/business-incubator", businessIncubatorRoutes); // Business incubator workshop videos
+  app.use("/api/bonus-trainings", bonusTrainingsRoutes); // Bonus trainings (categories, series, videos)
 
   // All routes have been extracted from server/routes.ts
 }
